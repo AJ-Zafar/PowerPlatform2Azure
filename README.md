@@ -34,6 +34,7 @@ docs/
 
 - TypeScript monorepo with workspace packages.
 - Deterministic outputs for generated artefacts.
+- Shared deterministic helpers are provided in `packages/ir` and reused by parsers and generators.
 - Fixture-driven tests for all parser and generator behavior.
 - Unsupported or unknown source features are always surfaced, never silently ignored.
 - Parsers return a standard envelope:
