@@ -1,0 +1,43 @@
+# Assumptions
+
+## Product and scope assumptions
+
+1. The MVP is CLI-first; `apps/web` remains scaffolded until parser/IR/generator flows are stable.
+2. Power Fx handling in MVP is inventory and raw expression preservation only, without semantic translation.
+3. Deterministic output means stable ordering of entities, attributes, controls, flows, and generated file sections.
+4. Unsupported source constructs must be emitted as structured records and included in reports.
+
+## Repository assumptions
+
+1. Existing empty directories (`packages/rules`, `packages/test-fixtures`, `docs/migration-mappings`) are treated as legacy placeholders and are not used for MVP implementation.
+2. Canonical package layout for implementation is:
+   - `packages/assessment`
+   - `packages/fixtures`
+   - `packages/generators`
+   - `packages/ir`
+   - `packages/parsers`
+   - `packages/powerfx`
+3. New code is authored in TypeScript and validated by root scripts:
+   - `npm run lint`
+   - `npm run typecheck`
+   - `npm test`
+   - `npm run build`
+
+## Parser contract assumptions
+
+All parser modules converge on the contract:
+
+```ts
+{
+  data,
+  warnings: [],
+  unsupported: [],
+  confidence
+}
+```
+
+Where:
+
+- `warnings` are non-blocking anomalies that still produced interpretable data.
+- `unsupported` are unsupported constructs that affect migration fidelity.
+- `confidence` is a bounded numeric score (`0..1`) derived from parse completeness and unsupported density.

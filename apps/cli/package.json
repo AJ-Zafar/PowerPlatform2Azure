@@ -1,0 +1,24 @@
+{
+  "name": "@power-exit/cli",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "power-exit": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@power-exit/assessment": "0.1.0",
+    "@power-exit/generators": "0.1.0",
+    "@power-exit/parsers": "0.1.0"
+  }
+}
