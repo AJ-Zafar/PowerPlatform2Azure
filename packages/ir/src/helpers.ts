@@ -2,14 +2,23 @@ import { z } from "zod";
 
 import { stableStringify } from "./deterministic";
 import { unknownParseResultSchema, type ParseResult } from "./parse-result";
-import { powerPlatformIRSchema, type PowerPlatformIR } from "./power-platform-ir";
+import {
+  powerPlatformIRSchema,
+  solutionMetadataSchema,
+  type PowerPlatformIR,
+  type SolutionMetadata
+} from "./power-platform-ir";
 import { type SourceProvenance } from "./provenance";
 
 export interface CreateEmptyPowerPlatformIROptions {
   solutionName?: string;
+  solutionUniqueName?: string;
   solutionVersion?: string;
   solutionFolder?: string;
   solutionArtifactId?: string;
+  solutionPublisherUniqueName?: string;
+  solutionPublisherDisplayName?: string;
+  solutionManaged?: boolean;
   provenance?: SourceProvenance;
 }
 
@@ -65,9 +74,17 @@ export const createEmptyPowerPlatformIR = (
     solution: {
       artifactId: options.solutionArtifactId ?? "solution:default",
       name: options.solutionName ?? "Unknown Solution",
+      uniqueName: options.solutionUniqueName ?? "unknown_solution",
       version: options.solutionVersion ?? "0.0.0",
       sourceFolder: solutionFolder,
-      provenance
+      publisher: {
+        uniqueName: options.solutionPublisherUniqueName ?? "unknown_publisher",
+        displayName: options.solutionPublisherDisplayName ?? "Unknown Publisher"
+      },
+      managed: options.solutionManaged ?? false,
+      localizedNames: [],
+      provenance,
+      confidence: 1
     },
     dataverse: {
       entities: [],
@@ -87,6 +104,15 @@ export const createEmptyPowerPlatformIR = (
     confidence: 1
   });
 };
+
+export const mergeSolutionMetadataIntoIR = (
+  ir: PowerPlatformIR,
+  solutionMetadata: SolutionMetadata
+): PowerPlatformIR =>
+  validatePowerPlatformIR({
+    ...ir,
+    solution: solutionMetadataSchema.parse(solutionMetadata)
+  });
 
 export const serializeDeterministicIR = (input: unknown): string =>
   stableStringify(validatePowerPlatformIR(input));

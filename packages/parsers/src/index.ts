@@ -151,3 +151,21 @@ class InMemoryParserRegistry implements ParserRegistry {
 
 export const createParserRegistry = (): ParserRegistry =>
   new InMemoryParserRegistry();
+
+export {
+  analyseSolutionFolder,
+  type AnalyseResult,
+  type AnalyseSummary
+} from "./analyse";
+export { parseDataverseMetadata } from "./dataverse";
+export {
+  parseSolutionInfrastructure,
+  type InfrastructureParseData
+} from "./infrastructure";
+export { parseSolutionManifest } from "./manifest";
+export {
+  discoverSolutionFiles,
+  type DiscoveredFile,
+  type FileClassification,
+  type SolutionDiscoveryData
+} from "./solution-discovery";

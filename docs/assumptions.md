@@ -6,6 +6,8 @@
 2. Power Fx handling in MVP is inventory and raw expression preservation only, without semantic translation.
 3. Deterministic output means stable ordering of entities, attributes, controls, flows, and generated file sections.
 4. Unsupported source constructs must be emitted as structured records and included in reports.
+5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, and infrastructure metadata extraction only.
+6. Canvas semantic parsing, flow semantic parsing, generators, and scoring engines remain out of scope for this sprint.
 
 ## Repository assumptions
 
@@ -43,6 +45,7 @@ Where:
 - `unsupported` are unsupported constructs that affect migration fidelity.
 - `confidence` is a bounded numeric score (`0..1`) derived from parse completeness and unsupported density.
 - `provenance` captures where parser output came from, to preserve traceability into reports and generated artefacts.
+- Parse failures are never silent: malformed XML and unknown file layouts always produce structured warnings.
 
 ## IR design assumptions
 
@@ -50,3 +53,4 @@ Where:
 2. IR validation is strict (`z.strictObject` behavior) to avoid silently accepting unknown keys.
 3. Deterministic output means identical IR payloads always serialize to identical JSON bytes.
 4. Unsupported features and warnings are first-class top-level IR data, not side-channel logs.
+5. Dataverse and infrastructure artifacts include provenance and per-artifact confidence fields.

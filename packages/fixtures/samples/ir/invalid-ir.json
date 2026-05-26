@@ -2,12 +2,20 @@
   "solution": {
     "artifactId": "solution:default",
     "name": "Broken Solution",
+    "uniqueName": "broken_solution",
     "version": "0.0.0",
     "sourceFolder": "unknown-solution",
+    "publisher": {
+      "uniqueName": "unknown_publisher",
+      "displayName": "Unknown Publisher"
+    },
+    "managed": false,
+    "localizedNames": [],
     "provenance": {
       "sourcePath": "unknown-solution",
       "sourceType": "solution"
-    }
+    },
+    "confidence": 1
   },
   "dataverse": {
     "entities": [],

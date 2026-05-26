@@ -11,25 +11,150 @@ const sourceDerivedArtifactSchema = z
     artifactId: artifactIdSchema,
     name: z.string().min(1),
     kind: z.string().min(1),
-    provenance: sourceProvenanceSchema
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
+  })
+  .strict();
+
+const localizedLabelSchema = z
+  .object({
+    languageCode: z.string().min(1),
+    value: z.string().min(1)
+  })
+  .strict();
+
+const solutionPublisherSchema = z
+  .object({
+    uniqueName: z.string().min(1),
+    displayName: z.string().min(1)
+  })
+  .strict();
+
+export const dataverseAttributeTypeSchema = z.enum([
+  "string",
+  "memo",
+  "integer",
+  "decimal",
+  "float",
+  "money",
+  "boolean",
+  "datetime",
+  "lookup",
+  "picklist",
+  "multiselectpicklist",
+  "owner",
+  "state",
+  "status",
+  "uniqueidentifier",
+  "unknown"
+]);
+
+const dataverseRequiredLevelSchema = z.enum([
+  "none",
+  "recommended",
+  "applicationRequired",
+  "systemRequired"
+]);
+
+export const dataverseAttributeSchema = z
+  .object({
+    artifactId: artifactIdSchema,
+    entityArtifactId: artifactIdSchema,
+    logicalName: z.string().min(1),
+    schemaName: z.string().min(1),
+    type: dataverseAttributeTypeSchema,
+    requiredLevel: dataverseRequiredLevelSchema,
+    maxLength: z.number().int().positive().optional(),
+    precision: z.number().optional(),
+    scale: z.number().optional(),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
+  })
+  .strict();
+
+export const dataverseEntitySchema = z
+  .object({
+    artifactId: artifactIdSchema,
+    logicalName: z.string().min(1),
+    schemaName: z.string().min(1),
+    displayName: z.string().min(1),
+    ownershipType: z.string().min(1),
+    primaryNameAttribute: z.string().min(1),
+    primaryIdAttribute: z.string().min(1),
+    attributes: z.array(dataverseAttributeSchema),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
+  })
+  .strict();
+
+export const dataverseRelationshipSchema = z
+  .object({
+    artifactId: artifactIdSchema,
+    schemaName: z.string().min(1),
+    relationshipType: z.enum(["one-to-many", "many-to-one", "many-to-many"]),
+    fromEntityLogicalName: z.string().min(1),
+    toEntityLogicalName: z.string().min(1),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
+  })
+  .strict();
+
+const dataverseChoiceOptionSchema = z
+  .object({
+    value: z.number().int(),
+    label: z.string().min(1)
+  })
+  .strict();
+
+export const dataverseOptionSetSchema = z
+  .object({
+    artifactId: artifactIdSchema,
+    logicalName: z.string().min(1),
+    isGlobal: z.boolean(),
+    options: z.array(dataverseChoiceOptionSchema),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
   })
   .strict();
 
 const environmentVariableSchema = z
   .object({
     artifactId: artifactIdSchema,
-    key: z.string().min(1),
-    value: z.string(),
-    provenance: sourceProvenanceSchema
+    schemaName: z.string().min(1),
+    type: z.string().min(1),
+    defaultValue: z.string().optional(),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
   })
   .strict();
 
 const connectionReferenceSchema = z
   .object({
     artifactId: artifactIdSchema,
-    connectorName: z.string().min(1),
-    connectionName: z.string().min(1),
-    provenance: sourceProvenanceSchema
+    logicalName: z.string().min(1),
+    connectorType: z.string().min(1),
+    connectionMetadata: z.string().optional(),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
+  })
+  .strict();
+
+const securityPrivilegeSchema = z
+  .object({
+    privilegeName: z.string().min(1),
+    scope: z.string().min(1),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
+  })
+  .strict();
+
+export const securityRoleSchema = z
+  .object({
+    artifactId: artifactIdSchema,
+    roleName: z.string().min(1),
+    privileges: z.array(securityPrivilegeSchema),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
   })
   .strict();
 
@@ -37,23 +162,28 @@ export const solutionMetadataSchema = z
   .object({
     artifactId: artifactIdSchema,
     name: z.string().min(1),
+    uniqueName: z.string().min(1),
     version: z.string().min(1),
     sourceFolder: z.string().min(1),
-    provenance: sourceProvenanceSchema
+    publisher: solutionPublisherSchema,
+    managed: z.boolean(),
+    localizedNames: z.array(localizedLabelSchema),
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema
   })
   .strict();
 
 const dataverseSectionSchema = z
   .object({
-    entities: z.array(sourceDerivedArtifactSchema),
-    relationships: z.array(sourceDerivedArtifactSchema),
-    optionSets: z.array(sourceDerivedArtifactSchema)
+    entities: z.array(dataverseEntitySchema),
+    relationships: z.array(dataverseRelationshipSchema),
+    optionSets: z.array(dataverseOptionSetSchema)
   })
   .strict();
 
 const securitySectionSchema = z
   .object({
-    roles: z.array(sourceDerivedArtifactSchema)
+    roles: z.array(securityRoleSchema)
   })
   .strict();
 
@@ -75,3 +205,10 @@ export const powerPlatformIRSchema = z
 
 export type SolutionMetadata = z.infer<typeof solutionMetadataSchema>;
 export type PowerPlatformIR = z.infer<typeof powerPlatformIRSchema>;
+export type DataverseEntity = z.infer<typeof dataverseEntitySchema>;
+export type DataverseAttribute = z.infer<typeof dataverseAttributeSchema>;
+export type DataverseRelationship = z.infer<typeof dataverseRelationshipSchema>;
+export type DataverseOptionSet = z.infer<typeof dataverseOptionSetSchema>;
+export type EnvironmentVariable = z.infer<typeof environmentVariableSchema>;
+export type ConnectionReference = z.infer<typeof connectionReferenceSchema>;
+export type SecurityRole = z.infer<typeof securityRoleSchema>;

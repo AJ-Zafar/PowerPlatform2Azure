@@ -24,7 +24,7 @@ describe("PowerPlatformIR fixtures", () => {
     const payload = JSON.parse(fixture) as unknown;
 
     expect(serializeDeterministicIR(payload)).toMatchInlineSnapshot(
-      `"{"canvasApps":[],"cloudFlows":[],"confidence":1,"connectionReferences":[],"dataverse":{"entities":[],"optionSets":[],"relationships":[]},"environmentVariables":[],"provenance":{"sourcePath":"unknown-solution","sourceType":"solution"},"security":{"roles":[]},"solution":{"artifactId":"solution:default","name":"Unknown Solution","provenance":{"sourcePath":"unknown-solution","sourceType":"solution"},"sourceFolder":"unknown-solution","version":"0.0.0"},"unsupportedFeatures":[],"warnings":[]}"`
+      `"{"canvasApps":[],"cloudFlows":[],"confidence":1,"connectionReferences":[],"dataverse":{"entities":[],"optionSets":[],"relationships":[]},"environmentVariables":[],"provenance":{"sourcePath":"unknown-solution","sourceType":"solution"},"security":{"roles":[]},"solution":{"artifactId":"solution:default","confidence":1,"localizedNames":[],"managed":false,"name":"Unknown Solution","provenance":{"sourcePath":"unknown-solution","sourceType":"solution"},"publisher":{"displayName":"Unknown Publisher","uniqueName":"unknown_publisher"},"sourceFolder":"unknown-solution","uniqueName":"unknown_solution","version":"0.0.0"},"unsupportedFeatures":[],"warnings":[]}"`
     );
   });
 });

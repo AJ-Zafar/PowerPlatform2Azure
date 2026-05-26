@@ -17,6 +17,7 @@ describe("PowerPlatformIR", () => {
 
     expect(() => validatePowerPlatformIR(ir)).not.toThrow();
     expect(ir.solution.sourceFolder).toBe("/tmp/solution");
+    expect(ir.solution.uniqueName).toBe("unknown_solution");
     expect(ir.confidence).toBe(1);
   });
 
@@ -92,12 +93,14 @@ describe("PowerPlatformIR", () => {
       data: [
         {
           artifactId: "env:api_url",
-          key: "api_url",
-          value: "https://example.test",
+          schemaName: "api_url",
+          type: "String",
+          defaultValue: "https://example.test",
           provenance: {
             sourcePath: "environmentvariables.json",
             sourceType: "environment-variable"
-          }
+          },
+          confidence: 0.9
         }
       ],
       warnings: [warning],

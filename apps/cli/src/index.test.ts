@@ -18,7 +18,7 @@ describe("power-exit analyse command", () => {
     const outputB = path.join(tempRoot, "out-b");
     const inputFolder = path.resolve(
       process.cwd(),
-      "packages/fixtures/samples/simple-solution"
+      "packages/fixtures/samples/solutions/dataverse-heavy"
     );
     const stdOut: string[] = [];
     const stdErr: string[] = [];
@@ -42,6 +42,11 @@ describe("power-exit analyse command", () => {
 
     expect(irA).toBe(irB);
     expect(() => validatePowerPlatformIR(JSON.parse(irA))).not.toThrow();
+    expect(stdOut.length).toBe(2);
+    expect(stdOut[0]).toContain('"filesScanned"');
+    expect(stdOut[0]).toContain('"entitiesParsed"');
+    expect(stdOut[0]).toContain('"attributesParsed"');
+    expect(stdOut[0]).toContain('"relationshipsParsed"');
     expect(stdErr).toEqual([]);
 
     await rm(tempRoot, { recursive: true, force: true });
@@ -69,7 +74,7 @@ describe("power-exit analyse command", () => {
     const tempRoot = await createTempDirectory();
     const inputFolder = path.resolve(
       process.cwd(),
-      "packages/fixtures/samples/simple-solution"
+      "packages/fixtures/samples/solutions/infra-heavy"
     );
     const outputFilePath = path.join(tempRoot, "output-file");
     const stdOut: string[] = [];

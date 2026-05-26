@@ -4,6 +4,7 @@ export { sortByStableKey, stableStringify } from "./deterministic";
 export {
   assertSchema,
   createEmptyPowerPlatformIR,
+  mergeSolutionMetadataIntoIR,
   mergeParseResultIntoIR,
   serializeDeterministicIR,
   validatePowerPlatformIR
@@ -14,9 +15,22 @@ export {
   unknownParseResultSchema
 } from "./parse-result";
 export {
+  dataverseAttributeSchema,
+  dataverseAttributeTypeSchema,
+  dataverseEntitySchema,
+  dataverseOptionSetSchema,
+  dataverseRelationshipSchema,
   powerPlatformIRSchema,
+  securityRoleSchema,
   solutionMetadataSchema,
+  type ConnectionReference,
+  type DataverseAttribute,
+  type DataverseEntity,
+  type DataverseOptionSet,
+  type DataverseRelationship,
+  type EnvironmentVariable,
   type PowerPlatformIR,
+  type SecurityRole,
   type SolutionMetadata
 } from "./power-platform-ir";
 export {

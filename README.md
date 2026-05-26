@@ -50,7 +50,7 @@ docs/
 - `packages/ir` is the single runtime-validated contract for all migration state.
 - All IR objects are strict Zod schemas to prevent silent shape drift.
 - Source-derived records include provenance so outputs can be traced back to files.
-- Parser interfaces in `packages/parsers` are contract-only in this pass: no domain parsing logic yet.
+- Parser implementations currently cover solution discovery, manifest metadata, Dataverse metadata, environment variables, connection references, and security role inventory.
 - Every parser result is validated as `ParseResult<T>` with warnings, unsupported features, and confidence.
 
 ## CLI skeleton (current pass)
@@ -61,13 +61,16 @@ The CLI now supports a foundational command:
 power-exit analyse <solution-folder> --out <output-folder>
 ```
 
-Current behavior is intentionally limited:
+Current behavior in this sprint:
 
 1. Validate input folder exists.
-2. Build an empty but schema-valid `PowerPlatformIR`.
-3. Serialize deterministic JSON.
-4. Write `ir.json` to the output folder.
-5. Print a structured execution summary.
+2. Deterministically discover/classify solution files.
+3. Parse solution manifest (`solution.xml`) metadata.
+4. Parse Dataverse entities, attributes, relationships, and option sets.
+5. Parse environment variables, connection references, and security roles.
+6. Merge all parse results into validated `PowerPlatformIR`.
+7. Serialize deterministic JSON and write `ir.json`.
+8. Print structured counts for scanned files and parsed artifacts.
 
 ## Getting started
 

@@ -1,0 +1,9 @@
+<ImportExportXml>
+  <SolutionManifest>
+    <UniqueName>contoso_mixed_partial</UniqueName>
+    <Version>1.0.0.0</Version>
+    <Publisher>
+      <UniqueName>contoso</UniqueName>
+    </Publisher>
+  </SolutionManifest>
+</ImportExportXml>

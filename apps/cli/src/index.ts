@@ -2,12 +2,8 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import {
-  createEmptyPowerPlatformIR,
-  serializeDeterministicIR,
-  validatePowerPlatformIR,
-  type PowerPlatformIR
-} from "@power-exit/ir";
+import { serializeDeterministicIR, validatePowerPlatformIR } from "@power-exit/ir";
+import { analyseSolutionFolder } from "@power-exit/parsers";
 
 type WriteFn = (line: string) => void;
 
@@ -116,25 +112,16 @@ const executeAnalyse = async (
 
   await ensureInputFolder(parsedArgs.solutionFolder);
   await ensureOutputFolder(parsedArgs.outputFolder);
-
-  const ir = createEmptyPowerPlatformIR({
-    solutionFolder: parsedArgs.solutionFolder,
-    solutionName: path.basename(parsedArgs.solutionFolder)
-  });
-
-  let validatedIr: PowerPlatformIR;
+  const analysis = await analyseSolutionFolder(parsedArgs.solutionFolder);
+  let validatedIr;
 
   try {
-    validatedIr = validatePowerPlatformIR(ir);
-  } catch (error) {
-    if (error instanceof Error && error.name === "ZodError") {
-      throw new CliError(
-        "IR_VALIDATION_FAILURE",
-        "Generated IR failed schema validation."
-      );
-    }
-
-    throw error;
+    validatedIr = validatePowerPlatformIR(analysis.ir);
+  } catch {
+    throw new CliError(
+      "IR_VALIDATION_FAILURE",
+      "Generated IR failed schema validation."
+    );
   }
 
   const serializedIr = `${serializeDeterministicIR(validatedIr)}\n`;
@@ -148,7 +135,16 @@ const executeAnalyse = async (
       status: "success",
       solutionFolder: parsedArgs.solutionFolder,
       outputFile,
+      filesScanned: analysis.summary.filesScanned,
+      solutionMetadataFound: analysis.summary.solutionMetadataFound,
+      entitiesParsed: analysis.summary.entitiesParsed,
+      attributesParsed: analysis.summary.attributesParsed,
+      relationshipsParsed: analysis.summary.relationshipsParsed,
+      environmentVariables: analysis.summary.environmentVariables,
+      connectionReferences: analysis.summary.connectionReferences,
+      securityRoles: analysis.summary.securityRoles,
       warnings: validatedIr.warnings.length,
+      unsupportedFeatures: validatedIr.unsupportedFeatures.length,
       unsupported: validatedIr.unsupportedFeatures.length,
       confidence: validatedIr.confidence
     })

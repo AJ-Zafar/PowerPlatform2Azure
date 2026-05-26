@@ -8,6 +8,19 @@ This document tracks deterministic mappings between Power Platform constructs an
 2. No generator may map directly from raw Power Platform files.
 3. Provenance from IR records must be preserved in generated artefact metadata.
 4. Serialization of intermediate and final artefacts must remain deterministic.
+5. Mapping work begins only after parser sections are stable in IR (currently solution, dataverse metadata, environment variables, connection references, and security inventory).
+
+## Current IR-ready sections
+
+- `solution`
+- `dataverse.entities`
+- `dataverse.relationships`
+- `dataverse.optionSets`
+- `environmentVariables`
+- `connectionReferences`
+- `security.roles`
+
+These sections are now parse-populated and validated, but no generator logic is implemented in this sprint.
 
 Planned mapping sections:
 

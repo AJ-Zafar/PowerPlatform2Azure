@@ -1,0 +1,23 @@
+<Entity>
+  <LogicalName>contact</LogicalName>
+  <SchemaName>Contact</SchemaName>
+  <DisplayName>Contact</DisplayName>
+  <OwnershipType>UserOwned</OwnershipType>
+  <PrimaryNameAttribute>fullname</PrimaryNameAttribute>
+  <PrimaryIdAttribute>contactid</PrimaryIdAttribute>
+  <Attributes>
+    <Attribute>
+      <LogicalName>contactid</LogicalName>
+      <SchemaName>ContactId</SchemaName>
+      <Type>UniqueIdentifier</Type>
+      <RequiredLevel>SystemRequired</RequiredLevel>
+    </Attribute>
+    <Attribute>
+      <LogicalName>fullname</LogicalName>
+      <SchemaName>FullName</SchemaName>
+      <Type>String</Type>
+      <RequiredLevel>ApplicationRequired</RequiredLevel>
+      <MaxLength>100</MaxLength>
+    </Attribute>
+  </Attributes>
+</Entity>

@@ -1,0 +1,22 @@
+<Entity>
+  <LogicalName>new_partial</LogicalName>
+  <SchemaName>new_Partial</SchemaName>
+  <DisplayName>Partial Entity</DisplayName>
+  <OwnershipType>OrganizationOwned</OwnershipType>
+  <PrimaryNameAttribute>new_name</PrimaryNameAttribute>
+  <PrimaryIdAttribute>new_partialid</PrimaryIdAttribute>
+  <Attributes>
+    <Attribute>
+      <LogicalName>new_partialid</LogicalName>
+      <SchemaName>new_PartialId</SchemaName>
+      <Type>UniqueIdentifier</Type>
+      <RequiredLevel>SystemRequired</RequiredLevel>
+    </Attribute>
+    <Attribute>
+      <LogicalName>new_name</LogicalName>
+      <SchemaName>new_Name</SchemaName>
+      <Type>String</Type>
+      <RequiredLevel>ApplicationRequired</RequiredLevel>
+    </Attribute>
+  </Attributes>
+</Entity>
