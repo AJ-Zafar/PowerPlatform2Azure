@@ -26,6 +26,7 @@ packages/
 
 docs/
   assumptions.md
+  migration-mappings.md
   unsupported-features.md
   mvp-backlog.md
 ```
@@ -42,6 +43,31 @@ docs/
   - `warnings[]`
   - `unsupported[]`
   - `confidence`
+- All generator work is blocked on validated IR, never raw source files.
+
+## IR and parser contract philosophy
+
+- `packages/ir` is the single runtime-validated contract for all migration state.
+- All IR objects are strict Zod schemas to prevent silent shape drift.
+- Source-derived records include provenance so outputs can be traced back to files.
+- Parser interfaces in `packages/parsers` are contract-only in this pass: no domain parsing logic yet.
+- Every parser result is validated as `ParseResult<T>` with warnings, unsupported features, and confidence.
+
+## CLI skeleton (current pass)
+
+The CLI now supports a foundational command:
+
+```bash
+power-exit analyse <solution-folder> --out <output-folder>
+```
+
+Current behavior is intentionally limited:
+
+1. Validate input folder exists.
+2. Build an empty but schema-valid `PowerPlatformIR`.
+3. Serialize deterministic JSON.
+4. Write `ir.json` to the output folder.
+5. Print a structured execution summary.
 
 ## Getting started
 

@@ -9,7 +9,7 @@
 
 ## Repository assumptions
 
-1. Existing empty directories (`packages/rules`, `packages/test-fixtures`, `docs/migration-mappings`) are treated as legacy placeholders and are not used for MVP implementation.
+1. Existing empty directories (`packages/rules`, `packages/test-fixtures`) are treated as legacy placeholders and are not used for MVP implementation.
 2. Canonical package layout for implementation is:
    - `packages/assessment`
    - `packages/fixtures`
@@ -32,7 +32,8 @@ All parser modules converge on the contract:
   data,
   warnings: [],
   unsupported: [],
-  confidence
+  confidence,
+  provenance
 }
 ```
 
@@ -41,3 +42,11 @@ Where:
 - `warnings` are non-blocking anomalies that still produced interpretable data.
 - `unsupported` are unsupported constructs that affect migration fidelity.
 - `confidence` is a bounded numeric score (`0..1`) derived from parse completeness and unsupported density.
+- `provenance` captures where parser output came from, to preserve traceability into reports and generated artefacts.
+
+## IR design assumptions
+
+1. `PowerPlatformIR` is the canonical boundary between parsing and all downstream assessment/generation work.
+2. IR validation is strict (`z.strictObject` behavior) to avoid silently accepting unknown keys.
+3. Deterministic output means identical IR payloads always serialize to identical JSON bytes.
+4. Unsupported features and warnings are first-class top-level IR data, not side-channel logs.

@@ -1,0 +1,31 @@
+{
+  "solution": {
+    "artifactId": "solution:default",
+    "name": "Unknown Solution",
+    "version": "0.0.0",
+    "sourceFolder": "unknown-solution",
+    "provenance": {
+      "sourcePath": "unknown-solution",
+      "sourceType": "solution"
+    }
+  },
+  "dataverse": {
+    "entities": [],
+    "relationships": [],
+    "optionSets": []
+  },
+  "canvasApps": [],
+  "cloudFlows": [],
+  "security": {
+    "roles": []
+  },
+  "environmentVariables": [],
+  "connectionReferences": [],
+  "unsupportedFeatures": [],
+  "warnings": [],
+  "provenance": {
+    "sourcePath": "unknown-solution",
+    "sourceType": "solution"
+  },
+  "confidence": 1
+}
