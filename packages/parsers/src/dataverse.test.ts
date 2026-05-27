@@ -47,4 +47,38 @@ describe("parseDataverseMetadata", () => {
       )
     ).toBe(true);
   });
+
+  it("detects duplicate/conflicting entity metadata", async () => {
+    const fixturePath = solutionFixturePath("duplicate-metadata");
+    const discovery = await discoverSolutionFiles(fixturePath);
+    const result = await parseDataverseMetadata(fixturePath, discovery.data);
+
+    expect(result.data.entities).toHaveLength(1);
+    expect(
+      result.warnings.some((warning) => warning.code === "DATAVERSE_ENTITY_CONFLICT")
+    ).toBe(true);
+  });
+
+  it("recovers from malformed entity files while parsing valid ones", async () => {
+    const fixturePath = solutionFixturePath("malformed-recoverable");
+    const discovery = await discoverSolutionFiles(fixturePath);
+    const result = await parseDataverseMetadata(fixturePath, discovery.data);
+
+    expect(result.data.entities).toHaveLength(1);
+    expect(
+      result.warnings.some((warning) => warning.code === "DATAVERSE_ENTITY_INVALID_XML")
+    ).toBe(true);
+  });
+
+  it("emits unresolved relationship warnings for unknown targets", async () => {
+    const fixturePath = solutionFixturePath("mixed-partial");
+    const discovery = await discoverSolutionFiles(fixturePath);
+    const result = await parseDataverseMetadata(fixturePath, discovery.data);
+
+    expect(
+      result.warnings.some(
+        (warning) => warning.code === "DATAVERSE_RELATIONSHIP_UNRESOLVED_TARGET_ENTITY"
+      )
+    ).toBe(true);
+  });
 });

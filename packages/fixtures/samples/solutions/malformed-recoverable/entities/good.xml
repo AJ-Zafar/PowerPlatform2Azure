@@ -1,0 +1,16 @@
+<Entity>
+  <LogicalName>new_good</LogicalName>
+  <SchemaName>new_Good</SchemaName>
+  <DisplayName>Good Entity</DisplayName>
+  <OwnershipType>UserOwned</OwnershipType>
+  <PrimaryNameAttribute>new_name</PrimaryNameAttribute>
+  <PrimaryIdAttribute>new_goodid</PrimaryIdAttribute>
+  <Attributes>
+    <Attribute>
+      <LogicalName>new_goodid</LogicalName>
+      <SchemaName>new_GoodId</SchemaName>
+      <Type>UniqueIdentifier</Type>
+      <RequiredLevel>SystemRequired</RequiredLevel>
+    </Attribute>
+  </Attributes>
+</Entity>

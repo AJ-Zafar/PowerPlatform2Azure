@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createEmptyPowerPlatformIR,
+  mergeAnalysisSummaryIntoIR,
+  mergeDependencyEdgesIntoIR,
   createUnsupportedFeature,
   createWarning,
   mergeParseResultIntoIR,
@@ -19,6 +21,8 @@ describe("PowerPlatformIR", () => {
     expect(ir.solution.sourceFolder).toBe("/tmp/solution");
     expect(ir.solution.uniqueName).toBe("unknown_solution");
     expect(ir.confidence).toBe(1);
+    expect(ir.dependencyGraph.edges).toEqual([]);
+    expect(ir.analysisSummary.filesScanned).toBe(0);
   });
 
   it("rejects invalid IR payloads", () => {
@@ -116,5 +120,61 @@ describe("PowerPlatformIR", () => {
       "environmentvariables.json"
     );
     expect(merged.warnings[0]?.provenance.sourceType).toBe("dataverse");
+  });
+
+  it("merges dependency edges with unresolved details", () => {
+    const baseIr = createEmptyPowerPlatformIR();
+    const merged = mergeDependencyEdgesIntoIR(baseIr, [
+      {
+        sourceArtifactId: "solution:default",
+        targetArtifactId: "entity:account",
+        dependencyType: "solution-entity",
+        provenance: {
+          sourcePath: "solution.xml",
+          sourceType: "solution"
+        },
+        confidence: 0.95,
+        resolved: true
+      },
+      {
+        sourceArtifactId: "relationship:account-contact",
+        targetArtifactId: "entity:contact",
+        dependencyType: "relationship-target-entity",
+        provenance: {
+          sourcePath: "entities/account.xml",
+          sourceType: "dataverse"
+        },
+        confidence: 0.7,
+        resolved: false,
+        unresolvedWarning: "Target entity could not be resolved."
+      }
+    ]);
+
+    expect(merged.dependencyGraph.edges).toHaveLength(2);
+    expect(merged.dependencyGraph.edges[1]?.resolved).toBe(false);
+    expect(merged.dependencyGraph.edges[1]?.unresolvedWarning).toContain("resolved");
+  });
+
+  it("merges analysis summary", () => {
+    const baseIr = createEmptyPowerPlatformIR();
+    const merged = mergeAnalysisSummaryIntoIR(baseIr, {
+      filesScanned: 10,
+      classifiedFiles: 9,
+      unknownFiles: 1,
+      solutionMetadataPresence: true,
+      entities: 2,
+      attributes: 4,
+      relationships: 1,
+      choices: 1,
+      environmentVariables: 2,
+      connectionReferences: 1,
+      securityRoles: 1,
+      warnings: 3,
+      unsupportedFeatures: 1,
+      unresolvedDependencies: 2
+    });
+
+    expect(merged.analysisSummary.filesScanned).toBe(10);
+    expect(merged.analysisSummary.unresolvedDependencies).toBe(2);
   });
 });

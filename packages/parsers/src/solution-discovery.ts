@@ -2,6 +2,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  createUnsupportedFeature,
   createWarning,
   type ParseResult,
   type ParserWarning,
@@ -139,6 +140,18 @@ export const discoverSolutionFiles = async (
             confidence: 0.9
           })
         );
+        unsupported.push(
+          createUnsupportedFeature({
+            featureType: "solution.unknown-file-layout",
+            sourceLocation: relativePath,
+            reason: "File layout is not recognized by the current parser pipeline.",
+            suggestedRemediation:
+              "Move the file into a recognized unpacked solution folder structure.",
+            severity: "low",
+            confidence: 0.9,
+            provenance
+          })
+        );
       }
 
       return {
@@ -152,6 +165,21 @@ export const discoverSolutionFiles = async (
 
   const confidencePenalty = files.length === 0 ? 1 : warnings.length / files.length / 4;
   const confidence = clampConfidence(1 - confidencePenalty);
+
+  if (files.length === 0) {
+    warnings.push(
+      createWarning({
+        code: "SOLUTION_FOLDER_EMPTY",
+        message: "No files were discovered in the provided solution folder.",
+        sourceLocation: absoluteSolutionPath,
+        provenance: {
+          sourcePath: absoluteSolutionPath,
+          sourceType: "solution"
+        },
+        confidence: 1
+      })
+    );
+  }
 
   return {
     data: {

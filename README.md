@@ -52,6 +52,8 @@ docs/
 - Source-derived records include provenance so outputs can be traced back to files.
 - Parser implementations currently cover solution discovery, manifest metadata, Dataverse metadata, environment variables, connection references, and security role inventory.
 - Every parser result is validated as `ParseResult<T>` with warnings, unsupported features, and confidence.
+- IR now includes a dependency graph edge model with unresolved-reference metadata.
+- IR now includes a lightweight parser summary layer (counts only), not full assessment scoring.
 
 ## CLI skeleton (current pass)
 
@@ -70,7 +72,22 @@ Current behavior in this sprint:
 5. Parse environment variables, connection references, and security roles.
 6. Merge all parse results into validated `PowerPlatformIR`.
 7. Serialize deterministic JSON and write `ir.json`.
-8. Print structured counts for scanned files and parsed artifacts.
+8. Build deterministic dependency edges and unresolved dependency warnings.
+9. Attach lightweight analysis summary counts to `ir.json`.
+10. Print structured counts in CLI output.
+
+## Dependency graph model
+
+Dependency edges currently capture where detectable:
+
+- solution -> entities/workflows/canvas apps
+- entities -> attributes/relationships
+- relationships -> target entities
+- flows/canvas artifacts -> connection references
+- environment variables -> dependent artifacts
+- security roles -> privilege-target entities
+
+Each edge stores source id, target id, dependency type, provenance, confidence, and unresolved warning details when applicable.
 
 ## Getting started
 

@@ -19,4 +19,13 @@
       <RequiredLevel>ApplicationRequired</RequiredLevel>
     </Attribute>
   </Attributes>
+  <Relationships>
+    <OneToMany>
+      <Relationship>
+        <SchemaName>new_partial_missing_target</SchemaName>
+        <FromEntity>new_partial</FromEntity>
+        <ToEntity>new_missing_entity</ToEntity>
+      </Relationship>
+    </OneToMany>
+  </Relationships>
 </Entity>

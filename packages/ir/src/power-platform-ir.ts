@@ -142,6 +142,7 @@ const connectionReferenceSchema = z
 const securityPrivilegeSchema = z
   .object({
     privilegeName: z.string().min(1),
+    entityLogicalName: z.string().min(1).optional(),
     scope: z.string().min(1),
     provenance: sourceProvenanceSchema,
     confidence: confidenceScoreSchema
@@ -173,6 +174,55 @@ export const solutionMetadataSchema = z
   })
   .strict();
 
+export const dependencyTypeSchema = z.enum([
+  "solution-entity",
+  "solution-workflow",
+  "solution-canvas-app",
+  "entity-attribute",
+  "entity-relationship",
+  "relationship-target-entity",
+  "flow-connection-reference",
+  "environment-variable-dependent-artifact",
+  "security-role-entity-privilege"
+]);
+
+export const dependencyEdgeSchema = z
+  .object({
+    sourceArtifactId: artifactIdSchema,
+    targetArtifactId: artifactIdSchema,
+    dependencyType: dependencyTypeSchema,
+    provenance: sourceProvenanceSchema,
+    confidence: confidenceScoreSchema,
+    resolved: z.boolean(),
+    unresolvedWarning: z.string().min(1).optional()
+  })
+  .strict();
+
+export const dependencyGraphSchema = z
+  .object({
+    edges: z.array(dependencyEdgeSchema)
+  })
+  .strict();
+
+export const analysisSummarySchema = z
+  .object({
+    filesScanned: z.number().int().nonnegative(),
+    classifiedFiles: z.number().int().nonnegative(),
+    unknownFiles: z.number().int().nonnegative(),
+    solutionMetadataPresence: z.boolean(),
+    entities: z.number().int().nonnegative(),
+    attributes: z.number().int().nonnegative(),
+    relationships: z.number().int().nonnegative(),
+    choices: z.number().int().nonnegative(),
+    environmentVariables: z.number().int().nonnegative(),
+    connectionReferences: z.number().int().nonnegative(),
+    securityRoles: z.number().int().nonnegative(),
+    warnings: z.number().int().nonnegative(),
+    unsupportedFeatures: z.number().int().nonnegative(),
+    unresolvedDependencies: z.number().int().nonnegative()
+  })
+  .strict();
+
 const dataverseSectionSchema = z
   .object({
     entities: z.array(dataverseEntitySchema),
@@ -196,6 +246,8 @@ export const powerPlatformIRSchema = z
     security: securitySectionSchema,
     environmentVariables: z.array(environmentVariableSchema),
     connectionReferences: z.array(connectionReferenceSchema),
+    dependencyGraph: dependencyGraphSchema,
+    analysisSummary: analysisSummarySchema,
     unsupportedFeatures: z.array(unsupportedFeatureSchema),
     warnings: z.array(parserWarningSchema),
     provenance: sourceProvenanceSchema,
@@ -212,3 +264,6 @@ export type DataverseOptionSet = z.infer<typeof dataverseOptionSetSchema>;
 export type EnvironmentVariable = z.infer<typeof environmentVariableSchema>;
 export type ConnectionReference = z.infer<typeof connectionReferenceSchema>;
 export type SecurityRole = z.infer<typeof securityRoleSchema>;
+export type DependencyEdge = z.infer<typeof dependencyEdgeSchema>;
+export type DependencyGraph = z.infer<typeof dependencyGraphSchema>;
+export type AnalysisSummary = z.infer<typeof analysisSummarySchema>;

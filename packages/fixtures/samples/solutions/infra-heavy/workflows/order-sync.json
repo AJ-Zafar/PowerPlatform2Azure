@@ -1,0 +1,10 @@
+{
+  "name": "Order Sync",
+  "usesConnectionReferences": [
+    "contoso_sharepoint",
+    "contoso_outlook"
+  ],
+  "usesEnvironmentVariables": [
+    "contoso_ApiBaseUrl"
+  ]
+}

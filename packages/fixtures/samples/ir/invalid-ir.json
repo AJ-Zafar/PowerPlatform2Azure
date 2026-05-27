@@ -29,6 +29,25 @@
   },
   "environmentVariables": [],
   "connectionReferences": [],
+  "dependencyGraph": {
+    "edges": []
+  },
+  "analysisSummary": {
+    "filesScanned": 0,
+    "classifiedFiles": 0,
+    "unknownFiles": 0,
+    "solutionMetadataPresence": false,
+    "entities": 0,
+    "attributes": 0,
+    "relationships": 0,
+    "choices": 0,
+    "environmentVariables": 0,
+    "connectionReferences": 0,
+    "securityRoles": 0,
+    "warnings": 0,
+    "unsupportedFeatures": 0,
+    "unresolvedDependencies": 0
+  },
   "unsupportedFeatures": [],
   "warnings": [],
   "provenance": {

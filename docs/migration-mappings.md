@@ -22,6 +22,26 @@ This document tracks deterministic mappings between Power Platform constructs an
 
 These sections are now parse-populated and validated, but no generator logic is implemented in this sprint.
 
+## Dependency graph and summary prerequisites
+
+Before generator mappings are introduced, the parser pipeline now provides:
+
+- deterministic dependency edges with unresolved-reference annotations
+- parser summary counts for discovered artifacts and unresolved dependencies
+
+What this summary does:
+
+- reports parser inventory volume and coverage signals
+- highlights unresolved dependency counts early
+
+What this summary does not do:
+
+- compute migration complexity
+- compute migration risk
+- produce recommendations
+
+Those remain assessment-engine responsibilities in later milestones.
+
 Planned mapping sections:
 
 1. Dataverse table metadata -> Azure SQL DDL

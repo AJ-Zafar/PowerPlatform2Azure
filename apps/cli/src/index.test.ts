@@ -47,6 +47,9 @@ describe("power-exit analyse command", () => {
     expect(stdOut[0]).toContain('"entitiesParsed"');
     expect(stdOut[0]).toContain('"attributesParsed"');
     expect(stdOut[0]).toContain('"relationshipsParsed"');
+    expect(stdOut[0]).toContain('"classifiedFiles"');
+    expect(stdOut[0]).toContain('"choicesParsed"');
+    expect(stdOut[0]).toContain('"unresolvedDependencies"');
     expect(stdErr).toEqual([]);
 
     await rm(tempRoot, { recursive: true, force: true });

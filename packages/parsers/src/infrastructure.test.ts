@@ -17,6 +17,22 @@ describe("parseSolutionInfrastructure", () => {
     expect(result.data.environmentVariables).toHaveLength(2);
     expect(result.data.connectionReferences).toHaveLength(2);
     expect(result.data.security.roles).toHaveLength(2);
-    expect(result.warnings).toEqual([]);
+    expect(
+      result.warnings.some(
+        (warning) => warning.code === "SECURITY_ROLE_UNRESOLVED_PRIVILEGE_ENTITY"
+      )
+    ).toBe(false);
+  });
+
+  it("emits unresolved privilege warnings when entity mapping is unavailable", async () => {
+    const fixturePath = solutionFixturePath("unknown-file-layout");
+    const discovery = await discoverSolutionFiles(fixturePath);
+    const result = await parseSolutionInfrastructure(fixturePath, discovery.data);
+
+    expect(
+      result.warnings.some(
+        (warning) => warning.code === "SECURITY_ROLE_UNRESOLVED_PRIVILEGE_ENTITY"
+      )
+    ).toBe(true);
   });
 });

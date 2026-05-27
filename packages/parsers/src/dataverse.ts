@@ -25,6 +25,20 @@ type DataverseParseData = {
   optionSets: DataverseOptionSet[];
 };
 
+const conflictWarning = (
+  code: string,
+  message: string,
+  sourceLocation: string,
+  provenance: SourceProvenance
+) =>
+  createWarning({
+    code,
+    message,
+    sourceLocation,
+    provenance,
+    confidence: 0.9
+  });
+
 const SUPPORTED_ATTRIBUTE_TYPES = new Map<string, DataverseAttribute["type"]>([
   ["string", "string"],
   ["memo", "memo"],
@@ -89,9 +103,9 @@ export const parseDataverseMetadata = async (
   );
   const warnings: ParserWarning[] = [];
   const unsupported: UnsupportedFeature[] = [];
-  const entities: DataverseEntity[] = [];
-  const relationships: DataverseRelationship[] = [];
-  const optionSets: DataverseOptionSet[] = [];
+  const entityMap = new Map<string, DataverseEntity>();
+  const relationshipMap = new Map<string, DataverseRelationship>();
+  const optionSetMap = new Map<string, DataverseOptionSet>();
 
   for (const file of files) {
     const filePath = path.join(solutionPath, file.path);
@@ -128,7 +142,7 @@ export const parseDataverseMetadata = async (
     const entitySchemaName =
       getTextAt(entityNode, ["SchemaName", "schemaName"]) ?? entityLogicalName;
     const entityDisplayName =
-      getTextAt(entityNode, ["DisplayName", "displayName"]) || entityLogicalName;
+      getTextAt(entityNode, ["DisplayName", "displayName"]) ?? entityLogicalName;
     const ownershipType = getTextAt(entityNode, ["OwnershipType"]) ?? "unknown";
     const primaryNameAttribute =
       getTextAt(entityNode, ["PrimaryNameAttribute"]) ?? "";
@@ -147,8 +161,21 @@ export const parseDataverseMetadata = async (
       continue;
     }
 
+    if (!primaryNameAttribute || !primaryIdAttribute) {
+      warnings.push(
+        createWarning({
+          code: "DATAVERSE_ENTITY_MISSING_REQUIRED_FIELDS",
+          message:
+            "Entity metadata is missing primary name/id attribute information.",
+          sourceLocation: file.path,
+          provenance,
+          confidence: 0.9
+        })
+      );
+    }
+
     const entityArtifactId = buildArtifactId("entity", entityLogicalName);
-    const attributes: DataverseAttribute[] = [];
+    const attributeMap = new Map<string, DataverseAttribute>();
     const rawAttributes = asArray(getNestedValue(entityNode, ["Attributes", "Attribute"]));
 
     for (const rawAttribute of rawAttributes) {
@@ -166,6 +193,21 @@ export const parseDataverseMetadata = async (
           })
         );
         continue;
+      }
+
+      const schemaName =
+        getTextAt(rawAttribute, ["SchemaName", "schemaName"]) ?? logicalName;
+
+      if (!schemaName) {
+        warnings.push(
+          createWarning({
+            code: "DATAVERSE_ATTRIBUTE_MISSING_REQUIRED_FIELDS",
+            message: "Attribute metadata is missing schema name information.",
+            sourceLocation: file.path,
+            provenance,
+            confidence: 0.9
+          })
+        );
       }
 
       const rawType = getTextAt(rawAttribute, ["Type", "AttributeType"]) ?? "unknown";
@@ -199,15 +241,14 @@ export const parseDataverseMetadata = async (
         );
       }
 
-      attributes.push({
+      const parsedAttribute: DataverseAttribute = {
         artifactId: buildArtifactId(
           "attribute",
           `${entityLogicalName}-${logicalName}`
         ),
         entityArtifactId,
         logicalName,
-        schemaName:
-          getTextAt(rawAttribute, ["SchemaName", "schemaName"]) ?? logicalName,
+        schemaName,
         type,
         requiredLevel: normalizeRequiredLevel(
           getTextAt(rawAttribute, ["RequiredLevel"]) ?? "none"
@@ -217,7 +258,33 @@ export const parseDataverseMetadata = async (
         scale: parseNumeric(getTextAt(rawAttribute, ["Scale"])),
         provenance,
         confidence: type === "unknown" ? 0.6 : 0.9
-      });
+      };
+      const duplicateAttribute = attributeMap.get(logicalName);
+
+      if (!duplicateAttribute) {
+        attributeMap.set(logicalName, parsedAttribute);
+      } else if (
+        duplicateAttribute.type !== parsedAttribute.type ||
+        duplicateAttribute.schemaName !== parsedAttribute.schemaName
+      ) {
+        warnings.push(
+          conflictWarning(
+            "DATAVERSE_ATTRIBUTE_CONFLICT",
+            `Conflicting attribute metadata detected for "${logicalName}".`,
+            file.path,
+            provenance
+          )
+        );
+      } else {
+        warnings.push(
+          conflictWarning(
+            "DATAVERSE_ATTRIBUTE_DUPLICATE",
+            `Duplicate attribute metadata detected for "${logicalName}".`,
+            file.path,
+            provenance
+          )
+        );
+      }
     }
 
     const relationshipGroups: Array<{
@@ -248,7 +315,7 @@ export const parseDataverseMetadata = async (
           continue;
         }
 
-        relationships.push({
+        const parsedRelationship: DataverseRelationship = {
           artifactId: buildArtifactId("relationship", schemaName),
           schemaName,
           relationshipType: group.type,
@@ -260,7 +327,34 @@ export const parseDataverseMetadata = async (
             entityLogicalName,
           provenance,
           confidence: 0.85
-        });
+        };
+        const duplicateRelationship = relationshipMap.get(schemaName);
+
+        if (!duplicateRelationship) {
+          relationshipMap.set(schemaName, parsedRelationship);
+        } else if (
+          duplicateRelationship.fromEntityLogicalName !==
+            parsedRelationship.fromEntityLogicalName ||
+          duplicateRelationship.toEntityLogicalName !== parsedRelationship.toEntityLogicalName
+        ) {
+          warnings.push(
+            conflictWarning(
+              "DATAVERSE_RELATIONSHIP_CONFLICT",
+              `Conflicting relationship metadata detected for "${schemaName}".`,
+              file.path,
+              provenance
+            )
+          );
+        } else {
+          warnings.push(
+            conflictWarning(
+              "DATAVERSE_RELATIONSHIP_DUPLICATE",
+              `Duplicate relationship metadata detected for "${schemaName}".`,
+              file.path,
+              provenance
+            )
+          );
+        }
       }
     }
 
@@ -298,7 +392,7 @@ export const parseDataverseMetadata = async (
         })
         .filter((value): value is { value: number; label: string } => Boolean(value));
 
-      optionSets.push({
+      const parsedOptionSet: DataverseOptionSet = {
         artifactId: buildArtifactId("optionset", logicalName),
         logicalName,
         isGlobal:
@@ -306,10 +400,33 @@ export const parseDataverseMetadata = async (
         options: sorted(options, (option) => `${option.value}:${option.label}`),
         provenance,
         confidence: options.length > 0 ? 0.9 : 0.7
-      });
+      };
+      const duplicateOptionSet = optionSetMap.get(logicalName);
+
+      if (!duplicateOptionSet) {
+        optionSetMap.set(logicalName, parsedOptionSet);
+      } else if (duplicateOptionSet.options.length !== parsedOptionSet.options.length) {
+        warnings.push(
+          conflictWarning(
+            "DATAVERSE_OPTIONSET_CONFLICT",
+            `Conflicting option set metadata detected for "${logicalName}".`,
+            file.path,
+            provenance
+          )
+        );
+      } else {
+        warnings.push(
+          conflictWarning(
+            "DATAVERSE_OPTIONSET_DUPLICATE",
+            `Duplicate option set metadata detected for "${logicalName}".`,
+            file.path,
+            provenance
+          )
+        );
+      }
     }
 
-    entities.push({
+    const parsedEntity: DataverseEntity = {
       artifactId: entityArtifactId,
       logicalName: entityLogicalName,
       schemaName: entitySchemaName,
@@ -317,20 +434,87 @@ export const parseDataverseMetadata = async (
       ownershipType,
       primaryNameAttribute,
       primaryIdAttribute,
-      attributes: sorted(attributes, (attribute) => attribute.logicalName),
+      attributes: sorted(
+        Array.from(attributeMap.values()),
+        (attribute) => attribute.logicalName
+      ),
       provenance,
       confidence: clampConfidence(1 - warnings.length * 0.02)
-    });
+    };
+    const duplicateEntity = entityMap.get(entityLogicalName);
+
+    if (!duplicateEntity) {
+      entityMap.set(entityLogicalName, parsedEntity);
+    } else if (
+      duplicateEntity.schemaName !== parsedEntity.schemaName ||
+      duplicateEntity.displayName !== parsedEntity.displayName
+    ) {
+      warnings.push(
+        conflictWarning(
+          "DATAVERSE_ENTITY_CONFLICT",
+          `Conflicting entity metadata detected for "${entityLogicalName}".`,
+          file.path,
+          provenance
+        )
+      );
+    } else {
+      warnings.push(
+        conflictWarning(
+          "DATAVERSE_ENTITY_DUPLICATE",
+          `Duplicate entity metadata detected for "${entityLogicalName}".`,
+          file.path,
+          provenance
+        )
+      );
+    }
   }
 
-  const total = entities.length + warnings.length + unsupported.length;
+  const entities = sorted(Array.from(entityMap.values()), (entity) => entity.logicalName);
+  const relationships = sorted(
+    Array.from(relationshipMap.values()),
+    (relationship) => relationship.schemaName
+  );
+  const optionSets = sorted(
+    Array.from(optionSetMap.values()),
+    (optionSet) => optionSet.logicalName
+  );
+  const entityNames = new Set(entities.map((entity) => entity.logicalName));
+
+  for (const relationship of relationships) {
+    if (!entityNames.has(relationship.fromEntityLogicalName)) {
+      warnings.push(
+        createWarning({
+          code: "DATAVERSE_RELATIONSHIP_UNRESOLVED_SOURCE_ENTITY",
+          message: `Relationship source entity "${relationship.fromEntityLogicalName}" could not be resolved.`,
+          sourceLocation: relationship.provenance.sourcePath,
+          provenance: relationship.provenance,
+          confidence: 0.95
+        })
+      );
+    }
+
+    if (!entityNames.has(relationship.toEntityLogicalName)) {
+      warnings.push(
+        createWarning({
+          code: "DATAVERSE_RELATIONSHIP_UNRESOLVED_TARGET_ENTITY",
+          message: `Relationship target entity "${relationship.toEntityLogicalName}" could not be resolved.`,
+          sourceLocation: relationship.provenance.sourcePath,
+          provenance: relationship.provenance,
+          confidence: 0.95
+        })
+      );
+    }
+  }
+
+  const total =
+    entities.length + relationships.length + optionSets.length + warnings.length + unsupported.length;
   const confidence = total === 0 ? 1 : clampConfidence(1 - warnings.length / (total * 2));
 
   return {
     data: {
-      entities: sorted(entities, (entity) => entity.logicalName),
-      relationships: sorted(relationships, (relationship) => relationship.schemaName),
-      optionSets: sorted(optionSets, (optionSet) => optionSet.logicalName)
+      entities,
+      relationships,
+      optionSets
     },
     warnings,
     unsupported,

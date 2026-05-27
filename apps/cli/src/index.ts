@@ -136,16 +136,20 @@ const executeAnalyse = async (
       solutionFolder: parsedArgs.solutionFolder,
       outputFile,
       filesScanned: analysis.summary.filesScanned,
+      classifiedFiles: analysis.summary.classifiedFiles,
+      unknownFiles: analysis.summary.unknownFiles,
       solutionMetadataFound: analysis.summary.solutionMetadataFound,
       entitiesParsed: analysis.summary.entitiesParsed,
       attributesParsed: analysis.summary.attributesParsed,
       relationshipsParsed: analysis.summary.relationshipsParsed,
+      choicesParsed: analysis.summary.choicesParsed,
       environmentVariables: analysis.summary.environmentVariables,
       connectionReferences: analysis.summary.connectionReferences,
       securityRoles: analysis.summary.securityRoles,
       warnings: validatedIr.warnings.length,
       unsupportedFeatures: validatedIr.unsupportedFeatures.length,
       unsupported: validatedIr.unsupportedFeatures.length,
+      unresolvedDependencies: analysis.summary.unresolvedDependencies,
       confidence: validatedIr.confidence
     })
   );

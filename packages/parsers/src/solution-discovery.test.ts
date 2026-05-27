@@ -36,5 +36,10 @@ describe("discoverSolutionFiles", () => {
     expect(classifications.has("security-role")).toBe(true);
     expect(classifications.has("unknown")).toBe(true);
     expect(result.warnings.length).toBeGreaterThan(0);
+    expect(
+      result.unsupported.some(
+        (feature) => feature.featureType === "solution.unknown-file-layout"
+      )
+    ).toBe(true);
   });
 });

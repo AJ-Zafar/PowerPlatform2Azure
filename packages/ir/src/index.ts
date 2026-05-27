@@ -4,6 +4,8 @@ export { sortByStableKey, stableStringify } from "./deterministic";
 export {
   assertSchema,
   createEmptyPowerPlatformIR,
+  mergeAnalysisSummaryIntoIR,
+  mergeDependencyEdgesIntoIR,
   mergeSolutionMetadataIntoIR,
   mergeParseResultIntoIR,
   serializeDeterministicIR,
@@ -15,17 +17,24 @@ export {
   unknownParseResultSchema
 } from "./parse-result";
 export {
+  analysisSummarySchema,
   dataverseAttributeSchema,
   dataverseAttributeTypeSchema,
   dataverseEntitySchema,
   dataverseOptionSetSchema,
   dataverseRelationshipSchema,
+  dependencyEdgeSchema,
+  dependencyGraphSchema,
+  dependencyTypeSchema,
   powerPlatformIRSchema,
   securityRoleSchema,
   solutionMetadataSchema,
+  type AnalysisSummary,
   type ConnectionReference,
   type DataverseAttribute,
   type DataverseEntity,
+  type DependencyEdge,
+  type DependencyGraph,
   type DataverseOptionSet,
   type DataverseRelationship,
   type EnvironmentVariable,

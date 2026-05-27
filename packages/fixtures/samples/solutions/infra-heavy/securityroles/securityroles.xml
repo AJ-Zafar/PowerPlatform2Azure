@@ -4,10 +4,12 @@
     <Privileges>
       <Privilege>
         <Name>prvReadAccount</Name>
+        <EntityLogicalName>account</EntityLogicalName>
         <Scope>Global</Scope>
       </Privilege>
       <Privilege>
         <Name>prvWriteAccount</Name>
+        <EntityLogicalName>account</EntityLogicalName>
         <Scope>Local</Scope>
       </Privilege>
     </Privileges>
@@ -17,6 +19,7 @@
     <Privileges>
       <Privilege>
         <Name>prvReadCase</Name>
+        <EntityLogicalName>incident</EntityLogicalName>
         <Scope>Deep</Scope>
       </Privilege>
     </Privileges>

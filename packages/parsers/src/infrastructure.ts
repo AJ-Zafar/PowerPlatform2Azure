@@ -26,7 +26,9 @@ export interface InfrastructureParseData {
 
 const parseEnvironmentVariablesFromFile = (
   xmlDocument: unknown,
-  provenance: SourceProvenance
+  provenance: SourceProvenance,
+  sourceLocation: string,
+  warnings: ParserWarning[]
 ): EnvironmentVariable[] => {
   const entries = asArray(
     getNestedValue(xmlDocument, ["EnvironmentVariables", "EnvironmentVariable"])
@@ -37,6 +39,15 @@ const parseEnvironmentVariablesFromFile = (
       const schemaName = getTextAt(entry, ["SchemaName"]) ?? "";
 
       if (!schemaName) {
+        warnings.push(
+          createWarning({
+            code: "ENVIRONMENT_VARIABLE_MISSING_SCHEMA_NAME",
+            message: "Environment variable entry is missing schema name.",
+            sourceLocation,
+            provenance,
+            confidence: 0.95
+          })
+        );
         return undefined;
       }
 
@@ -60,7 +71,9 @@ const parseEnvironmentVariablesFromFile = (
 
 const parseConnectionReferencesFromFile = (
   xmlDocument: unknown,
-  provenance: SourceProvenance
+  provenance: SourceProvenance,
+  sourceLocation: string,
+  warnings: ParserWarning[]
 ): ConnectionReference[] => {
   const entries = asArray(
     getNestedValue(xmlDocument, ["ConnectionReferences", "ConnectionReference"])
@@ -71,6 +84,15 @@ const parseConnectionReferencesFromFile = (
       const logicalName = getTextAt(entry, ["LogicalName"]) ?? "";
 
       if (!logicalName) {
+        warnings.push(
+          createWarning({
+            code: "CONNECTION_REFERENCE_MISSING_LOGICAL_NAME",
+            message: "Connection reference entry is missing logical name.",
+            sourceLocation,
+            provenance,
+            confidence: 0.95
+          })
+        );
         return undefined;
       }
 
@@ -94,61 +116,102 @@ const parseConnectionReferencesFromFile = (
 
 const parseSecurityRolesFromFile = (
   xmlDocument: unknown,
-  provenance: SourceProvenance
+  provenance: SourceProvenance,
+  sourceLocation: string,
+  warnings: ParserWarning[]
 ): SecurityRole[] => {
   const entries = asArray(getNestedValue(xmlDocument, ["Roles", "Role"]));
+  const roles: SecurityRole[] = [];
 
-  return entries
-    .map((entry) => {
-      const roleName = getTextAt(entry, ["Name", "RoleName"]) ?? "";
+  for (const entry of entries) {
+    const roleName = getTextAt(entry, ["Name", "RoleName"]) ?? "";
 
-      if (!roleName) {
-        return undefined;
+    if (!roleName) {
+      warnings.push(
+        createWarning({
+          code: "SECURITY_ROLE_MISSING_NAME",
+          message: "Security role entry is missing a name and was skipped.",
+          sourceLocation,
+          provenance,
+          confidence: 0.95
+        })
+      );
+      continue;
+    }
+
+    const rawPrivileges = asArray(getNestedValue(entry, ["Privileges", "Privilege"]));
+    const privileges: SecurityRole["privileges"] = [];
+
+    for (const privilege of rawPrivileges) {
+      const privilegeName = getTextAt(privilege, ["Name", "PrivilegeName"]);
+
+      if (!privilegeName) {
+        warnings.push(
+          createWarning({
+            code: "SECURITY_ROLE_UNRESOLVED_PRIVILEGE",
+            message: "Role privilege entry is missing privilege name.",
+            sourceLocation,
+            provenance,
+            confidence: 0.95
+          })
+        );
+        continue;
       }
 
-      const rawPrivileges = asArray(getNestedValue(entry, ["Privileges", "Privilege"]));
-      const privileges = rawPrivileges
-        .map((privilege) => {
-          const privilegeName = getTextAt(privilege, ["Name", "PrivilegeName"]);
+      let entityLogicalName = getTextAt(privilege, ["EntityLogicalName", "Entity"]);
 
-          if (!privilegeName) {
-            return undefined;
-          }
+      if (!entityLogicalName) {
+        const match =
+          /^prv(?:Read|Write|Create|Delete|Append|AppendTo|Assign|Share)(.+)$/i.exec(
+            privilegeName
+          );
 
-          return {
-            privilegeName,
-            scope: getTextAt(privilege, ["Scope"]) ?? "Unknown",
-            provenance,
-            confidence: 0.85
-          };
-        })
-        .filter(
-          (
-            privilege
-          ): privilege is SecurityRole["privileges"][number] => Boolean(privilege)
-        );
+        if (!match || !match[1]) {
+          warnings.push(
+            createWarning({
+              code: "SECURITY_ROLE_UNRESOLVED_PRIVILEGE_ENTITY",
+              message: `Privilege "${privilegeName}" does not expose an entity mapping.`,
+              sourceLocation,
+              provenance,
+              confidence: 0.85
+            })
+          );
+        } else {
+          entityLogicalName = match[1].toLowerCase();
+        }
+      }
 
-      return {
-        artifactId: buildArtifactId("security-role", roleName),
-        roleName,
-        privileges: sorted(
-          privileges,
-          (privilege) => `${privilege.privilegeName}:${privilege.scope}`
-        ),
+      privileges.push({
+        privilegeName,
+        entityLogicalName,
+        scope: getTextAt(privilege, ["Scope"]) ?? "Unknown",
         provenance,
-        confidence: 0.9
-      } satisfies SecurityRole;
-    })
-    .filter((entry): entry is SecurityRole => Boolean(entry));
+        confidence: 0.85
+      });
+    }
+
+    roles.push({
+      artifactId: buildArtifactId("security-role", roleName),
+      roleName,
+      privileges: sorted(
+        privileges,
+        (privilege) => `${privilege.privilegeName}:${privilege.scope}`
+      ),
+      provenance,
+      confidence: 0.9
+    });
+  }
+
+  return roles;
 };
 
 export const parseSolutionInfrastructure = async (
   solutionPath: string,
   discovery: SolutionDiscoveryData
 ): Promise<ParseResult<InfrastructureParseData>> => {
-  const environmentVariables: EnvironmentVariable[] = [];
-  const connectionReferences: ConnectionReference[] = [];
-  const securityRoles: SecurityRole[] = [];
+  const environmentVariableMap = new Map<string, EnvironmentVariable>();
+  const connectionReferenceMap = new Map<string, ConnectionReference>();
+  const securityRoleMap = new Map<string, SecurityRole>();
   const warnings: ParserWarning[] = [];
   const unsupported: UnsupportedFeature[] = [];
 
@@ -187,21 +250,144 @@ export const parseSolutionInfrastructure = async (
     }
 
     if (file.classification === "environment-variable") {
-      environmentVariables.push(
-        ...parseEnvironmentVariablesFromFile(parsedXml, provenance)
-      );
+      for (const parsedEnvironmentVariable of parseEnvironmentVariablesFromFile(
+        parsedXml,
+        provenance,
+        file.path,
+        warnings
+      )) {
+        const duplicate = environmentVariableMap.get(parsedEnvironmentVariable.schemaName);
+
+        if (!duplicate) {
+          environmentVariableMap.set(
+            parsedEnvironmentVariable.schemaName,
+            parsedEnvironmentVariable
+          );
+          continue;
+        }
+
+        if (
+          duplicate.type !== parsedEnvironmentVariable.type ||
+          duplicate.defaultValue !== parsedEnvironmentVariable.defaultValue
+        ) {
+          warnings.push(
+            createWarning({
+              code: "ENVIRONMENT_VARIABLE_CONFLICT",
+              message: `Conflicting environment variable metadata for "${parsedEnvironmentVariable.schemaName}".`,
+              sourceLocation: file.path,
+              provenance,
+              confidence: 0.95
+            })
+          );
+        } else {
+          warnings.push(
+            createWarning({
+              code: "ENVIRONMENT_VARIABLE_DUPLICATE",
+              message: `Duplicate environment variable metadata for "${parsedEnvironmentVariable.schemaName}".`,
+              sourceLocation: file.path,
+              provenance,
+              confidence: 0.95
+            })
+          );
+        }
+      }
       continue;
     }
 
     if (file.classification === "connection-reference") {
-      connectionReferences.push(
-        ...parseConnectionReferencesFromFile(parsedXml, provenance)
-      );
+      for (const parsedConnectionReference of parseConnectionReferencesFromFile(
+        parsedXml,
+        provenance,
+        file.path,
+        warnings
+      )) {
+        const duplicate = connectionReferenceMap.get(parsedConnectionReference.logicalName);
+
+        if (!duplicate) {
+          connectionReferenceMap.set(
+            parsedConnectionReference.logicalName,
+            parsedConnectionReference
+          );
+          continue;
+        }
+
+        if (
+          duplicate.connectorType !== parsedConnectionReference.connectorType ||
+          duplicate.connectionMetadata !== parsedConnectionReference.connectionMetadata
+        ) {
+          warnings.push(
+            createWarning({
+              code: "CONNECTION_REFERENCE_CONFLICT",
+              message: `Conflicting connection reference metadata for "${parsedConnectionReference.logicalName}".`,
+              sourceLocation: file.path,
+              provenance,
+              confidence: 0.95
+            })
+          );
+        } else {
+          warnings.push(
+            createWarning({
+              code: "CONNECTION_REFERENCE_DUPLICATE",
+              message: `Duplicate connection reference metadata for "${parsedConnectionReference.logicalName}".`,
+              sourceLocation: file.path,
+              provenance,
+              confidence: 0.95
+            })
+          );
+        }
+      }
       continue;
     }
 
-    securityRoles.push(...parseSecurityRolesFromFile(parsedXml, provenance));
+    for (const parsedSecurityRole of parseSecurityRolesFromFile(
+      parsedXml,
+      provenance,
+      file.path,
+      warnings
+    )) {
+      const duplicate = securityRoleMap.get(parsedSecurityRole.roleName);
+
+      if (!duplicate) {
+        securityRoleMap.set(parsedSecurityRole.roleName, parsedSecurityRole);
+        continue;
+      }
+
+      if (duplicate.privileges.length !== parsedSecurityRole.privileges.length) {
+        warnings.push(
+          createWarning({
+            code: "SECURITY_ROLE_CONFLICT",
+            message: `Conflicting security role metadata for "${parsedSecurityRole.roleName}".`,
+            sourceLocation: file.path,
+            provenance,
+            confidence: 0.95
+          })
+        );
+      } else {
+        warnings.push(
+          createWarning({
+            code: "SECURITY_ROLE_DUPLICATE",
+            message: `Duplicate security role metadata for "${parsedSecurityRole.roleName}".`,
+            sourceLocation: file.path,
+            provenance,
+            confidence: 0.95
+          })
+        );
+      }
+    }
   }
+
+  const environmentVariables = sorted(
+    Array.from(environmentVariableMap.values()),
+    (environmentVariable) => environmentVariable.schemaName
+  );
+  const connectionReferences = sorted(
+    Array.from(connectionReferenceMap.values()),
+    (connectionReference) => connectionReference.logicalName
+  );
+  const securityRoles = sorted(
+    Array.from(securityRoleMap.values()),
+    (role) => role.roleName
+  );
 
   const denominator =
     environmentVariables.length + connectionReferences.length + securityRoles.length + 1;
@@ -218,7 +404,7 @@ export const parseSolutionInfrastructure = async (
         (connectionReference) => connectionReference.logicalName
       ),
       security: {
-        roles: sorted(securityRoles, (role) => role.roleName)
+        roles: securityRoles
       }
     },
     warnings,

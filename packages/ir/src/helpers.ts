@@ -3,8 +3,12 @@ import { z } from "zod";
 import { stableStringify } from "./deterministic";
 import { unknownParseResultSchema, type ParseResult } from "./parse-result";
 import {
+  analysisSummarySchema,
+  dependencyEdgeSchema,
   powerPlatformIRSchema,
   solutionMetadataSchema,
+  type AnalysisSummary,
+  type DependencyEdge,
   type PowerPlatformIR,
   type SolutionMetadata
 } from "./power-platform-ir";
@@ -98,12 +102,54 @@ export const createEmptyPowerPlatformIR = (
     },
     environmentVariables: [],
     connectionReferences: [],
+    dependencyGraph: {
+      edges: []
+    },
+    analysisSummary: {
+      filesScanned: 0,
+      classifiedFiles: 0,
+      unknownFiles: 0,
+      solutionMetadataPresence: false,
+      entities: 0,
+      attributes: 0,
+      relationships: 0,
+      choices: 0,
+      environmentVariables: 0,
+      connectionReferences: 0,
+      securityRoles: 0,
+      warnings: 0,
+      unsupportedFeatures: 0,
+      unresolvedDependencies: 0
+    },
     unsupportedFeatures: [],
     warnings: [],
     provenance,
     confidence: 1
   });
 };
+
+export const mergeDependencyEdgesIntoIR = (
+  ir: PowerPlatformIR,
+  edges: DependencyEdge[]
+): PowerPlatformIR =>
+  validatePowerPlatformIR({
+    ...ir,
+    dependencyGraph: {
+      edges: [
+        ...ir.dependencyGraph.edges,
+        ...edges.map((edge) => dependencyEdgeSchema.parse(edge))
+      ]
+    }
+  });
+
+export const mergeAnalysisSummaryIntoIR = (
+  ir: PowerPlatformIR,
+  summary: AnalysisSummary
+): PowerPlatformIR =>
+  validatePowerPlatformIR({
+    ...ir,
+    analysisSummary: analysisSummarySchema.parse(summary)
+  });
 
 export const mergeSolutionMetadataIntoIR = (
   ir: PowerPlatformIR,
