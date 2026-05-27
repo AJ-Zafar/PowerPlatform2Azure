@@ -159,6 +159,7 @@ export {
 } from "./analyse";
 export { parseCanvasApps } from "./canvas";
 export { parseDataverseMetadata } from "./dataverse";
+export { parseCloudFlows } from "./flow";
 export {
   parseSolutionInfrastructure,
   type InfrastructureParseData

@@ -1,6 +1,3 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import {
   createWarning,
   createEmptyPowerPlatformIR,
@@ -18,10 +15,11 @@ import {
 
 import { parseCanvasApps } from "./canvas";
 import { parseDataverseMetadata } from "./dataverse";
+import { parseCloudFlows } from "./flow";
 import { parseSolutionInfrastructure } from "./infrastructure";
 import { parseSolutionManifest } from "./manifest";
 import { discoverSolutionFiles } from "./solution-discovery";
-import { buildArtifactId, clampConfidence, sorted } from "./utils";
+import { buildArtifactId, sorted } from "./utils";
 
 export interface AnalyseSummary {
   filesScanned: number;
@@ -47,6 +45,19 @@ export interface AnalyseSummary {
   canvasUnknownControls: number;
   canvasComplexFormulas: number;
   canvasLayoutWarnings: number;
+  flowsParsed: number;
+  triggersParsed: number;
+  actionsParsed: number;
+  connectorsDetected: number;
+  premiumCustomConnectors: number;
+  flowsByReadiness: {
+    high: number;
+    medium: number;
+    low: number;
+    blocked: number;
+  };
+  unsupportedFlowFeatures: number;
+  unresolvedFlowDependencies: number;
   environmentVariables: number;
   connectionReferences: number;
   securityRoles: number;
@@ -71,66 +82,19 @@ const applyGlobalParseMetadata = <T>(
     confidence: Math.min(ir.confidence, parseResult.confidence)
   });
 
-interface FlowInventoryArtifact {
-  artifactId: string;
-  name: string;
-  kind: string;
-  provenance: {
-    sourcePath: string;
-    sourceType: "flow";
-  };
-  confidence: number;
-}
-
 interface DependencyGraphBuildResult {
   edges: DependencyEdge[];
   warnings: ParserWarning[];
   unresolvedDependencies: number;
+  unresolvedFlowDependencies: number;
 }
 
-const discoverFlowArtifacts = (
-  files: Array<{
-    path: string;
-    classification: string;
-  }>
-): FlowInventoryArtifact[] => {
-  const flowArtifacts = new Map<string, FlowInventoryArtifact>();
-
-  for (const file of files) {
-    const parsedPath = path.parse(file.path);
-    const baseName = parsedPath.name || path.basename(file.path);
-
-    if (file.classification === "workflows-folder") {
-      const artifactId = buildArtifactId("workflow", baseName);
-      flowArtifacts.set(artifactId, {
-        artifactId,
-        name: baseName,
-        kind: "workflow",
-        provenance: {
-          sourcePath: file.path,
-          sourceType: "flow"
-        },
-        confidence: 0.7
-      });
-    }
-  }
-
-  return sorted(Array.from(flowArtifacts.values()), (artifact) => artifact.artifactId);
-};
-
-const buildDependencyGraph = async (
-  ir: PowerPlatformIR,
-  solutionPath: string,
-  discoveryFiles: Array<{
-    path: string;
-    classification: string;
-  }>
-): Promise<DependencyGraphBuildResult> => {
+const buildDependencyGraph = async (ir: PowerPlatformIR): Promise<DependencyGraphBuildResult> => {
   const edges: DependencyEdge[] = [];
   const warnings: ParserWarning[] = [];
   let unresolvedDependencies = 0;
+  let unresolvedFlowDependencies = 0;
   const entityIds = new Set(ir.dataverse.entities.map((entity) => entity.artifactId));
-  const flowIds = new Set(ir.cloudFlows.map((flow) => flow.artifactId));
   const connectionIds = new Set(
     ir.connectionReferences.map((connection) => connection.artifactId)
   );
@@ -260,6 +224,12 @@ const buildDependencyGraph = async (
   }
 
   for (const flow of ir.cloudFlows) {
+    const actionArtifactByName = new Map(flow.actions.map((action) => [action.actionName, action]));
+    const variableArtifactByName = new Map(
+      flow.variables.map((variable) => [variable.variableName, variable.artifactId])
+    );
+    const firstActions = flow.actions.filter((action) => action.runAfter.length === 0);
+
     registerEdge({
       sourceArtifactId: ir.solution.artifactId,
       targetArtifactId: flow.artifactId,
@@ -268,6 +238,197 @@ const buildDependencyGraph = async (
       confidence: flow.confidence,
       resolved: true
     });
+
+    registerEdge({
+      sourceArtifactId: flow.artifactId,
+      targetArtifactId: flow.trigger.artifactId,
+      dependencyType: "flow-trigger",
+      provenance: flow.trigger.provenance,
+      confidence: flow.trigger.confidence,
+      resolved: true
+    });
+
+    for (const action of flow.actions) {
+      registerEdge({
+        sourceArtifactId: flow.artifactId,
+        targetArtifactId: action.artifactId,
+        dependencyType: "flow-action",
+        provenance: action.provenance,
+        confidence: action.confidence,
+        resolved: true
+      });
+    }
+
+    for (const firstAction of firstActions) {
+      registerEdge({
+        sourceArtifactId: flow.trigger.artifactId,
+        targetArtifactId: firstAction.artifactId,
+        dependencyType: "trigger-first-action",
+        provenance: firstAction.provenance,
+        confidence: firstAction.confidence,
+        resolved: true
+      });
+    }
+
+    for (const action of flow.actions) {
+      for (const runAfterDependency of action.runAfter) {
+        const sourceAction = actionArtifactByName.get(runAfterDependency.actionName);
+        if (sourceAction) {
+          registerEdge({
+            sourceArtifactId: sourceAction.artifactId,
+            targetArtifactId: action.artifactId,
+            dependencyType: "action-runafter-action",
+            provenance: action.provenance,
+            confidence: action.confidence,
+            resolved: true
+          });
+          continue;
+        }
+
+        unresolvedFlowDependencies += 1;
+        registerUnresolved(
+          action.artifactId,
+          buildArtifactId("flow-action", `${flow.flowId}-${runAfterDependency.actionName}`),
+          "action-runafter-action",
+          action.provenance.sourcePath,
+          "flow",
+          "DEPENDENCY_UNRESOLVED_FLOW_RUNAFTER_ACTION",
+          `Flow action "${action.actionName}" depends on unresolved action "${runAfterDependency.actionName}".`
+        );
+      }
+
+      for (const childAction of action.childActions) {
+        registerEdge({
+          sourceArtifactId: action.artifactId,
+          targetArtifactId: childAction.artifactId,
+          dependencyType: "scope-child-action",
+          provenance: childAction.provenance,
+          confidence: childAction.confidence,
+          resolved: true
+        });
+      }
+
+      if (action.connectorApi) {
+        registerEdge({
+          sourceArtifactId: action.artifactId,
+          targetArtifactId: buildArtifactId("flow-connector", action.connectorApi),
+          dependencyType: "action-connector",
+          provenance: action.provenance,
+          confidence: action.confidence,
+          resolved: true
+        });
+      }
+
+      for (const connectionReference of action.referencedConnectionReferences) {
+        const connectionArtifactId = buildArtifactId(
+          "connection-reference",
+          connectionReference
+        );
+        if (connectionIds.has(connectionArtifactId)) {
+          registerEdge({
+            sourceArtifactId: action.artifactId,
+            targetArtifactId: connectionArtifactId,
+            dependencyType: "action-connection-reference",
+            provenance: action.provenance,
+            confidence: action.confidence,
+            resolved: true
+          });
+        } else {
+          unresolvedFlowDependencies += 1;
+          registerUnresolved(
+            action.artifactId,
+            connectionArtifactId,
+            "action-connection-reference",
+            action.provenance.sourcePath,
+            "flow",
+            "DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE",
+            `Flow action "${action.actionName}" references unresolved connection reference "${connectionReference}".`
+          );
+        }
+      }
+
+      for (const entityName of action.referencedEntities) {
+        const targetEntityId = buildArtifactId("entity", entityName);
+        if (entityIds.has(targetEntityId)) {
+          registerEdge({
+            sourceArtifactId: action.artifactId,
+            targetArtifactId: targetEntityId,
+            dependencyType: "action-dataverse-entity",
+            provenance: action.provenance,
+            confidence: action.confidence,
+            resolved: true
+          });
+        } else {
+          unresolvedFlowDependencies += 1;
+          registerUnresolved(
+            action.artifactId,
+            targetEntityId,
+            "action-dataverse-entity",
+            action.provenance.sourcePath,
+            "flow",
+            "DEPENDENCY_UNRESOLVED_FLOW_DATAVERSE_ENTITY",
+            `Flow action "${action.actionName}" references unresolved Dataverse entity "${entityName}".`
+          );
+        }
+      }
+
+      for (const expression of action.expressions) {
+        for (const reference of expression.references) {
+          let targetArtifactId: string | undefined;
+          if (reference.referenceType === "variable") {
+            targetArtifactId =
+              variableArtifactByName.get(reference.name) ??
+              buildArtifactId("flow-variable", `${flow.flowId}-${reference.name}`);
+          } else if (reference.referenceType === "environmentVariable") {
+            targetArtifactId = buildArtifactId("env-var", reference.name);
+          } else if (reference.referenceType === "entity") {
+            targetArtifactId = buildArtifactId("entity", reference.name);
+          } else if (reference.referenceType === "action") {
+            targetArtifactId =
+              actionArtifactByName.get(reference.name)?.artifactId ??
+              buildArtifactId("flow-action", `${flow.flowId}-${reference.name}`);
+          } else if (reference.referenceType === "trigger") {
+            targetArtifactId = flow.trigger.artifactId;
+          }
+
+          if (!targetArtifactId) {
+            continue;
+          }
+
+          const isResolved =
+            reference.referenceType === "trigger" ||
+            (reference.referenceType === "variable" &&
+              variableArtifactByName.has(reference.name)) ||
+            (reference.referenceType === "entity" && entityIds.has(targetArtifactId)) ||
+            (reference.referenceType === "environmentVariable" &&
+              envVarIds.has(targetArtifactId)) ||
+            (reference.referenceType === "action" &&
+              actionArtifactByName.has(reference.name));
+
+          if (isResolved) {
+            registerEdge({
+              sourceArtifactId: expression.artifactId,
+              targetArtifactId,
+              dependencyType: "expression-reference-artifact",
+              provenance: expression.provenance,
+              confidence: expression.confidence,
+              resolved: true
+            });
+          } else {
+            unresolvedFlowDependencies += 1;
+            registerUnresolved(
+              expression.artifactId,
+              targetArtifactId,
+              "expression-reference-artifact",
+              expression.provenance.sourcePath,
+              "flow",
+              "DEPENDENCY_UNRESOLVED_FLOW_EXPRESSION_REFERENCE",
+              `Flow expression "${expression.expressionName}" references unresolved ${reference.referenceType} "${reference.name}".`
+            );
+          }
+        }
+      }
+    }
   }
 
   for (const canvasApp of ir.canvasApps) {
@@ -592,90 +753,6 @@ const buildDependencyGraph = async (
     }
   }
 
-  for (const file of discoveryFiles) {
-    if (file.classification !== "workflows-folder") {
-      continue;
-    }
-
-    const absolutePath = path.join(solutionPath, file.path);
-    let content = "";
-
-    try {
-      content = await readFile(absolutePath, "utf-8");
-    } catch {
-      continue;
-    }
-
-    const ownerArtifactId = buildArtifactId(
-      "workflow",
-      path.parse(file.path).name || file.path
-    );
-
-    if (!flowIds.has(ownerArtifactId)) {
-      continue;
-    }
-
-    for (const connectionReference of ir.connectionReferences) {
-      if (!content.includes(connectionReference.logicalName)) {
-        continue;
-      }
-
-      if (connectionIds.has(connectionReference.artifactId)) {
-        registerEdge({
-          sourceArtifactId: ownerArtifactId,
-          targetArtifactId: connectionReference.artifactId,
-          dependencyType: "flow-connection-reference",
-          provenance: {
-            sourcePath: file.path,
-            sourceType: "flow"
-          },
-          confidence: 0.85,
-          resolved: true
-        });
-      } else {
-        registerUnresolved(
-          ownerArtifactId,
-          connectionReference.artifactId,
-          "flow-connection-reference",
-          file.path,
-          "flow",
-          "DEPENDENCY_UNRESOLVED_CONNECTION_REFERENCE",
-          `Connection reference "${connectionReference.logicalName}" was detected in "${file.path}" but could not be resolved.`
-        );
-      }
-    }
-
-    for (const environmentVariable of ir.environmentVariables) {
-      if (!content.includes(environmentVariable.schemaName)) {
-        continue;
-      }
-
-      if (envVarIds.has(environmentVariable.artifactId)) {
-        registerEdge({
-          sourceArtifactId: environmentVariable.artifactId,
-          targetArtifactId: ownerArtifactId,
-          dependencyType: "environment-variable-dependent-artifact",
-          provenance: {
-            sourcePath: file.path,
-            sourceType: "flow"
-          },
-          confidence: 0.8,
-          resolved: true
-        });
-      } else {
-        registerUnresolved(
-          environmentVariable.artifactId,
-          ownerArtifactId,
-          "environment-variable-dependent-artifact",
-          file.path,
-          "flow",
-          "DEPENDENCY_UNRESOLVED_ENVIRONMENT_VARIABLE",
-          `Environment variable "${environmentVariable.schemaName}" was referenced in "${file.path}" but is unresolved.`
-        );
-      }
-    }
-  }
-
   for (const canvasApp of ir.canvasApps) {
     if (!canvasAppIds.has(canvasApp.artifactId)) {
       continue;
@@ -708,7 +785,8 @@ const buildDependencyGraph = async (
       `${edge.sourceArtifactId}:${edge.targetArtifactId}:${edge.dependencyType}`
     ),
     warnings,
-    unresolvedDependencies
+    unresolvedDependencies,
+    unresolvedFlowDependencies
   };
 };
 
@@ -719,28 +797,17 @@ export const analyseSolutionFolder = async (
   const manifestResult = await parseSolutionManifest(solutionPath, discoveryResult.data);
   const dataverseResult = await parseDataverseMetadata(solutionPath, discoveryResult.data);
   const canvasResult = await parseCanvasApps(solutionPath, discoveryResult.data);
+  const flowResult = await parseCloudFlows(solutionPath, discoveryResult.data);
   const infrastructureResult = await parseSolutionInfrastructure(
     solutionPath,
     discoveryResult.data
   );
-  const flowArtifacts = discoverFlowArtifacts(discoveryResult.data.files);
   let ir = createEmptyPowerPlatformIR({
     solutionFolder: solutionPath
   });
 
   ir = mergeSolutionMetadataIntoIR(ir, manifestResult.data);
-  ir = mergeParseResultIntoIR(ir, "cloudFlows", {
-    data: flowArtifacts,
-    warnings: [],
-    unsupported: [],
-    confidence: clampConfidence(
-      1 - flowArtifacts.length * 0.01
-    ),
-    provenance: {
-      sourcePath: solutionPath,
-      sourceType: "flow"
-    }
-  });
+  ir = mergeParseResultIntoIR(ir, "cloudFlows", flowResult);
   ir = mergeParseResultIntoIR(ir, "canvasApps", {
     data: canvasResult.data,
     warnings: canvasResult.warnings,
@@ -772,11 +839,7 @@ export const analyseSolutionFolder = async (
   });
   ir = applyGlobalParseMetadata(ir, discoveryResult);
   ir = applyGlobalParseMetadata(ir, manifestResult);
-  const dependencyGraph = await buildDependencyGraph(
-    ir,
-    solutionPath,
-    discoveryResult.data.files
-  );
+  const dependencyGraph = await buildDependencyGraph(ir);
 
   ir = mergeDependencyEdgesIntoIR(ir, dependencyGraph.edges);
   ir = applyGlobalParseMetadata(ir, {
@@ -891,6 +954,53 @@ export const analyseSolutionFolder = async (
     canvasLayoutWarnings: ir.warnings.filter((warning) =>
       warning.code.startsWith("CANVAS_LAYOUT_")
     ).length,
+    flows: flowResult.data.length,
+    flowTriggers: flowResult.data.filter((flow) => flow.trigger.triggerType !== "Unknown").length,
+    flowActions: flowResult.data.reduce(
+      (count, flow) =>
+        count +
+        flow.actions.reduce(
+          (actionCount, action) => actionCount + 1 + action.childActions.length,
+          0
+        ),
+      0
+    ),
+    flowConnectorsDetected: new Set(
+      flowResult.data
+        .flatMap((flow) => [
+          ...flow.connections.map((connection) => connection.connectorApi),
+          ...flow.actions
+            .map((action) => action.connectorApi)
+            .filter((connector): connector is string => Boolean(connector)),
+          flow.trigger.connectorApi
+        ])
+        .filter((connector): connector is string => Boolean(connector))
+    ).size,
+    flowPremiumCustomConnectors: new Set(
+      flowResult.data
+        .flatMap((flow) => [
+        ...flow.connections
+          .filter((connection) =>
+            ["premium", "custom"].includes(connection.connectorCategory)
+          )
+          .map((connection) => connection.connectorApi),
+        ...flow.actions
+          .filter((action) => ["premium", "custom"].includes(action.connectorCategory))
+          .map((action) => action.connectorApi ?? "")
+        ])
+        .filter((connector) => connector.length > 0)
+    ).size,
+    flowsByReadiness: {
+      high: flowResult.data.filter((flow) => flow.migrationReadiness === "high").length,
+      medium: flowResult.data.filter((flow) => flow.migrationReadiness === "medium").length,
+      low: flowResult.data.filter((flow) => flow.migrationReadiness === "low").length,
+      blocked: flowResult.data.filter((flow) => flow.migrationReadiness === "blocked").length
+    },
+    unsupportedFlowFeatures: flowResult.data.reduce(
+      (count, flow) => count + flow.unsupportedFeatures.length,
+      0
+    ),
+    unresolvedFlowDependencies: dependencyGraph.unresolvedFlowDependencies,
     environmentVariables: infrastructureResult.data.environmentVariables.length,
     connectionReferences: infrastructureResult.data.connectionReferences.length,
     securityRoles: infrastructureResult.data.security.roles.length,
@@ -920,6 +1030,14 @@ export const analyseSolutionFolder = async (
     canvasUnknownControls: ir.analysisSummary.canvasUnknownControls,
     canvasComplexFormulas: ir.analysisSummary.canvasComplexFormulas,
     canvasLayoutWarnings: ir.analysisSummary.canvasLayoutWarnings,
+    flowsParsed: ir.analysisSummary.flows,
+    triggersParsed: ir.analysisSummary.flowTriggers,
+    actionsParsed: ir.analysisSummary.flowActions,
+    connectorsDetected: ir.analysisSummary.flowConnectorsDetected,
+    premiumCustomConnectors: ir.analysisSummary.flowPremiumCustomConnectors,
+    flowsByReadiness: ir.analysisSummary.flowsByReadiness,
+    unsupportedFlowFeatures: ir.analysisSummary.unsupportedFlowFeatures,
+    unresolvedFlowDependencies: ir.analysisSummary.unresolvedFlowDependencies,
     environmentVariables: ir.analysisSummary.environmentVariables,
     connectionReferences: ir.analysisSummary.connectionReferences,
     securityRoles: ir.analysisSummary.securityRoles,

@@ -1,0 +1,29 @@
+{
+  "name": "parallel-branches-flow",
+  "properties": {
+    "displayName": "Parallel Branches Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "branch_a": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": "A"
+        },
+        "branch_b": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": "B"
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

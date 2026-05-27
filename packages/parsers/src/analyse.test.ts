@@ -22,6 +22,33 @@ describe("analyseSolutionFolder", () => {
     expect(result.ir.analysisSummary.unresolvedDependencies).toBeGreaterThanOrEqual(0);
   });
 
+  it("includes structured cloud flow data, graph edges, and readiness counts", async () => {
+    const fixturePath = solutionFixturePath("flow-heavy");
+    const result = await analyseSolutionFolder(fixturePath);
+
+    expect(result.summary.flowsParsed).toBeGreaterThan(0);
+    expect(result.summary.triggersParsed).toBeGreaterThan(0);
+    expect(result.summary.actionsParsed).toBeGreaterThan(0);
+    expect(result.summary.connectorsDetected).toBeGreaterThan(0);
+    expect(result.summary.premiumCustomConnectors).toBeGreaterThan(0);
+    expect(result.summary.flowsByReadiness.blocked).toBeGreaterThan(0);
+    expect(result.summary.unsupportedFlowFeatures).toBeGreaterThan(0);
+    expect(result.summary.unresolvedFlowDependencies).toBeGreaterThan(0);
+    expect(
+      result.ir.dependencyGraph.edges.some((edge) => edge.dependencyType === "flow-trigger")
+    ).toBe(true);
+    expect(
+      result.ir.dependencyGraph.edges.some(
+        (edge) => edge.dependencyType === "action-runafter-action"
+      )
+    ).toBe(true);
+    expect(
+      result.ir.dependencyGraph.edges.some(
+        (edge) => edge.dependencyType === "action-connection-reference"
+      )
+    ).toBe(true);
+  });
+
   it("includes structured canvas apps, screens, controls, and formulas", async () => {
     const fixturePath = solutionFixturePath("canvas-heavy");
     const result = await analyseSolutionFolder(fixturePath);
@@ -89,8 +116,10 @@ describe("analyseSolutionFolder", () => {
 
     expect(edgeKeys).toEqual(sortedEdgeKeys);
     expect(
-      result.ir.dependencyGraph.edges.some(
-        (edge) => edge.dependencyType === "flow-connection-reference"
+      result.ir.dependencyGraph.edges.some((edge) =>
+        ["solution-workflow", "flow-action", "action-connection-reference"].includes(
+          edge.dependencyType
+        )
       )
     ).toBe(true);
   });

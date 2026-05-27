@@ -1,0 +1,47 @@
+{
+  "name": "manual-trigger-flow",
+  "properties": {
+    "displayName": "Manual Trigger Flow",
+    "state": "Started",
+    "connectionReferences": {
+      "contoso_outlook": {
+        "connectionName": "shared-office365-1",
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {}
+          }
+        }
+      },
+      "actions": {
+        "send_email": {
+          "type": "ApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "SendEmailV2",
+              "connection": {
+                "referenceName": "contoso_outlook"
+              }
+            },
+            "parameters": {
+              "to": "user@contoso.test",
+              "subject": "hello",
+              "body": "manual flow"
+            }
+          }
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

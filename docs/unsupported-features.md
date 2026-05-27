@@ -38,9 +38,24 @@ Detailed entries are added as parser milestones are implemented.
    - Trigger: control type/name does not map to a known migration role.
    - Handling: control is preserved with role `unknown`; readiness can degrade to `blocked`.
 
+7. `flow.action.unsupported-type.<type>`
+   - Trigger: Cloud Flow action type is not in the supported action map.
+   - Handling: action is retained in flow inventory with warning + unsupported record; readiness can degrade to `blocked`.
+
+8. `flow.file.unsupported-format`
+   - Trigger: workflow file under `workflows/` is not JSON/XML/XAML.
+   - Handling: warning emitted; parser continues with other flow files.
+
+9. `flow.reference.unresolved.*`
+   - Trigger: runAfter, connection reference, Dataverse entity, or expression reference cannot be resolved to known artifacts.
+   - Handling: unresolved dependency edge + warning; parse continues.
+
 ## Current parser limitations
 
-- Flow semantic parsing is not implemented yet.
+- Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
+- Flow parser does not execute expressions and does not evaluate runtime conditions/scopes.
+- Flow connector premium/custom classification is pattern-based and may require manual confirmation.
+- Flow readiness metadata is preparatory and not a full migration assessment score.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
 - Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
 - Canvas readiness scoring is preparatory metadata and not a full migration assessment score.

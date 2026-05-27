@@ -1,0 +1,7 @@
+<EnvironmentVariables>
+  <EnvironmentVariable>
+    <SchemaName>ENV_API_BASE</SchemaName>
+    <Type>String</Type>
+    <DefaultValue>https://api.contoso.test</DefaultValue>
+  </EnvironmentVariable>
+</EnvironmentVariables>

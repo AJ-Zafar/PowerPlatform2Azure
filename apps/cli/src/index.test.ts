@@ -59,6 +59,14 @@ describe("power-exit analyse command", () => {
     expect(stdOut[0]).toContain('"canvasUnknownControls"');
     expect(stdOut[0]).toContain('"canvasComplexFormulas"');
     expect(stdOut[0]).toContain('"canvasLayoutWarnings"');
+    expect(stdOut[0]).toContain('"flowsParsed"');
+    expect(stdOut[0]).toContain('"triggersParsed"');
+    expect(stdOut[0]).toContain('"actionsParsed"');
+    expect(stdOut[0]).toContain('"connectorsDetected"');
+    expect(stdOut[0]).toContain('"premiumCustomConnectors"');
+    expect(stdOut[0]).toContain('"flowsByReadiness"');
+    expect(stdOut[0]).toContain('"unsupportedFlowFeatures"');
+    expect(stdOut[0]).toContain('"unresolvedFlowDependencies"');
     expect(stdOut[0]).toContain('"unresolvedDependencies"');
     expect(stdErr).toEqual([]);
 
@@ -134,6 +142,47 @@ describe("power-exit analyse command", () => {
     expect(ir.dependencyGraph.edges.some((edge) => edge.dependencyType === "canvas-app-screen")).toBe(
       true
     );
+    expect(stdErr).toEqual([]);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("includes structured flow data in generated IR output and summary", async () => {
+    const tempRoot = await createTempDirectory();
+    const output = path.join(tempRoot, "out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/flow-heavy"
+    );
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    const exitCode = await runCli(
+      ["analyse", inputFolder, "--out", output],
+      stdOut.push.bind(stdOut),
+      stdErr.push.bind(stdErr)
+    );
+
+    expect(exitCode).toBe(0);
+    const ir = JSON.parse(
+      await readFile(path.join(output, "ir.json"), "utf-8")
+    ) as ReturnType<typeof validatePowerPlatformIR>;
+    const summary = JSON.parse(stdOut[0]) as {
+      flowsParsed: number;
+      triggersParsed: number;
+      actionsParsed: number;
+      connectorsDetected: number;
+    };
+
+    expect(ir.cloudFlows.length).toBeGreaterThan(0);
+    expect(ir.cloudFlows.some((flow) => flow.actions.length > 0)).toBe(true);
+    expect(
+      ir.dependencyGraph.edges.some((edge) => edge.dependencyType === "flow-action")
+    ).toBe(true);
+    expect(summary.flowsParsed).toBeGreaterThan(0);
+    expect(summary.triggersParsed).toBeGreaterThan(0);
+    expect(summary.actionsParsed).toBeGreaterThan(0);
+    expect(summary.connectorsDetected).toBeGreaterThan(0);
     expect(stdErr).toEqual([]);
 
     await rm(tempRoot, { recursive: true, force: true });

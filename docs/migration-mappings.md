@@ -8,7 +8,7 @@ This document tracks deterministic mappings between Power Platform constructs an
 2. No generator may map directly from raw Power Platform files.
 3. Provenance from IR records must be preserved in generated artefact metadata.
 4. Serialization of intermediate and final artefacts must remain deterministic.
-5. Mapping work begins only after parser sections are stable in IR (currently solution, dataverse metadata, structured canvas metadata, environment variables, connection references, and security inventory).
+5. Mapping work begins only after parser sections are stable in IR (currently solution, dataverse metadata, structured canvas metadata, structured flow metadata, environment variables, connection references, and security inventory).
 
 ## Current IR-ready sections
 
@@ -19,6 +19,7 @@ This document tracks deterministic mappings between Power Platform constructs an
 - `canvasApps` (apps, screens, controls, formulas, resources, references)
 - `canvasApps.screens[].controls[].normalizedLayout` (layout mode/responsive hints/visibility/order)
 - `canvasApps.screens[].controls[].role` and readiness metadata
+- `cloudFlows` (trigger/action graph, connectors, references, expressions, readiness metadata)
 - `environmentVariables`
 - `connectionReferences`
 - `security.roles`
@@ -31,6 +32,7 @@ Before generator mappings are introduced, the parser pipeline now provides:
 
 - deterministic dependency edges with unresolved-reference annotations
 - parser summary counts for discovered artifacts and unresolved dependencies
+- parser summary counts for flow trigger/action/connectors/readiness and unresolved flow dependencies
 
 What this summary does:
 
@@ -59,6 +61,6 @@ Planned mapping sections:
 1. Dataverse table metadata -> Azure SQL DDL
 2. Dataverse options/choices -> lookup and enum mapping strategy
 3. Canvas screens and controls -> React screen skeleton primitives
-4. Cloud flow triggers/actions -> migration advisory mappings
+4. Cloud flow triggers/actions -> migration advisory mappings (future Azure Functions/Logic Apps targeting)
 
 Mappings are introduced incrementally once parser and IR milestones are complete.

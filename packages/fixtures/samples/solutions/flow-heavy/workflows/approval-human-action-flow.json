@@ -1,0 +1,43 @@
+{
+  "name": "approval-human-action-flow",
+  "properties": {
+    "displayName": "Approval Human Action Flow",
+    "state": "Started",
+    "connectionReferences": {
+      "contoso_approvals": {
+        "connectionName": "shared-approvals-1",
+        "api": {
+          "name": "shared_approvals"
+        }
+      }
+    },
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "start_approval": {
+          "type": "ApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+              "operationId": "StartAndWaitForAnApproval",
+              "connection": {
+                "referenceName": "contoso_approvals"
+              }
+            },
+            "parameters": {
+              "approvalType": "ApproveReject"
+            }
+          }
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

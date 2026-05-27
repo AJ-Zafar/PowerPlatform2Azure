@@ -50,7 +50,7 @@ docs/
 - `packages/ir` is the single runtime-validated contract for all migration state.
 - All IR objects are strict Zod schemas to prevent silent shape drift.
 - Source-derived records include provenance so outputs can be traced back to files.
-- Parser implementations currently cover solution discovery, manifest metadata, Dataverse metadata, structured Canvas metadata, environment variables, connection references, and security role inventory.
+- Parser implementations currently cover solution discovery, manifest metadata, Dataverse metadata, structured Canvas metadata, structured Cloud Flow metadata, environment variables, connection references, and security role inventory.
 - Every parser result is validated as `ParseResult<T>` with warnings, unsupported features, and confidence.
 - IR now includes a dependency graph edge model with unresolved-reference metadata.
 - IR now includes a lightweight parser summary layer (counts only), not full assessment scoring.
@@ -71,12 +71,13 @@ Current behavior in this sprint:
 3. Parse solution manifest (`solution.xml`) metadata.
 4. Parse Dataverse entities, attributes, relationships, and option sets.
 5. Parse structured Canvas app metadata (apps, screens, controls, formulas, resources, references), normalize control layout, classify control roles, and score Canvas migration readiness heuristically.
-6. Parse environment variables, connection references, and security roles.
-7. Merge all parse results into validated `PowerPlatformIR`.
-8. Serialize deterministic JSON and write `ir.json`.
-9. Build deterministic dependency edges and unresolved dependency warnings.
-10. Attach lightweight analysis summary counts to `ir.json`.
-11. Print structured counts in CLI output, including Canvas readiness and role distribution.
+6. Parse structured Cloud Flow metadata (triggers, actions, runAfter graph, connectors, references, expressions, readiness heuristics).
+7. Parse environment variables, connection references, and security roles.
+8. Merge all parse results into validated `PowerPlatformIR`.
+9. Serialize deterministic JSON and write `ir.json`.
+10. Build deterministic dependency edges and unresolved dependency warnings.
+11. Attach lightweight analysis summary counts to `ir.json`.
+12. Print structured counts in CLI output, including Canvas and Flow readiness breakdowns.
 
 ## Dependency graph model
 
@@ -97,7 +98,12 @@ Dependency edges currently capture where detectable:
 - Patch/SubmitForm formulas -> likely target data source
 - entities -> attributes/relationships
 - relationships -> target entities
-- flows -> connection references
+- flow -> trigger/action nodes
+- trigger -> first actions
+- action -> action (`runAfter`)
+- scope -> child actions
+- action -> connectors/connection references/Dataverse entities
+- expressions -> referenced variables/entities/environment variables/actions/triggers
 - environment variables -> dependent artifacts
 - security roles -> privilege-target entities
 

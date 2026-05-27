@@ -3,19 +3,10 @@ import { z } from "zod";
 import { artifactIdSchema } from "./artifact-id";
 import { canvasAppSchema } from "./canvas";
 import { confidenceScoreSchema } from "./confidence";
+import { cloudFlowSchema } from "./flow";
 import { sourceProvenanceSchema } from "./provenance";
 import { unsupportedFeatureSchema } from "./unsupported-feature";
 import { parserWarningSchema } from "./warnings";
-
-const sourceDerivedArtifactSchema = z
-  .object({
-    artifactId: artifactIdSchema,
-    name: z.string().min(1),
-    kind: z.string().min(1),
-    provenance: sourceProvenanceSchema,
-    confidence: confidenceScoreSchema
-  })
-  .strict();
 
 const localizedLabelSchema = z
   .object({
@@ -195,6 +186,15 @@ export const dependencyTypeSchema = z.enum([
   "formula-target-table",
   "entity-attribute",
   "entity-relationship",
+  "flow-trigger",
+  "flow-action",
+  "trigger-first-action",
+  "action-runafter-action",
+  "scope-child-action",
+  "action-connector",
+  "action-connection-reference",
+  "action-dataverse-entity",
+  "expression-reference-artifact",
   "relationship-target-entity",
   "flow-connection-reference",
   "environment-variable-dependent-artifact",
@@ -246,6 +246,21 @@ export const analysisSummarySchema = z
     canvasUnknownControls: z.number().int().nonnegative(),
     canvasComplexFormulas: z.number().int().nonnegative(),
     canvasLayoutWarnings: z.number().int().nonnegative(),
+    flows: z.number().int().nonnegative(),
+    flowTriggers: z.number().int().nonnegative(),
+    flowActions: z.number().int().nonnegative(),
+    flowConnectorsDetected: z.number().int().nonnegative(),
+    flowPremiumCustomConnectors: z.number().int().nonnegative(),
+    flowsByReadiness: z
+      .object({
+        high: z.number().int().nonnegative(),
+        medium: z.number().int().nonnegative(),
+        low: z.number().int().nonnegative(),
+        blocked: z.number().int().nonnegative()
+      })
+      .strict(),
+    unsupportedFlowFeatures: z.number().int().nonnegative(),
+    unresolvedFlowDependencies: z.number().int().nonnegative(),
     environmentVariables: z.number().int().nonnegative(),
     connectionReferences: z.number().int().nonnegative(),
     securityRoles: z.number().int().nonnegative(),
@@ -274,7 +289,7 @@ export const powerPlatformIRSchema = z
     solution: solutionMetadataSchema,
     dataverse: dataverseSectionSchema,
     canvasApps: z.array(canvasAppSchema),
-    cloudFlows: z.array(sourceDerivedArtifactSchema),
+    cloudFlows: z.array(cloudFlowSchema),
     security: securitySectionSchema,
     environmentVariables: z.array(environmentVariableSchema),
     connectionReferences: z.array(connectionReferenceSchema),
@@ -289,6 +304,7 @@ export const powerPlatformIRSchema = z
 
 export type SolutionMetadata = z.infer<typeof solutionMetadataSchema>;
 export type PowerPlatformIR = z.infer<typeof powerPlatformIRSchema>;
+export type CloudFlow = z.infer<typeof cloudFlowSchema>;
 export type DataverseEntity = z.infer<typeof dataverseEntitySchema>;
 export type DataverseAttribute = z.infer<typeof dataverseAttributeSchema>;
 export type DataverseRelationship = z.infer<typeof dataverseRelationshipSchema>;

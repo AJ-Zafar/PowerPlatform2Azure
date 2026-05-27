@@ -26,6 +26,38 @@ export {
   type CanvasScreen
 } from "./canvas";
 export { confidenceScoreSchema, type ConfidenceScore } from "./confidence";
+export {
+  cloudFlowSchema,
+  flowActionChildSchema,
+  flowActionSchema,
+  flowConnectionSchema,
+  flowConnectorCategorySchema,
+  flowDependencyReferenceSchema,
+  flowExpressionReferenceSchema,
+  flowExpressionReferenceTypeSchema,
+  flowExpressionSchema,
+  flowMigrationReadinessSchema,
+  flowRunAfterDependencySchema,
+  flowScopeControlSchema,
+  flowTriggerClassificationSchema,
+  flowTriggerSchema,
+  flowVariableSchema,
+  type CloudFlow,
+  type FlowAction,
+  type FlowActionChild,
+  type FlowConnection,
+  type FlowConnectorCategory,
+  type FlowDependencyReference,
+  type FlowExpression,
+  type FlowExpressionReference,
+  type FlowExpressionReferenceType,
+  type FlowMigrationReadiness,
+  type FlowRunAfterDependency,
+  type FlowScopeControl,
+  type FlowTrigger,
+  type FlowTriggerClassification,
+  type FlowVariable
+} from "./flow";
 export { sortByStableKey, stableStringify } from "./deterministic";
 export {
   assertSchema,
