@@ -22,8 +22,18 @@ Detailed entries are added as parser milestones are implemented.
    - Trigger: Dataverse attribute type not in the supported normalized type map.
    - Handling: attribute retained as `unknown` type where possible, with warning and unsupported record.
 
+3. `canvas.control-type.<type>`
+   - Trigger: Canvas control type is not in the current known control map.
+   - Handling: control is preserved in IR with warning + unsupported record; downstream mapping must treat it as manual/unknown.
+
+4. `canvas.unknown-source-shape`
+   - Trigger: Canvas source file is discoverable but not parseable into known app/screen/component/control/formula/resource shape.
+   - Handling: warning emitted; parse continues without crashing.
+
 ## Current parser limitations
 
-- Flow and Canvas semantic parsing are not implemented yet; only lightweight inventory/dependency detection is available.
+- Flow semantic parsing is not implemented yet.
+- Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
+- Canvas dependency extraction is best-effort and can emit unresolved references for ambiguous formulas.
 - Dependency edges are best-effort from currently parsed artifacts and discoverable references in source files.
 - Summary counts are parser telemetry only and are not equivalent to assessment scores.

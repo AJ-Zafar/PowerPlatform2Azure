@@ -6,8 +6,8 @@
 2. Power Fx handling in MVP is inventory and raw expression preservation only, without semantic translation.
 3. Deterministic output means stable ordering of entities, attributes, controls, flows, and generated file sections.
 4. Unsupported source constructs must be emitted as structured records and included in reports.
-5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, and infrastructure metadata extraction only.
-6. Canvas semantic parsing, flow semantic parsing, generators, and scoring engines remain out of scope for this sprint.
+5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, structured Canvas extraction, and infrastructure metadata extraction.
+6. Full Power Fx semantic translation, flow semantic parsing, generators, and scoring engines remain out of scope for this sprint.
 7. Lightweight summary counts in IR are parser telemetry only; they are not migration risk/complexity scoring.
 
 ## Repository assumptions
@@ -47,6 +47,7 @@ Where:
 - `confidence` is a bounded numeric score (`0..1`) derived from parse completeness and unsupported density.
 - `provenance` captures where parser output came from, to preserve traceability into reports and generated artefacts.
 - Parse failures are never silent: malformed XML and unknown file layouts always produce structured warnings.
+- Canvas malformed source files and unknown control/property shapes produce warnings/unsupported records while preserving parseable structure.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.
 - Unresolved references are represented both as warnings and as unresolved dependency edges.
 
@@ -58,3 +59,4 @@ Where:
 4. Unsupported features and warnings are first-class top-level IR data, not side-channel logs.
 5. Dataverse and infrastructure artifacts include provenance and per-artifact confidence fields.
 6. Dependency graph edges are deterministic and sorted, with unresolved edges carrying `unresolvedWarning`.
+7. Canvas IR preserves raw Power Fx expressions and extracted references (functions, data sources, variables, collections, navigation targets) without semantic execution.

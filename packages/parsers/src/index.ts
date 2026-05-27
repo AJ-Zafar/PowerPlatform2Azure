@@ -157,6 +157,7 @@ export {
   type AnalyseResult,
   type AnalyseSummary
 } from "./analyse";
+export { parseCanvasApps } from "./canvas";
 export { parseDataverseMetadata } from "./dataverse";
 export {
   parseSolutionInfrastructure,

@@ -30,7 +30,7 @@ describe("discoverSolutionFiles", () => {
 
     expect(classifications.has("solution-manifest")).toBe(true);
     expect(classifications.has("workflows-folder")).toBe(true);
-    expect(classifications.has("canvas-source")).toBe(true);
+    expect(classifications.has("canvas-app")).toBe(true);
     expect(classifications.has("web-resource")).toBe(true);
     expect(classifications.has("plugin-metadata")).toBe(true);
     expect(classifications.has("security-role")).toBe(true);
@@ -41,5 +41,19 @@ describe("discoverSolutionFiles", () => {
         (feature) => feature.featureType === "solution.unknown-file-layout"
       )
     ).toBe(true);
+  });
+
+  it("classifies canvas source shapes with detailed canvas categories", async () => {
+    const fixturePath = solutionFixturePath("canvas-heavy");
+    const result = await discoverSolutionFiles(fixturePath);
+    const classifications = new Set(result.data.files.map((file) => file.classification));
+
+    expect(classifications.has("canvas-app")).toBe(true);
+    expect(classifications.has("canvas-screen")).toBe(true);
+    expect(classifications.has("canvas-component")).toBe(true);
+    expect(classifications.has("canvas-control")).toBe(true);
+    expect(classifications.has("canvas-formula")).toBe(true);
+    expect(classifications.has("canvas-resource")).toBe(true);
+    expect(classifications.has("canvas-unknown")).toBe(true);
   });
 });

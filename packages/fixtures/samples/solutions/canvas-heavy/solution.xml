@@ -1,0 +1,16 @@
+<ImportExportXml languagecode="1033">
+  <SolutionManifest>
+    <UniqueName>contoso_canvas_heavy</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Contoso Canvas Heavy" languagecode="1033" />
+    </LocalizedNames>
+    <Version>1.0.0.0</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>contoso</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Contoso Ltd" languagecode="1033" />
+      </LocalizedNames>
+    </Publisher>
+  </SolutionManifest>
+</ImportExportXml>

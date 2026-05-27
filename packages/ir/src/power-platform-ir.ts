@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { artifactIdSchema } from "./artifact-id";
+import { canvasAppSchema } from "./canvas";
 import { confidenceScoreSchema } from "./confidence";
 import { sourceProvenanceSchema } from "./provenance";
 import { unsupportedFeatureSchema } from "./unsupported-feature";
@@ -178,6 +179,15 @@ export const dependencyTypeSchema = z.enum([
   "solution-entity",
   "solution-workflow",
   "solution-canvas-app",
+  "canvas-app-screen",
+  "screen-control",
+  "control-child-control",
+  "control-data-source",
+  "formula-data-source",
+  "formula-variable",
+  "formula-collection",
+  "navigate-target-screen",
+  "formula-target-table",
   "entity-attribute",
   "entity-relationship",
   "relationship-target-entity",
@@ -214,6 +224,10 @@ export const analysisSummarySchema = z
     attributes: z.number().int().nonnegative(),
     relationships: z.number().int().nonnegative(),
     choices: z.number().int().nonnegative(),
+    canvasApps: z.number().int().nonnegative(),
+    canvasScreens: z.number().int().nonnegative(),
+    canvasControls: z.number().int().nonnegative(),
+    canvasFormulas: z.number().int().nonnegative(),
     environmentVariables: z.number().int().nonnegative(),
     connectionReferences: z.number().int().nonnegative(),
     securityRoles: z.number().int().nonnegative(),
@@ -241,7 +255,7 @@ export const powerPlatformIRSchema = z
   .object({
     solution: solutionMetadataSchema,
     dataverse: dataverseSectionSchema,
-    canvasApps: z.array(sourceDerivedArtifactSchema),
+    canvasApps: z.array(canvasAppSchema),
     cloudFlows: z.array(sourceDerivedArtifactSchema),
     security: securitySectionSchema,
     environmentVariables: z.array(environmentVariableSchema),

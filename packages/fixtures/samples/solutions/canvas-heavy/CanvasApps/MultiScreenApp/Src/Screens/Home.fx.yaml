@@ -1,0 +1,7 @@
+Screen:
+  Name: Home
+  Controls:
+    - Name: btnGoDetails
+      Type: Button
+      Properties:
+        OnSelect: Navigate(Details, ScreenTransition.None)

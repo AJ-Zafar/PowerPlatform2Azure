@@ -1,0 +1,6 @@
+Name: MinimalApp
+DataSources:
+  - Name: Accounts
+    Type: Dataverse
+Formulas:
+  OnStart: Set(appLoaded, true)

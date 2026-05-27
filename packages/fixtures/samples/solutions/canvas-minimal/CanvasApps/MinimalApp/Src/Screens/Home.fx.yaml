@@ -1,0 +1,13 @@
+Screen:
+  Name: Home
+  Layout:
+    Fill: RGBA(255,255,255,1)
+  Controls:
+    - Name: lblTitle
+      Type: Label
+      Properties:
+        Text: "Welcome"
+        X: 10
+        Y: 10
+        Width: 200
+        Height: 40

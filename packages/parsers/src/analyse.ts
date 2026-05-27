@@ -16,6 +16,7 @@ import {
   type PowerPlatformIR
 } from "@power-exit/ir";
 
+import { parseCanvasApps } from "./canvas";
 import { parseDataverseMetadata } from "./dataverse";
 import { parseSolutionInfrastructure } from "./infrastructure";
 import { parseSolutionManifest } from "./manifest";
@@ -31,6 +32,10 @@ export interface AnalyseSummary {
   attributesParsed: number;
   relationshipsParsed: number;
   choicesParsed: number;
+  canvasAppsParsed: number;
+  canvasScreensParsed: number;
+  canvasControlsParsed: number;
+  canvasFormulasParsed: number;
   environmentVariables: number;
   connectionReferences: number;
   securityRoles: number;
@@ -55,13 +60,13 @@ const applyGlobalParseMetadata = <T>(
     confidence: Math.min(ir.confidence, parseResult.confidence)
   });
 
-interface InventoryArtifact {
+interface FlowInventoryArtifact {
   artifactId: string;
   name: string;
   kind: string;
   provenance: {
     sourcePath: string;
-    sourceType: "canvas" | "flow";
+    sourceType: "flow";
   };
   confidence: number;
 }
@@ -72,18 +77,13 @@ interface DependencyGraphBuildResult {
   unresolvedDependencies: number;
 }
 
-const discoverInventoryArtifacts = (
-  solutionPath: string,
+const discoverFlowArtifacts = (
   files: Array<{
     path: string;
     classification: string;
   }>
-): {
-  flowArtifacts: InventoryArtifact[];
-  canvasArtifacts: InventoryArtifact[];
-} => {
-  const flowArtifacts = new Map<string, InventoryArtifact>();
-  const canvasArtifacts = new Map<string, InventoryArtifact>();
+): FlowInventoryArtifact[] => {
+  const flowArtifacts = new Map<string, FlowInventoryArtifact>();
 
   for (const file of files) {
     const parsedPath = path.parse(file.path);
@@ -102,29 +102,9 @@ const discoverInventoryArtifacts = (
         confidence: 0.7
       });
     }
-
-    if (file.classification === "canvas-source") {
-      const artifactId = buildArtifactId("canvas-app", baseName);
-      canvasArtifacts.set(artifactId, {
-        artifactId,
-        name: baseName,
-        kind: "canvas-app",
-        provenance: {
-          sourcePath: file.path,
-          sourceType: "canvas"
-        },
-        confidence: 0.7
-      });
-    }
   }
 
-  return {
-    flowArtifacts: sorted(Array.from(flowArtifacts.values()), (artifact) => artifact.artifactId),
-    canvasArtifacts: sorted(
-      Array.from(canvasArtifacts.values()),
-      (artifact) => artifact.artifactId
-    )
-  };
+  return sorted(Array.from(flowArtifacts.values()), (artifact) => artifact.artifactId);
 };
 
 const buildDependencyGraph = async (
@@ -140,7 +120,6 @@ const buildDependencyGraph = async (
   let unresolvedDependencies = 0;
   const entityIds = new Set(ir.dataverse.entities.map((entity) => entity.artifactId));
   const flowIds = new Set(ir.cloudFlows.map((flow) => flow.artifactId));
-  const canvasIds = new Set(ir.canvasApps.map((canvas) => canvas.artifactId));
   const connectionIds = new Set(
     ir.connectionReferences.map((connection) => connection.artifactId)
   );
@@ -195,6 +174,7 @@ const buildDependencyGraph = async (
       })
     );
   };
+  const canvasAppIds = new Set(ir.canvasApps.map((canvasApp) => canvasApp.artifactId));
 
   for (const entity of ir.dataverse.entities) {
     registerEdge({
@@ -280,6 +260,22 @@ const buildDependencyGraph = async (
   }
 
   for (const canvasApp of ir.canvasApps) {
+    const dataSourceByName = new Map(
+      canvasApp.dataSources.map((dataSource) => [dataSource.name, dataSource.artifactId])
+    );
+    const variableByName = new Map(
+      canvasApp.variables.map((variable) => [variable.name, variable.artifactId])
+    );
+    const collectionByName = new Map(
+      canvasApp.collections.map((collection) => [collection.name, collection.artifactId])
+    );
+    const screenByName = new Map(
+      canvasApp.screens.map((screen) => [screen.screenName, screen.artifactId])
+    );
+    const controlById = new Set(
+      canvasApp.screens.flatMap((screen) => screen.controls.map((control) => control.artifactId))
+    );
+
     registerEdge({
       sourceArtifactId: ir.solution.artifactId,
       targetArtifactId: canvasApp.artifactId,
@@ -288,6 +284,185 @@ const buildDependencyGraph = async (
       confidence: canvasApp.confidence,
       resolved: true
     });
+
+    for (const screen of canvasApp.screens) {
+      registerEdge({
+        sourceArtifactId: canvasApp.artifactId,
+        targetArtifactId: screen.artifactId,
+        dependencyType: "canvas-app-screen",
+        provenance: screen.provenance,
+        confidence: screen.confidence,
+        resolved: true
+      });
+
+      for (const control of screen.controls) {
+        registerEdge({
+          sourceArtifactId: screen.artifactId,
+          targetArtifactId: control.artifactId,
+          dependencyType: "screen-control",
+          provenance: control.provenance,
+          confidence: control.confidence,
+          resolved: true
+        });
+
+        if (control.parentControl) {
+          if (controlById.has(control.parentControl)) {
+            registerEdge({
+              sourceArtifactId: control.parentControl,
+              targetArtifactId: control.artifactId,
+              dependencyType: "control-child-control",
+              provenance: control.provenance,
+              confidence: control.confidence,
+              resolved: true
+            });
+          } else {
+            registerUnresolved(
+              control.artifactId,
+              control.parentControl,
+              "control-child-control",
+              control.provenance.sourcePath,
+              "canvas",
+              "DEPENDENCY_UNRESOLVED_CANVAS_PARENT_CONTROL",
+              `Control "${control.controlName}" references parent "${control.parentControl}" which is unresolved.`
+            );
+          }
+        }
+
+        for (const hint of control.dataBindingHints) {
+          const dataSourceId = dataSourceByName.get(hint);
+
+          if (dataSourceId) {
+            registerEdge({
+              sourceArtifactId: control.artifactId,
+              targetArtifactId: dataSourceId,
+              dependencyType: "control-data-source",
+              provenance: control.provenance,
+              confidence: 0.8,
+              resolved: true
+            });
+          }
+        }
+      }
+    }
+
+    for (const formula of canvasApp.formulas) {
+      for (const dataSourceName of formula.likelyDataSources) {
+        const dataSourceId = dataSourceByName.get(dataSourceName);
+
+        if (dataSourceId) {
+          registerEdge({
+            sourceArtifactId: formula.artifactId,
+            targetArtifactId: dataSourceId,
+            dependencyType: "formula-data-source",
+            provenance: formula.provenance,
+            confidence: formula.confidence,
+            resolved: true
+          });
+
+          if (
+            formula.formulaFeatures.includes("patch") ||
+            formula.formulaFeatures.includes("submitForm")
+          ) {
+            registerEdge({
+              sourceArtifactId: formula.artifactId,
+              targetArtifactId: dataSourceId,
+              dependencyType: "formula-target-table",
+              provenance: formula.provenance,
+              confidence: formula.confidence,
+              resolved: true
+            });
+          }
+        } else {
+          registerUnresolved(
+            formula.artifactId,
+            buildArtifactId("canvas-datasource", `${canvasApp.appId}-${dataSourceName}`),
+            "formula-data-source",
+            formula.provenance.sourcePath,
+            "canvas",
+            "DEPENDENCY_UNRESOLVED_CANVAS_DATASOURCE",
+            `Formula "${formula.artifactId}" references data source "${dataSourceName}" which is unresolved.`
+          );
+        }
+      }
+
+      for (const variableName of formula.likelyVariables) {
+        const variableId = variableByName.get(variableName);
+
+        if (variableId) {
+          registerEdge({
+            sourceArtifactId: formula.artifactId,
+            targetArtifactId: variableId,
+            dependencyType: "formula-variable",
+            provenance: formula.provenance,
+            confidence: formula.confidence,
+            resolved: true
+          });
+        } else {
+          registerUnresolved(
+            formula.artifactId,
+            buildArtifactId("canvas-variable", `${canvasApp.appId}-${variableName}`),
+            "formula-variable",
+            formula.provenance.sourcePath,
+            "canvas",
+            "DEPENDENCY_UNRESOLVED_CANVAS_VARIABLE",
+            `Formula "${formula.artifactId}" references variable "${variableName}" which is unresolved.`
+          );
+        }
+      }
+
+      for (const collectionName of formula.likelyCollections) {
+        const collectionId = collectionByName.get(collectionName);
+
+        if (collectionId) {
+          registerEdge({
+            sourceArtifactId: formula.artifactId,
+            targetArtifactId: collectionId,
+            dependencyType: "formula-collection",
+            provenance: formula.provenance,
+            confidence: formula.confidence,
+            resolved: true
+          });
+        } else {
+          registerUnresolved(
+            formula.artifactId,
+            buildArtifactId("canvas-collection", `${canvasApp.appId}-${collectionName}`),
+            "formula-collection",
+            formula.provenance.sourcePath,
+            "canvas",
+            "DEPENDENCY_UNRESOLVED_CANVAS_COLLECTION",
+            `Formula "${formula.artifactId}" references collection "${collectionName}" which is unresolved.`
+          );
+        }
+      }
+
+      if (formula.navigationTargetScreen) {
+        const screenId = screenByName.get(formula.navigationTargetScreen);
+
+        if (screenId) {
+          registerEdge({
+            sourceArtifactId: formula.artifactId,
+            targetArtifactId: screenId,
+            dependencyType: "navigate-target-screen",
+            provenance: formula.provenance,
+            confidence: formula.confidence,
+            resolved: true
+          });
+        } else {
+          registerUnresolved(
+            formula.artifactId,
+            buildArtifactId(
+              "canvas-screen",
+              `${canvasApp.appId}-${formula.navigationTargetScreen}`
+            ),
+            "navigate-target-screen",
+            formula.provenance.sourcePath,
+            "canvas",
+            "DEPENDENCY_UNRESOLVED_CANVAS_NAVIGATION",
+            `Formula "${formula.artifactId}" references navigation target "${formula.navigationTargetScreen}" which is unresolved.`
+          );
+        }
+      }
+    }
   }
 
   for (const role of ir.security.roles) {
@@ -321,10 +496,7 @@ const buildDependencyGraph = async (
   }
 
   for (const file of discoveryFiles) {
-    if (
-      file.classification !== "workflows-folder" &&
-      file.classification !== "canvas-source"
-    ) {
+    if (file.classification !== "workflows-folder") {
       continue;
     }
 
@@ -337,15 +509,12 @@ const buildDependencyGraph = async (
       continue;
     }
 
-    const ownerArtifactId = file.classification === "workflows-folder"
-      ? buildArtifactId("workflow", path.parse(file.path).name || file.path)
-      : buildArtifactId("canvas-app", path.parse(file.path).name || file.path);
+    const ownerArtifactId = buildArtifactId(
+      "workflow",
+      path.parse(file.path).name || file.path
+    );
 
-    if (file.classification === "workflows-folder" && !flowIds.has(ownerArtifactId)) {
-      continue;
-    }
-
-    if (file.classification === "canvas-source" && !canvasIds.has(ownerArtifactId)) {
+    if (!flowIds.has(ownerArtifactId)) {
       continue;
     }
 
@@ -361,7 +530,7 @@ const buildDependencyGraph = async (
           dependencyType: "flow-connection-reference",
           provenance: {
             sourcePath: file.path,
-            sourceType: file.classification === "workflows-folder" ? "flow" : "canvas"
+            sourceType: "flow"
           },
           confidence: 0.85,
           resolved: true
@@ -372,7 +541,7 @@ const buildDependencyGraph = async (
           connectionReference.artifactId,
           "flow-connection-reference",
           file.path,
-          file.classification === "workflows-folder" ? "flow" : "canvas",
+          "flow",
           "DEPENDENCY_UNRESOLVED_CONNECTION_REFERENCE",
           `Connection reference "${connectionReference.logicalName}" was detected in "${file.path}" but could not be resolved.`
         );
@@ -391,7 +560,7 @@ const buildDependencyGraph = async (
           dependencyType: "environment-variable-dependent-artifact",
           provenance: {
             sourcePath: file.path,
-            sourceType: file.classification === "workflows-folder" ? "flow" : "canvas"
+            sourceType: "flow"
           },
           confidence: 0.8,
           resolved: true
@@ -402,10 +571,37 @@ const buildDependencyGraph = async (
           ownerArtifactId,
           "environment-variable-dependent-artifact",
           file.path,
-          file.classification === "workflows-folder" ? "flow" : "canvas",
+          "flow",
           "DEPENDENCY_UNRESOLVED_ENVIRONMENT_VARIABLE",
           `Environment variable "${environmentVariable.schemaName}" was referenced in "${file.path}" but is unresolved.`
         );
+      }
+    }
+  }
+
+  for (const canvasApp of ir.canvasApps) {
+    if (!canvasAppIds.has(canvasApp.artifactId)) {
+      continue;
+    }
+
+    const formulaOwners = [
+      ...canvasApp.formulas,
+      ...canvasApp.screens.flatMap((screen) => screen.formulas),
+      ...canvasApp.components.flatMap((component) => component.formulas)
+    ];
+
+    for (const formula of formulaOwners) {
+      for (const environmentVariable of ir.environmentVariables) {
+        if (formula.rawExpression.includes(environmentVariable.schemaName)) {
+          registerEdge({
+            sourceArtifactId: environmentVariable.artifactId,
+            targetArtifactId: formula.artifactId,
+            dependencyType: "environment-variable-dependent-artifact",
+            provenance: formula.provenance,
+            confidence: formula.confidence,
+            resolved: true
+          });
+        }
       }
     }
   }
@@ -425,14 +621,12 @@ export const analyseSolutionFolder = async (
   const discoveryResult = await discoverSolutionFiles(solutionPath);
   const manifestResult = await parseSolutionManifest(solutionPath, discoveryResult.data);
   const dataverseResult = await parseDataverseMetadata(solutionPath, discoveryResult.data);
+  const canvasResult = await parseCanvasApps(solutionPath, discoveryResult.data);
   const infrastructureResult = await parseSolutionInfrastructure(
     solutionPath,
     discoveryResult.data
   );
-  const { flowArtifacts, canvasArtifacts } = discoverInventoryArtifacts(
-    solutionPath,
-    discoveryResult.data.files
-  );
+  const flowArtifacts = discoverFlowArtifacts(discoveryResult.data.files);
   let ir = createEmptyPowerPlatformIR({
     solutionFolder: solutionPath
   });
@@ -451,16 +645,11 @@ export const analyseSolutionFolder = async (
     }
   });
   ir = mergeParseResultIntoIR(ir, "canvasApps", {
-    data: canvasArtifacts,
-    warnings: [],
-    unsupported: [],
-    confidence: clampConfidence(
-      1 - canvasArtifacts.length * 0.01
-    ),
-    provenance: {
-      sourcePath: solutionPath,
-      sourceType: "canvas"
-    }
+    data: canvasResult.data,
+    warnings: canvasResult.warnings,
+    unsupported: canvasResult.unsupported,
+    confidence: canvasResult.confidence,
+    provenance: canvasResult.provenance
   });
   ir = mergeParseResultIntoIR(ir, "dataverse", dataverseResult);
   ir = mergeParseResultIntoIR(ir, "environmentVariables", {
@@ -507,10 +696,14 @@ export const analyseSolutionFolder = async (
   const analysisSummary: AnalysisSummary = {
     filesScanned: discoveryResult.data.filesScanned,
     classifiedFiles: discoveryResult.data.files.filter(
-      (file) => file.classification !== "unknown"
+      (file) =>
+        file.classification !== "unknown" &&
+        file.classification !== "canvas-unknown"
     ).length,
     unknownFiles: discoveryResult.data.files.filter(
-      (file) => file.classification === "unknown"
+      (file) =>
+        file.classification === "unknown" ||
+        file.classification === "canvas-unknown"
     ).length,
     solutionMetadataPresence:
       manifestResult.data.uniqueName !== "unknown_solution" ||
@@ -522,6 +715,21 @@ export const analyseSolutionFolder = async (
     ),
     relationships: dataverseResult.data.relationships.length,
     choices: dataverseResult.data.optionSets.length,
+    canvasApps: canvasResult.data.length,
+    canvasScreens: canvasResult.data.reduce(
+      (count, app) => count + app.screens.length,
+      0
+    ),
+    canvasControls: canvasResult.data.reduce(
+      (count, app) =>
+        count +
+        app.screens.reduce((screenCount, screen) => screenCount + screen.controls.length, 0),
+      0
+    ),
+    canvasFormulas: canvasResult.data.reduce(
+      (count, app) => count + app.formulas.length,
+      0
+    ),
     environmentVariables: infrastructureResult.data.environmentVariables.length,
     connectionReferences: infrastructureResult.data.connectionReferences.length,
     securityRoles: infrastructureResult.data.security.roles.length,
@@ -541,6 +749,10 @@ export const analyseSolutionFolder = async (
     attributesParsed: ir.analysisSummary.attributes,
     relationshipsParsed: ir.analysisSummary.relationships,
     choicesParsed: ir.analysisSummary.choices,
+    canvasAppsParsed: ir.analysisSummary.canvasApps,
+    canvasScreensParsed: ir.analysisSummary.canvasScreens,
+    canvasControlsParsed: ir.analysisSummary.canvasControls,
+    canvasFormulasParsed: ir.analysisSummary.canvasFormulas,
     environmentVariables: ir.analysisSummary.environmentVariables,
     connectionReferences: ir.analysisSummary.connectionReferences,
     securityRoles: ir.analysisSummary.securityRoles,

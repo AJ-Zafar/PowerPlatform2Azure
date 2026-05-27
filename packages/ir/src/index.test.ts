@@ -166,6 +166,10 @@ describe("PowerPlatformIR", () => {
       attributes: 4,
       relationships: 1,
       choices: 1,
+      canvasApps: 1,
+      canvasScreens: 2,
+      canvasControls: 4,
+      canvasFormulas: 3,
       environmentVariables: 2,
       connectionReferences: 1,
       securityRoles: 1,
@@ -175,6 +179,7 @@ describe("PowerPlatformIR", () => {
     });
 
     expect(merged.analysisSummary.filesScanned).toBe(10);
+    expect(merged.analysisSummary.canvasScreens).toBe(2);
     expect(merged.analysisSummary.unresolvedDependencies).toBe(2);
   });
 });

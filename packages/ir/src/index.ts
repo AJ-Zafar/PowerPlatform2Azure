@@ -1,4 +1,22 @@
 export { artifactIdSchema, type ArtifactId } from "./artifact-id";
+export {
+  canvasAppSchema,
+  canvasComponentSchema,
+  canvasControlSchema,
+  canvasFormulaFeatureSchema,
+  canvasFormulaSchema,
+  canvasLayoutPropertiesSchema,
+  canvasNavigationReferenceSchema,
+  canvasResourceSchema,
+  canvasScreenSchema,
+  type CanvasApp,
+  type CanvasComponent,
+  type CanvasControl,
+  type CanvasFormula,
+  type CanvasNavigationReference,
+  type CanvasResource,
+  type CanvasScreen
+} from "./canvas";
 export { confidenceScoreSchema, type ConfidenceScore } from "./confidence";
 export { sortByStableKey, stableStringify } from "./deterministic";
 export {

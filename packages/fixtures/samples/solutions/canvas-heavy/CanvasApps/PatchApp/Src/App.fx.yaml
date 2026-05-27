@@ -1,0 +1,4 @@
+Name: PatchApp
+DataSources:
+  - Name: Accounts
+    Type: Dataverse

@@ -1,0 +1,3 @@
+Name: StateApp
+Formulas:
+  OnStart: Set(appMode, "ready")

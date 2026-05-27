@@ -17,7 +17,13 @@ export type FileClassification =
   | "customizations"
   | "entity-metadata"
   | "workflows-folder"
-  | "canvas-source"
+  | "canvas-app"
+  | "canvas-screen"
+  | "canvas-component"
+  | "canvas-control"
+  | "canvas-formula"
+  | "canvas-resource"
+  | "canvas-unknown"
   | "web-resource"
   | "plugin-metadata"
   | "security-role"
@@ -40,6 +46,10 @@ export interface SolutionDiscoveryData {
 const classifyFile = (relativePath: string): FileClassification => {
   const normalized = relativePath.toLowerCase();
   const fileName = path.basename(normalized);
+  const isCanvasPath =
+    normalized.includes("/canvasapps/") ||
+    normalized.includes("/.msapp-unpacked/") ||
+    normalized.includes("/src/");
 
   if (fileName === "solution.xml") {
     return "solution-manifest";
@@ -57,8 +67,56 @@ const classifyFile = (relativePath: string): FileClassification => {
     return "workflows-folder";
   }
 
-  if (normalized.includes("/canvas") || normalized.includes("/canvasapps/")) {
-    return "canvas-source";
+  if (isCanvasPath) {
+    if (
+      fileName === "app.fx.yaml" ||
+      fileName === "app.yaml" ||
+      fileName === "app.yml"
+    ) {
+      return "canvas-app";
+    }
+
+    if (
+      normalized.includes("/screens/") ||
+      fileName.includes("screen") ||
+      fileName.endsWith(".screen.yaml")
+    ) {
+      return "canvas-screen";
+    }
+
+    if (
+      normalized.includes("/components/") ||
+      fileName.includes("component") ||
+      fileName.endsWith(".component.yaml")
+    ) {
+      return "canvas-component";
+    }
+
+    if (
+      normalized.includes("/controls/") ||
+      fileName.includes("control") ||
+      fileName.endsWith(".control.yaml")
+    ) {
+      return "canvas-control";
+    }
+
+    if (
+      fileName.endsWith(".fx.yaml") ||
+      fileName.endsWith(".fx.yml") ||
+      fileName.endsWith(".fx")
+    ) {
+      return "canvas-formula";
+    }
+
+    if (
+      normalized.includes("/resources/") ||
+      normalized.includes("/themes/") ||
+      normalized.includes("/media/")
+    ) {
+      return "canvas-resource";
+    }
+
+    return "canvas-unknown";
   }
 
   if (normalized.includes("/webresources/")) {
@@ -130,7 +188,7 @@ export const discoverSolutionFiles = async (
         sourceType: "solution"
       };
 
-      if (classification === "unknown") {
+      if (classification === "unknown" || classification === "canvas-unknown") {
         warnings.push(
           createWarning({
             code: "UNKNOWN_FILE_LAYOUT",

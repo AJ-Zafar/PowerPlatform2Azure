@@ -8,7 +8,7 @@ This document tracks deterministic mappings between Power Platform constructs an
 2. No generator may map directly from raw Power Platform files.
 3. Provenance from IR records must be preserved in generated artefact metadata.
 4. Serialization of intermediate and final artefacts must remain deterministic.
-5. Mapping work begins only after parser sections are stable in IR (currently solution, dataverse metadata, environment variables, connection references, and security inventory).
+5. Mapping work begins only after parser sections are stable in IR (currently solution, dataverse metadata, structured canvas metadata, environment variables, connection references, and security inventory).
 
 ## Current IR-ready sections
 
@@ -16,6 +16,7 @@ This document tracks deterministic mappings between Power Platform constructs an
 - `dataverse.entities`
 - `dataverse.relationships`
 - `dataverse.optionSets`
+- `canvasApps` (apps, screens, controls, formulas, resources, references)
 - `environmentVariables`
 - `connectionReferences`
 - `security.roles`
@@ -41,6 +42,12 @@ What this summary does not do:
 - produce recommendations
 
 Those remain assessment-engine responsibilities in later milestones.
+
+Canvas IR notes for future React generation:
+
+- Canvas app inventory now includes app properties, screen/control hierarchy, control layout metadata, raw formulas, and extracted references.
+- Power Fx is stored as raw expressions with lightweight function/reference classification only.
+- Unknown controls/properties are preserved and flagged to avoid silent migration fidelity loss.
 
 Planned mapping sections:
 

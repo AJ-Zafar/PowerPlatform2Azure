@@ -50,7 +50,7 @@ docs/
 - `packages/ir` is the single runtime-validated contract for all migration state.
 - All IR objects are strict Zod schemas to prevent silent shape drift.
 - Source-derived records include provenance so outputs can be traced back to files.
-- Parser implementations currently cover solution discovery, manifest metadata, Dataverse metadata, environment variables, connection references, and security role inventory.
+- Parser implementations currently cover solution discovery, manifest metadata, Dataverse metadata, structured Canvas metadata, environment variables, connection references, and security role inventory.
 - Every parser result is validated as `ParseResult<T>` with warnings, unsupported features, and confidence.
 - IR now includes a dependency graph edge model with unresolved-reference metadata.
 - IR now includes a lightweight parser summary layer (counts only), not full assessment scoring.
@@ -69,21 +69,29 @@ Current behavior in this sprint:
 2. Deterministically discover/classify solution files.
 3. Parse solution manifest (`solution.xml`) metadata.
 4. Parse Dataverse entities, attributes, relationships, and option sets.
-5. Parse environment variables, connection references, and security roles.
-6. Merge all parse results into validated `PowerPlatformIR`.
-7. Serialize deterministic JSON and write `ir.json`.
-8. Build deterministic dependency edges and unresolved dependency warnings.
-9. Attach lightweight analysis summary counts to `ir.json`.
-10. Print structured counts in CLI output.
+5. Parse structured Canvas app metadata (apps, screens, controls, formulas, resources, references).
+6. Parse environment variables, connection references, and security roles.
+7. Merge all parse results into validated `PowerPlatformIR`.
+8. Serialize deterministic JSON and write `ir.json`.
+9. Build deterministic dependency edges and unresolved dependency warnings.
+10. Attach lightweight analysis summary counts to `ir.json`.
+11. Print structured counts in CLI output.
 
 ## Dependency graph model
 
 Dependency edges currently capture where detectable:
 
 - solution -> entities/workflows/canvas apps
+- canvas app -> screens
+- screen -> controls
+- parent control -> child control
+- control/formula -> data sources
+- formula -> variables and collections
+- Navigate formulas -> target screens
+- Patch/SubmitForm formulas -> likely target data source
 - entities -> attributes/relationships
 - relationships -> target entities
-- flows/canvas artifacts -> connection references
+- flows -> connection references
 - environment variables -> dependent artifacts
 - security roles -> privilege-target entities
 

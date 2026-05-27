@@ -22,6 +22,26 @@ describe("analyseSolutionFolder", () => {
     expect(result.ir.analysisSummary.unresolvedDependencies).toBeGreaterThanOrEqual(0);
   });
 
+  it("includes structured canvas apps, screens, controls, and formulas", async () => {
+    const fixturePath = solutionFixturePath("canvas-heavy");
+    const result = await analyseSolutionFolder(fixturePath);
+
+    expect(result.summary.canvasAppsParsed).toBeGreaterThan(0);
+    expect(result.summary.canvasScreensParsed).toBeGreaterThan(0);
+    expect(result.summary.canvasControlsParsed).toBeGreaterThan(0);
+    expect(result.summary.canvasFormulasParsed).toBeGreaterThan(0);
+    expect(
+      result.ir.dependencyGraph.edges.some(
+        (edge) => edge.dependencyType === "canvas-app-screen"
+      )
+    ).toBe(true);
+    expect(
+      result.ir.dependencyGraph.edges.some(
+        (edge) => edge.dependencyType === "navigate-target-screen"
+      )
+    ).toBe(true);
+  });
+
   it("produces deterministic parsing output", async () => {
     const fixturePath = solutionFixturePath("dataverse-heavy");
     const resultA = await analyseSolutionFolder(fixturePath);
@@ -57,7 +77,7 @@ describe("analyseSolutionFolder", () => {
   });
 
   it("marks unresolved dependency edges with warnings", async () => {
-    const fixturePath = solutionFixturePath("mixed-partial");
+    const fixturePath = solutionFixturePath("canvas-heavy");
     const result = await analyseSolutionFolder(fixturePath);
 
     expect(result.summary.unresolvedDependencies).toBeGreaterThan(0);

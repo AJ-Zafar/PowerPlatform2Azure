@@ -49,6 +49,10 @@ describe("power-exit analyse command", () => {
     expect(stdOut[0]).toContain('"relationshipsParsed"');
     expect(stdOut[0]).toContain('"classifiedFiles"');
     expect(stdOut[0]).toContain('"choicesParsed"');
+    expect(stdOut[0]).toContain('"canvasAppsParsed"');
+    expect(stdOut[0]).toContain('"canvasScreensParsed"');
+    expect(stdOut[0]).toContain('"canvasControlsParsed"');
+    expect(stdOut[0]).toContain('"canvasFormulasParsed"');
     expect(stdOut[0]).toContain('"unresolvedDependencies"');
     expect(stdErr).toEqual([]);
 
@@ -94,6 +98,37 @@ describe("power-exit analyse command", () => {
     expect(exitCode).toBe(1);
     expect(stdOut).toEqual([]);
     expect(stdErr[0]).toContain('"code":"INVALID_OUTPUT_PATH"');
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("includes structured canvas data in generated IR output", async () => {
+    const tempRoot = await createTempDirectory();
+    const output = path.join(tempRoot, "out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/canvas-heavy"
+    );
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    const exitCode = await runCli(
+      ["analyse", inputFolder, "--out", output],
+      stdOut.push.bind(stdOut),
+      stdErr.push.bind(stdErr)
+    );
+
+    expect(exitCode).toBe(0);
+    const ir = JSON.parse(
+      await readFile(path.join(output, "ir.json"), "utf-8")
+    ) as ReturnType<typeof validatePowerPlatformIR>;
+
+    expect(ir.canvasApps.length).toBeGreaterThan(0);
+    expect(ir.canvasApps.some((app) => app.screens.length > 0)).toBe(true);
+    expect(ir.dependencyGraph.edges.some((edge) => edge.dependencyType === "canvas-app-screen")).toBe(
+      true
+    );
+    expect(stdErr).toEqual([]);
 
     await rm(tempRoot, { recursive: true, force: true });
   });

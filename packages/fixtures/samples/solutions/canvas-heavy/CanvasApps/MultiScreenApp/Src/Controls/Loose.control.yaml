@@ -1,0 +1,7 @@
+Screen:
+  Name: LooseScreen
+  Controls:
+    - Name: ctlLoose
+      Type: Label
+      Properties:
+        Text: "Loose"
