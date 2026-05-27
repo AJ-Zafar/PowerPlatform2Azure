@@ -58,6 +58,11 @@ const FORMULA_LAYOUT_KEYS = new Set([
   "TemplateSize"
 ]);
 
+type CanvasLayoutMode = CanvasControl["normalizedLayout"]["inferredLayoutMode"];
+type CanvasResponsiveHint = CanvasControl["normalizedLayout"]["responsiveHint"];
+type CanvasControlRole = CanvasControl["role"];
+type CanvasMigrationReadiness = CanvasControl["migrationReadiness"];
+
 interface CanvasAppAccumulator {
   appId: string;
   appName: string;
@@ -75,6 +80,222 @@ interface CanvasAppAccumulator {
   warnings: ParserWarning[];
   provenance: SourceProvenance;
 }
+
+const isNumericLike = (value: unknown): value is number | string =>
+  typeof value === "number" || typeof value === "string";
+
+const normalizeBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (normalized === "true") {
+      return true;
+    }
+
+    if (normalized === "false") {
+      return false;
+    }
+  }
+
+  return undefined;
+};
+
+const inferLayoutMode = (
+  controlType: string,
+  layoutProperties: CanvasControl["layoutProperties"],
+  rawProperties: Record<string, unknown>
+): CanvasLayoutMode => {
+  const normalizedType = controlType.toLowerCase();
+  const layoutDirection =
+    typeof layoutProperties.LayoutDirection === "string"
+      ? layoutProperties.LayoutDirection.toLowerCase()
+      : undefined;
+
+  if (normalizedType === "gallery") {
+    return "galleryTemplate";
+  }
+
+  if (normalizedType === "form" || normalizedType === "datacard") {
+    return "formLayout";
+  }
+
+  if (layoutDirection === "vertical") {
+    return "verticalStack";
+  }
+
+  if (layoutDirection === "horizontal") {
+    return "horizontalStack";
+  }
+
+  if (
+    "Columns" in rawProperties ||
+    "ColumnCount" in rawProperties ||
+    "RowCount" in rawProperties
+  ) {
+    return "grid";
+  }
+
+  if (isNumericLike(layoutProperties.X) || isNumericLike(layoutProperties.Y)) {
+    return "absolute";
+  }
+
+  return "unknown";
+};
+
+const inferResponsiveHint = (
+  layoutProperties: CanvasControl["layoutProperties"],
+  rawProperties: Record<string, unknown>
+): CanvasResponsiveHint => {
+  if (layoutProperties.Wrap === true || String(layoutProperties.Wrap).toLowerCase() === "true") {
+    return "wrap";
+  }
+
+  const widthValue = layoutProperties.Width;
+  const heightValue = layoutProperties.Height;
+  const widthText = typeof widthValue === "string" ? widthValue : "";
+  const heightText = typeof heightValue === "string" ? heightValue : "";
+
+  if (
+    widthText.includes("Parent.") ||
+    heightText.includes("Parent.") ||
+    "FillPortion" in rawProperties
+  ) {
+    return "fillParent";
+  }
+
+  if (widthText.includes("App.") || heightText.includes("App.")) {
+    return "stretch";
+  }
+
+  if (typeof widthValue === "number" || typeof heightValue === "number") {
+    return "fixed";
+  }
+
+  return "unknown";
+};
+
+const classifyControlRole = (
+  controlType: string,
+  controlName: string,
+  parentControl?: string
+): { role: CanvasControlRole; roleConfidence: number } => {
+  const normalizedType = controlType.toLowerCase();
+  const normalizedName = controlName.toLowerCase();
+
+  if (normalizedType === "screen" || (normalizedType === "container" && !parentControl)) {
+    return { role: "pageContainer", roleConfidence: 0.92 };
+  }
+
+  if (normalizedType === "container") {
+    return { role: "sectionContainer", roleConfidence: 0.88 };
+  }
+
+  if (normalizedType === "label") {
+    if (
+      normalizedName.includes("title") ||
+      normalizedName.includes("header") ||
+      normalizedName.includes("heading")
+    ) {
+      return { role: "heading", roleConfidence: 0.8 };
+    }
+
+    return { role: "text", roleConfidence: 0.85 };
+  }
+
+  if (normalizedType === "button") {
+    return { role: "button", roleConfidence: 0.95 };
+  }
+
+  if (normalizedType === "textbox" || normalizedType === "textinput") {
+    return { role: "input", roleConfidence: 0.9 };
+  }
+
+  if (
+    normalizedType === "dropdown" ||
+    normalizedType === "combobox" ||
+    normalizedType === "listbox" ||
+    normalizedType === "toggle" ||
+    normalizedType === "checkbox"
+  ) {
+    return { role: "select", roleConfidence: 0.85 };
+  }
+
+  if (normalizedType === "datepicker") {
+    return { role: "dateInput", roleConfidence: 0.85 };
+  }
+
+  if (normalizedType === "gallery") {
+    return { role: "gallery", roleConfidence: 0.95 };
+  }
+
+  if (normalizedType === "form") {
+    return { role: "form", roleConfidence: 0.95 };
+  }
+
+  if (normalizedType === "datacard") {
+    return { role: "dataCard", roleConfidence: 0.92 };
+  }
+
+  if (normalizedType === "image") {
+    return { role: "image", roleConfidence: 0.9 };
+  }
+
+  if (normalizedType === "icon") {
+    return { role: "icon", roleConfidence: 0.9 };
+  }
+
+  if (normalizedType === "htmltext") {
+    return { role: "html", roleConfidence: 0.95 };
+  }
+
+  if (
+    normalizedType.includes("custom") ||
+    normalizedType.includes("component") ||
+    normalizedName.startsWith("cmp")
+  ) {
+    return { role: "customComponent", roleConfidence: 0.65 };
+  }
+
+  if (normalizedType === "rectangle") {
+    return { role: "card", roleConfidence: 0.7 };
+  }
+
+  return { role: "unknown", roleConfidence: 0.4 };
+};
+
+const classifyReadiness = (
+  layoutComplexity: number,
+  formulaComplexity: number,
+  dataBindingComplexity: number,
+  unsupportedFeatureCount: number,
+  forceBlocked = false
+): CanvasMigrationReadiness => {
+  if (forceBlocked || unsupportedFeatureCount >= 2) {
+    return "blocked";
+  }
+
+  if (
+    layoutComplexity >= 0.7 ||
+    formulaComplexity >= 0.7 ||
+    dataBindingComplexity >= 0.7
+  ) {
+    return "low";
+  }
+
+  if (
+    layoutComplexity >= 0.35 ||
+    formulaComplexity >= 0.35 ||
+    dataBindingComplexity >= 0.35
+  ) {
+    return "medium";
+  }
+
+  return "high";
+};
 
 const asObjectRecord = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
@@ -247,6 +468,20 @@ const createFormula = (
     ),
     (feature) => feature
   );
+  const complexityScore = clampConfidence(
+    Math.min(
+      1,
+      functionNames.length * 0.12 +
+        (rawExpression.length > 80 ? 0.2 : 0) +
+        (formulaFeatures.length > 2 ? 0.2 : 0)
+    )
+  );
+  const complexity =
+    complexityScore >= 0.7
+      ? "complex"
+      : complexityScore >= 0.35
+        ? "moderate"
+        : "simple";
 
   return {
     artifactId: buildArtifactId(
@@ -266,6 +501,8 @@ const createFormula = (
     likelyCollections,
     navigationTargetScreen: navigateTargets[0],
     formulaFeatures: formulaFeatures.length > 0 ? formulaFeatures : ["unknown"],
+    complexityScore,
+    complexity,
     provenance: {
       sourcePath,
       sourceType: "canvas"
@@ -282,7 +519,9 @@ const parseControl = (
   warnings: ParserWarning[],
   unsupported: UnsupportedFeature[],
   controlAccumulator: CanvasControl[],
-  parentControl?: string
+  parentControl?: string,
+  depth = 1,
+  orderIndex = 0
 ): CanvasControl | undefined => {
   const controlObject = asObjectRecord(rawControl);
   const controlName =
@@ -321,8 +560,11 @@ const parseControl = (
   const formulasByProperty: CanvasControl["formulasByProperty"] = [];
   const dataBindingHints = new Set<string>();
   const layoutProperties: CanvasControl["layoutProperties"] = {};
+  let localUnsupportedFeatureCount = 0;
+  let unresolvedBindingCount = 0;
 
   if (!KNOWN_CONTROL_TYPES.has(controlType.toLowerCase())) {
+    localUnsupportedFeatureCount += 1;
     warnings.push(
       createWarning({
         code: "CANVAS_UNKNOWN_CONTROL_TYPE",
@@ -367,7 +609,8 @@ const parseControl = (
     if (
       propertyName === "Items" ||
       propertyName === "DataSource" ||
-      propertyName === "Default"
+      propertyName === "Default" ||
+      propertyName === "DataField"
     ) {
       dataBindingHints.add(propertyValue);
     }
@@ -391,6 +634,21 @@ const parseControl = (
         propertyName,
         formulaArtifactId: formula.artifactId
       });
+
+      if (formula.complexity === "complex") {
+        warnings.push(
+          createWarning({
+            code: "CANVAS_COMPLEX_FORMULA",
+            message: `Control "${controlName}" has a complex formula on property "${propertyName}".`,
+            sourceLocation: sourcePath,
+            provenance: {
+              sourcePath,
+              sourceType: "canvas"
+            },
+            confidence: 0.85
+          })
+        );
+      }
     }
   }
 
@@ -403,13 +661,140 @@ const parseControl = (
       warnings,
       unsupported,
       controlAccumulator,
-      controlArtifactId
+      controlArtifactId,
+      depth + 1,
+      children.length
     );
 
     if (childControl) {
       children.push(childControl);
     }
   }
+
+  const { role, roleConfidence } = classifyControlRole(
+    controlType,
+    controlName,
+    parentControl
+  );
+  const inferredLayoutMode = inferLayoutMode(controlType, layoutProperties, properties);
+  const responsiveHint = inferResponsiveHint(layoutProperties, properties);
+  const visible = normalizeBoolean(layoutProperties.Visible);
+  const displayMode =
+    typeof layoutProperties.DisplayMode === "string"
+      ? layoutProperties.DisplayMode
+      : undefined;
+  const zIndexRaw = properties.ZIndex;
+  const zIndex =
+    typeof zIndexRaw === "number"
+      ? zIndexRaw
+      : typeof zIndexRaw === "string" && zIndexRaw.trim() !== ""
+        ? Number(zIndexRaw)
+        : undefined;
+
+  if (depth >= 4) {
+    warnings.push(
+      createWarning({
+        code: "CANVAS_DEEPLY_NESTED_CONTROLS",
+        message: `Control "${controlName}" is deeply nested (${depth} levels).`,
+        sourceLocation: sourcePath,
+        provenance: {
+          sourcePath,
+          sourceType: "canvas"
+        },
+        confidence: 0.8
+      })
+    );
+  }
+
+  if (role === "html") {
+    warnings.push(
+      createWarning({
+        code: "CANVAS_HTML_TEXT_USAGE",
+        message: `Control "${controlName}" uses HtmlText and may require manual migration.`,
+        sourceLocation: sourcePath,
+        provenance: {
+          sourcePath,
+          sourceType: "canvas"
+        },
+        confidence: 0.9
+      })
+    );
+  }
+
+  if (role === "customComponent") {
+    localUnsupportedFeatureCount += 1;
+    warnings.push(
+      createWarning({
+        code: "CANVAS_CUSTOM_COMPONENT_USAGE",
+        message: `Control "${controlName}" appears to be a custom component.`,
+        sourceLocation: sourcePath,
+        provenance: {
+          sourcePath,
+          sourceType: "canvas"
+        },
+        confidence: 0.9
+      })
+    );
+  }
+
+  if (role === "unknown") {
+    localUnsupportedFeatureCount += 1;
+  }
+
+  for (const hint of dataBindingHints) {
+    if (
+      !dataSourceNames.has(hint) &&
+      !hint.includes("ThisItem") &&
+      !hint.includes("Parent.")
+    ) {
+      unresolvedBindingCount += 1;
+      warnings.push(
+        createWarning({
+          code: "CANVAS_UNRESOLVED_DATA_BINDING",
+          message: `Control "${controlName}" has unresolved data binding hint "${hint}".`,
+          sourceLocation: sourcePath,
+          provenance: {
+            sourcePath,
+            sourceType: "canvas"
+          },
+          confidence: 0.85
+        })
+      );
+    }
+  }
+
+  const layoutComplexityBase: Record<CanvasLayoutMode, number> = {
+    absolute: 0.7,
+    verticalStack: 0.3,
+    horizontalStack: 0.3,
+    grid: 0.6,
+    galleryTemplate: 0.55,
+    formLayout: 0.5,
+    unknown: 0.8
+  };
+  const layoutComplexity = clampConfidence(
+    layoutComplexityBase[inferredLayoutMode] +
+      Math.min(0.25, (depth - 1) * 0.08) +
+      Math.min(0.2, childControlsRaw.length * 0.03)
+  );
+  const formulaComplexity = formulas.length
+    ? clampConfidence(
+        formulas.reduce((sum, formula) => sum + formula.complexityScore, 0) /
+          formulas.length
+      )
+    : 0;
+  const dataBindingComplexity = clampConfidence(
+    Math.min(1, dataBindingHints.size * 0.2 + unresolvedBindingCount * 0.3)
+  );
+  const migrationReadiness = classifyReadiness(
+    layoutComplexity,
+    formulaComplexity,
+    dataBindingComplexity,
+    localUnsupportedFeatureCount,
+    role === "unknown" || role === "customComponent"
+  );
+  const boundField =
+    typeof properties.DataField === "string" ? properties.DataField : undefined;
 
   const control: CanvasControl = {
     artifactId: controlArtifactId,
@@ -424,7 +809,32 @@ const parseControl = (
     ),
     formulas: sorted(formulas, (formula) => formula.artifactId),
     layoutProperties,
+    normalizedLayout: {
+      absoluteX: layoutProperties.X,
+      absoluteY: layoutProperties.Y,
+      width: layoutProperties.Width,
+      height: layoutProperties.Height,
+      parentRelativePosition: {
+        x: layoutProperties.X,
+        y: layoutProperties.Y
+      },
+      inferredLayoutMode,
+      responsiveHint,
+      visible,
+      displayMode,
+      zIndex: Number.isFinite(zIndex) ? zIndex : undefined,
+      orderIndex,
+      rawLayoutProperties: layoutProperties
+    },
     dataBindingHints: sorted(Array.from(dataBindingHints), (hint) => hint),
+    role,
+    roleConfidence,
+    boundField,
+    layoutComplexity,
+    formulaComplexity,
+    dataBindingComplexity,
+    unsupportedFeatureCount: localUnsupportedFeatureCount,
+    migrationReadiness,
     provenance: {
       sourcePath,
       sourceType: "canvas"
@@ -452,7 +862,7 @@ const parseScreenFile = (
   const controlsRaw = asArray(screenRoot.Controls);
   const controls: CanvasControl[] = [];
 
-  for (const rawControl of controlsRaw) {
+  for (const [controlIndex, rawControl] of controlsRaw.entries()) {
     parseControl(
       appId,
       sourcePath,
@@ -460,13 +870,64 @@ const parseScreenFile = (
       dataSourceNames,
       warnings,
       unsupported,
-      controls
+      controls,
+      undefined,
+      1,
+      controlIndex
     );
   }
 
   const formulas = sorted(
     controls.flatMap((control) => control.formulas),
     (formula) => formula.artifactId
+  );
+  const layoutComplexity = controls.length
+    ? clampConfidence(
+        controls.reduce((sum, control) => sum + control.layoutComplexity, 0) /
+          controls.length
+      )
+    : 0;
+  const formulaComplexity = formulas.length
+    ? clampConfidence(
+        formulas.reduce((sum, formula) => sum + formula.complexityScore, 0) /
+          formulas.length
+      )
+    : 0;
+  const dataBindingComplexity = controls.length
+    ? clampConfidence(
+        controls.reduce((sum, control) => sum + control.dataBindingComplexity, 0) /
+          controls.length
+      )
+    : 0;
+  const unsupportedFeatureCount = controls.reduce(
+    (sum, control) => sum + control.unsupportedFeatureCount,
+    0
+  );
+  const absoluteCount = controls.filter(
+    (control) => control.normalizedLayout.inferredLayoutMode === "absolute"
+  ).length;
+  const absoluteRatio = controls.length > 0 ? absoluteCount / controls.length : 0;
+
+  if (absoluteRatio >= 0.6) {
+    warnings.push(
+      createWarning({
+        code: "CANVAS_LAYOUT_ABSOLUTE_HEAVY",
+        message: `Screen "${screenName}" relies heavily on absolute positioning.`,
+        sourceLocation: sourcePath,
+        provenance: {
+          sourcePath,
+          sourceType: "canvas"
+        },
+        confidence: 0.8
+      })
+    );
+  }
+
+  const migrationReadiness = classifyReadiness(
+    layoutComplexity,
+    formulaComplexity,
+    dataBindingComplexity,
+    unsupportedFeatureCount
   );
 
   return {
@@ -477,6 +938,11 @@ const parseScreenFile = (
     formulas,
     layoutMetadata: asObjectRecord(screenRoot.Layout),
     order: screenIndex,
+    layoutComplexity,
+    formulaComplexity,
+    dataBindingComplexity,
+    unsupportedFeatureCount,
+    migrationReadiness,
     provenance: {
       sourcePath,
       sourceType: "canvas"
@@ -826,6 +1292,11 @@ export const parseCanvasApps = async (
         collections: [],
         navigationReferences: [],
         formulas: allFormulas,
+        layoutComplexity: 0,
+        formulaComplexity: 0,
+        dataBindingComplexity: 0,
+        unsupportedFeatureCount: 0,
+        migrationReadiness: "high",
         unsupportedFeatures: [],
         warnings: [],
         provenance: app.provenance,
@@ -844,6 +1315,39 @@ export const parseCanvasApps = async (
           appWarnings.push(warning);
         }
       }
+
+      const screenLayoutComplexity = app.screens.length
+        ? app.screens.reduce((sum, screen) => sum + screen.layoutComplexity, 0) /
+          app.screens.length
+        : 0;
+      const appFormulaComplexity = allFormulas.length
+        ? allFormulas.reduce((sum, formula) => sum + formula.complexityScore, 0) /
+          allFormulas.length
+        : 0;
+      const controlCount = app.screens.reduce(
+        (sum, screen) => sum + screen.controls.length,
+        0
+      );
+      const appDataBindingComplexity = controlCount
+        ? app.screens.reduce(
+            (sum, screen) =>
+              sum +
+              screen.controls.reduce(
+                (controlSum, control) => controlSum + control.dataBindingComplexity,
+                0
+              ),
+            0
+          ) / controlCount
+        : 0;
+      const appUnsupportedFeatureCount =
+        appUnsupported.length +
+        app.screens.reduce((sum, screen) => sum + screen.unsupportedFeatureCount, 0);
+      const appMigrationReadiness = classifyReadiness(
+        clampConfidence(screenLayoutComplexity),
+        clampConfidence(appFormulaComplexity),
+        clampConfidence(appDataBindingComplexity),
+        appUnsupportedFeatureCount
+      );
 
       return {
         artifactId: app.appId,
@@ -877,6 +1381,11 @@ export const parseCanvasApps = async (
         ),
         navigationReferences,
         formulas: allFormulas,
+        layoutComplexity: clampConfidence(screenLayoutComplexity),
+        formulaComplexity: clampConfidence(appFormulaComplexity),
+        dataBindingComplexity: clampConfidence(appDataBindingComplexity),
+        unsupportedFeatureCount: appUnsupportedFeatureCount,
+        migrationReadiness: appMigrationReadiness,
         unsupportedFeatures: sorted(appUnsupported, (feature) => feature.featureType),
         warnings: sorted(appWarnings, (warning) => `${warning.code}:${warning.sourceLocation}`),
         provenance: app.provenance,

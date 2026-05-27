@@ -54,6 +54,7 @@ docs/
 - Every parser result is validated as `ParseResult<T>` with warnings, unsupported features, and confidence.
 - IR now includes a dependency graph edge model with unresolved-reference metadata.
 - IR now includes a lightweight parser summary layer (counts only), not full assessment scoring.
+- Canvas controls now include normalized layout metadata, control role classification, and heuristic migration-readiness metadata for UI migration planning.
 
 ## CLI skeleton (current pass)
 
@@ -69,13 +70,13 @@ Current behavior in this sprint:
 2. Deterministically discover/classify solution files.
 3. Parse solution manifest (`solution.xml`) metadata.
 4. Parse Dataverse entities, attributes, relationships, and option sets.
-5. Parse structured Canvas app metadata (apps, screens, controls, formulas, resources, references).
+5. Parse structured Canvas app metadata (apps, screens, controls, formulas, resources, references), normalize control layout, classify control roles, and score Canvas migration readiness heuristically.
 6. Parse environment variables, connection references, and security roles.
 7. Merge all parse results into validated `PowerPlatformIR`.
 8. Serialize deterministic JSON and write `ir.json`.
 9. Build deterministic dependency edges and unresolved dependency warnings.
 10. Attach lightweight analysis summary counts to `ir.json`.
-11. Print structured counts in CLI output.
+11. Print structured counts in CLI output, including Canvas readiness and role distribution.
 
 ## Dependency graph model
 
@@ -84,7 +85,12 @@ Dependency edges currently capture where detectable:
 - solution -> entities/workflows/canvas apps
 - canvas app -> screens
 - screen -> controls
+- screen -> layout containers
 - parent control -> child control
+- gallery -> template child controls
+- form -> data cards
+- data cards -> bound fields
+- controls -> formulas
 - control/formula -> data sources
 - formula -> variables and collections
 - Navigate formulas -> target screens

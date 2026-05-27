@@ -53,6 +53,12 @@ describe("power-exit analyse command", () => {
     expect(stdOut[0]).toContain('"canvasScreensParsed"');
     expect(stdOut[0]).toContain('"canvasControlsParsed"');
     expect(stdOut[0]).toContain('"canvasFormulasParsed"');
+    expect(stdOut[0]).toContain('"canvasScreensByReadiness"');
+    expect(stdOut[0]).toContain('"canvasControlsByRole"');
+    expect(stdOut[0]).toContain('"canvasBlockedControls"');
+    expect(stdOut[0]).toContain('"canvasUnknownControls"');
+    expect(stdOut[0]).toContain('"canvasComplexFormulas"');
+    expect(stdOut[0]).toContain('"canvasLayoutWarnings"');
     expect(stdOut[0]).toContain('"unresolvedDependencies"');
     expect(stdErr).toEqual([]);
 

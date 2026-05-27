@@ -1,0 +1,18 @@
+Screen:
+  Name: HorizontalScreen
+  Controls:
+    - Name: conHorizontal
+      Type: Container
+      Properties:
+        LayoutDirection: Horizontal
+        Width: Parent.Width
+        Height: 120
+      Children:
+        - Name: btnLeft
+          Type: Button
+          Properties:
+            Text: "Left"
+        - Name: btnRight
+          Type: Button
+          Properties:
+            Text: "Right"

@@ -41,6 +41,48 @@ describe("parseCanvasApps", () => {
     expect(
       result.data.some((app) => app.variables.some((variable) => variable.name === "appMode"))
     ).toBe(true);
+    expect(
+      result.data.some((app) =>
+        app.screens.some((screen) =>
+          screen.controls.some(
+            (control) => (control as unknown as { role?: string }).role === "button"
+          )
+        )
+      )
+    ).toBe(true);
+    expect(
+      result.data.some((app) =>
+        app.screens.some((screen) =>
+          screen.controls.some(
+            (control) =>
+              (control as unknown as { normalizedLayout?: { inferredLayoutMode?: string } })
+                .normalizedLayout?.inferredLayoutMode === "absolute"
+          )
+        )
+      )
+    ).toBe(true);
+    expect(
+      result.data.some((app) =>
+        app.screens.some((screen) =>
+          screen.controls.some(
+            (control) =>
+              (control as unknown as { normalizedLayout?: { inferredLayoutMode?: string } })
+                .normalizedLayout?.inferredLayoutMode === "verticalStack"
+          )
+        )
+      )
+    ).toBe(true);
+    expect(
+      result.data.some((app) =>
+        app.screens.some((screen) =>
+          screen.controls.some(
+            (control) =>
+              (control as unknown as { normalizedLayout?: { inferredLayoutMode?: string } })
+                .normalizedLayout?.inferredLayoutMode === "horizontalStack"
+          )
+        )
+      )
+    ).toBe(true);
   });
 
   it("warns and continues for malformed canvas source files", async () => {
@@ -76,5 +118,61 @@ describe("parseCanvasApps", () => {
     const resultB = await parseCanvasApps(fixturePath, discovery.data);
 
     expect(JSON.stringify(resultA.data)).toBe(JSON.stringify(resultB.data));
+  });
+
+  it("adds readiness metadata and migration readiness states", async () => {
+    const fixturePath = solutionFixturePath("canvas-heavy");
+    const discovery = await discoverSolutionFiles(fixturePath);
+    const result = await parseCanvasApps(fixturePath, discovery.data);
+
+    expect(
+      result.data.some(
+        (app) =>
+          Boolean((app as unknown as { migrationReadiness?: string }).migrationReadiness) &&
+          Boolean(
+            (app as unknown as { layoutComplexity?: number }).layoutComplexity !== undefined
+          )
+      )
+    ).toBe(true);
+    expect(
+      result.data.some((app) =>
+        app.screens.some(
+          (screen) =>
+            Boolean((screen as unknown as { migrationReadiness?: string }).migrationReadiness) &&
+            Boolean(
+              (screen as unknown as { formulaComplexity?: number }).formulaComplexity !==
+                undefined
+            )
+        )
+      )
+    ).toBe(true);
+    expect(
+      result.data.some((app) =>
+        app.screens.some((screen) =>
+          screen.controls.some((control) =>
+            Boolean((control as unknown as { migrationReadiness?: string }).migrationReadiness)
+          )
+        )
+      )
+    ).toBe(true);
+  });
+
+  it("emits readiness warnings for layout risk and html/custom usage", async () => {
+    const fixturePath = solutionFixturePath("canvas-heavy");
+    const discovery = await discoverSolutionFiles(fixturePath);
+    const result = await parseCanvasApps(fixturePath, discovery.data);
+
+    expect(
+      result.warnings.some((warning) => warning.code === "CANVAS_LAYOUT_ABSOLUTE_HEAVY")
+    ).toBe(true);
+    expect(result.warnings.some((warning) => warning.code === "CANVAS_HTML_TEXT_USAGE")).toBe(
+      true
+    );
+    expect(
+      result.warnings.some((warning) => warning.code === "CANVAS_CUSTOM_COMPONENT_USAGE")
+    ).toBe(true);
+    expect(
+      result.warnings.some((warning) => warning.code === "CANVAS_DEEPLY_NESTED_CONTROLS")
+    ).toBe(true);
   });
 });

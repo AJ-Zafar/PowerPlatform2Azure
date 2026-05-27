@@ -170,6 +170,20 @@ describe("PowerPlatformIR", () => {
       canvasScreens: 2,
       canvasControls: 4,
       canvasFormulas: 3,
+      canvasScreensByReadiness: {
+        high: 1,
+        medium: 1,
+        low: 0,
+        blocked: 0
+      },
+      canvasControlsByRole: {
+        button: 2,
+        text: 2
+      },
+      canvasBlockedControls: 0,
+      canvasUnknownControls: 0,
+      canvasComplexFormulas: 1,
+      canvasLayoutWarnings: 1,
       environmentVariables: 2,
       connectionReferences: 1,
       securityRoles: 1,

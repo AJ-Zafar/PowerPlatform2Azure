@@ -30,6 +30,10 @@ describe("analyseSolutionFolder", () => {
     expect(result.summary.canvasScreensParsed).toBeGreaterThan(0);
     expect(result.summary.canvasControlsParsed).toBeGreaterThan(0);
     expect(result.summary.canvasFormulasParsed).toBeGreaterThan(0);
+    expect(result.summary.canvasBlockedControls).toBeGreaterThanOrEqual(0);
+    expect(result.summary.canvasComplexFormulas).toBeGreaterThanOrEqual(0);
+    expect(result.summary.canvasLayoutWarnings).toBeGreaterThanOrEqual(0);
+    expect(result.summary.canvasUnknownControls).toBeGreaterThanOrEqual(0);
     expect(
       result.ir.dependencyGraph.edges.some(
         (edge) => edge.dependencyType === "canvas-app-screen"
@@ -38,6 +42,21 @@ describe("analyseSolutionFolder", () => {
     expect(
       result.ir.dependencyGraph.edges.some(
         (edge) => edge.dependencyType === "navigate-target-screen"
+      )
+    ).toBe(true);
+    expect(
+      result.ir.dependencyGraph.edges.some(
+        (edge) => edge.dependencyType === "control-formula"
+      )
+    ).toBe(true);
+    expect(
+      result.ir.dependencyGraph.edges.some(
+        (edge) => edge.dependencyType === "form-data-card"
+      )
+    ).toBe(true);
+    expect(
+      result.ir.dependencyGraph.edges.some(
+        (edge) => edge.dependencyType === "gallery-template-control"
       )
     ).toBe(true);
   });

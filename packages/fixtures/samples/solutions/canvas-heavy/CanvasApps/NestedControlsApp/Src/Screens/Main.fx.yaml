@@ -10,7 +10,10 @@ Screen:
         - Name: conInner
           Type: Container
           Children:
-            - Name: lblDeep
-              Type: Label
-              Properties:
-                Text: "Nested"
+            - Name: conLevel3
+              Type: Container
+              Children:
+                - Name: lblDeep
+                  Type: Label
+                  Properties:
+                    Text: "Nested"

@@ -17,6 +17,51 @@ export const canvasFormulaFeatureSchema = z.enum([
   "unknown"
 ]);
 
+export const canvasLayoutModeSchema = z.enum([
+  "absolute",
+  "verticalStack",
+  "horizontalStack",
+  "grid",
+  "galleryTemplate",
+  "formLayout",
+  "unknown"
+]);
+
+export const canvasResponsiveHintSchema = z.enum([
+  "fixed",
+  "stretch",
+  "wrap",
+  "fillParent",
+  "unknown"
+]);
+
+export const canvasControlRoleSchema = z.enum([
+  "pageContainer",
+  "sectionContainer",
+  "card",
+  "text",
+  "heading",
+  "button",
+  "input",
+  "select",
+  "dateInput",
+  "gallery",
+  "form",
+  "dataCard",
+  "image",
+  "icon",
+  "html",
+  "customComponent",
+  "unknown"
+]);
+
+export const canvasMigrationReadinessSchema = z.enum([
+  "high",
+  "medium",
+  "low",
+  "blocked"
+]);
+
 export const canvasLayoutPropertiesSchema = z
   .object({
     X: z.union([z.number(), z.string()]).optional(),
@@ -34,6 +79,28 @@ export const canvasLayoutPropertiesSchema = z
   })
   .strict();
 
+export const canvasNormalizedLayoutSchema = z
+  .object({
+    absoluteX: z.union([z.number(), z.string()]).optional(),
+    absoluteY: z.union([z.number(), z.string()]).optional(),
+    width: z.union([z.number(), z.string()]).optional(),
+    height: z.union([z.number(), z.string()]).optional(),
+    parentRelativePosition: z
+      .object({
+        x: z.union([z.number(), z.string()]).optional(),
+        y: z.union([z.number(), z.string()]).optional()
+      })
+      .strict(),
+    inferredLayoutMode: canvasLayoutModeSchema,
+    responsiveHint: canvasResponsiveHintSchema,
+    visible: z.boolean().optional(),
+    displayMode: z.string().optional(),
+    zIndex: z.number().optional(),
+    orderIndex: z.number().int().nonnegative().optional(),
+    rawLayoutProperties: canvasLayoutPropertiesSchema
+  })
+  .strict();
+
 export const canvasFormulaSchema = z
   .object({
     artifactId: artifactIdSchema,
@@ -47,6 +114,8 @@ export const canvasFormulaSchema = z
     likelyCollections: z.array(z.string().min(1)),
     navigationTargetScreen: z.string().optional(),
     formulaFeatures: z.array(canvasFormulaFeatureSchema),
+    complexityScore: z.number().min(0).max(1),
+    complexity: z.enum(["simple", "moderate", "complex"]),
     provenance: sourceProvenanceSchema,
     confidence: confidenceScoreSchema
   })
@@ -70,7 +139,16 @@ export const canvasControlSchema = z
     ),
     formulas: z.array(canvasFormulaSchema),
     layoutProperties: canvasLayoutPropertiesSchema,
+    normalizedLayout: canvasNormalizedLayoutSchema,
     dataBindingHints: z.array(z.string().min(1)),
+    role: canvasControlRoleSchema,
+    roleConfidence: z.number().min(0).max(1),
+    boundField: z.string().optional(),
+    layoutComplexity: z.number().min(0).max(1),
+    formulaComplexity: z.number().min(0).max(1),
+    dataBindingComplexity: z.number().min(0).max(1),
+    unsupportedFeatureCount: z.number().int().nonnegative(),
+    migrationReadiness: canvasMigrationReadinessSchema,
     provenance: sourceProvenanceSchema,
     confidence: confidenceScoreSchema
   })
@@ -85,6 +163,11 @@ export const canvasScreenSchema = z
     formulas: z.array(canvasFormulaSchema),
     layoutMetadata: z.record(z.string(), z.unknown()),
     order: z.number().int().nonnegative().optional(),
+    layoutComplexity: z.number().min(0).max(1),
+    formulaComplexity: z.number().min(0).max(1),
+    dataBindingComplexity: z.number().min(0).max(1),
+    unsupportedFeatureCount: z.number().int().nonnegative(),
+    migrationReadiness: canvasMigrationReadinessSchema,
     provenance: sourceProvenanceSchema,
     confidence: confidenceScoreSchema
   })
@@ -159,6 +242,11 @@ export const canvasAppSchema = z
     collections: z.array(canvasNamedValueSchema),
     navigationReferences: z.array(canvasNavigationReferenceSchema),
     formulas: z.array(canvasFormulaSchema),
+    layoutComplexity: z.number().min(0).max(1),
+    formulaComplexity: z.number().min(0).max(1),
+    dataBindingComplexity: z.number().min(0).max(1),
+    unsupportedFeatureCount: z.number().int().nonnegative(),
+    migrationReadiness: canvasMigrationReadinessSchema,
     unsupportedFeatures: z.array(unsupportedFeatureSchema),
     warnings: z.array(parserWarningSchema),
     provenance: sourceProvenanceSchema,
@@ -167,6 +255,11 @@ export const canvasAppSchema = z
   .strict();
 
 export type CanvasFormula = z.infer<typeof canvasFormulaSchema>;
+export type CanvasLayoutMode = z.infer<typeof canvasLayoutModeSchema>;
+export type CanvasResponsiveHint = z.infer<typeof canvasResponsiveHintSchema>;
+export type CanvasMigrationReadiness = z.infer<
+  typeof canvasMigrationReadinessSchema
+>;
 export type CanvasControl = z.infer<typeof canvasControlSchema>;
 export type CanvasScreen = z.infer<typeof canvasScreenSchema>;
 export type CanvasComponent = z.infer<typeof canvasComponentSchema>;

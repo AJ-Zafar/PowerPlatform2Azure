@@ -30,10 +30,20 @@ Detailed entries are added as parser milestones are implemented.
    - Trigger: Canvas source file is discoverable but not parseable into known app/screen/component/control/formula/resource shape.
    - Handling: warning emitted; parse continues without crashing.
 
+5. `canvas.layout.unknown`
+   - Trigger: control layout properties do not map to known normalized layout modes.
+   - Handling: control is preserved; normalized layout mode set to `unknown` with warning-ready metadata.
+
+6. `canvas.control-role.unknown`
+   - Trigger: control type/name does not map to a known migration role.
+   - Handling: control is preserved with role `unknown`; readiness can degrade to `blocked`.
+
 ## Current parser limitations
 
 - Flow semantic parsing is not implemented yet.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
-- Canvas dependency extraction is best-effort and can emit unresolved references for ambiguous formulas.
+- Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
+- Canvas readiness scoring is preparatory metadata and not a full migration assessment score.
+- Canvas dependency extraction is best-effort and can emit unresolved references for ambiguous formulas and data bindings.
 - Dependency edges are best-effort from currently parsed artifacts and discoverable references in source files.
 - Summary counts are parser telemetry only and are not equivalent to assessment scores.

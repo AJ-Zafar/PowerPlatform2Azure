@@ -36,6 +36,17 @@ export interface AnalyseSummary {
   canvasScreensParsed: number;
   canvasControlsParsed: number;
   canvasFormulasParsed: number;
+  canvasScreensByReadiness: {
+    high: number;
+    medium: number;
+    low: number;
+    blocked: number;
+  };
+  canvasControlsByRole: Record<string, number>;
+  canvasBlockedControls: number;
+  canvasUnknownControls: number;
+  canvasComplexFormulas: number;
+  canvasLayoutWarnings: number;
   environmentVariables: number;
   connectionReferences: number;
   securityRoles: number;
@@ -260,6 +271,7 @@ const buildDependencyGraph = async (
   }
 
   for (const canvasApp of ir.canvasApps) {
+    const allScreenControls = canvasApp.screens.flatMap((screen) => screen.controls);
     const dataSourceByName = new Map(
       canvasApp.dataSources.map((dataSource) => [dataSource.name, dataSource.artifactId])
     );
@@ -273,7 +285,10 @@ const buildDependencyGraph = async (
       canvasApp.screens.map((screen) => [screen.screenName, screen.artifactId])
     );
     const controlById = new Set(
-      canvasApp.screens.flatMap((screen) => screen.controls.map((control) => control.artifactId))
+      allScreenControls.map((control) => control.artifactId)
+    );
+    const controlByArtifactId = new Map(
+      allScreenControls.map((control) => [control.artifactId, control])
     );
 
     registerEdge({
@@ -304,6 +319,23 @@ const buildDependencyGraph = async (
           confidence: control.confidence,
           resolved: true
         });
+
+        if (
+          control.role === "pageContainer" ||
+          control.role === "sectionContainer" ||
+          control.normalizedLayout.inferredLayoutMode === "verticalStack" ||
+          control.normalizedLayout.inferredLayoutMode === "horizontalStack" ||
+          control.normalizedLayout.inferredLayoutMode === "grid"
+        ) {
+          registerEdge({
+            sourceArtifactId: screen.artifactId,
+            targetArtifactId: control.artifactId,
+            dependencyType: "screen-layout-container",
+            provenance: control.provenance,
+            confidence: control.confidence,
+            resolved: true
+          });
+        }
 
         if (control.parentControl) {
           if (controlById.has(control.parentControl)) {
@@ -340,7 +372,72 @@ const buildDependencyGraph = async (
               confidence: 0.8,
               resolved: true
             });
+          } else if (!hint.includes("ThisItem") && !hint.includes("Parent.")) {
+            registerUnresolved(
+              control.artifactId,
+              buildArtifactId("canvas-datasource", `${canvasApp.appId}-${hint}`),
+              "control-data-source",
+              control.provenance.sourcePath,
+              "canvas",
+              "DEPENDENCY_UNRESOLVED_CANVAS_CONTROL_DATASOURCE",
+              `Control "${control.controlName}" references data source "${hint}" which is unresolved.`
+            );
           }
+        }
+
+        if (control.role === "gallery") {
+          for (const childId of control.children) {
+            registerEdge({
+              sourceArtifactId: control.artifactId,
+              targetArtifactId: childId,
+              dependencyType: "gallery-template-control",
+              provenance: control.provenance,
+              confidence: control.confidence,
+              resolved: true
+            });
+          }
+        }
+
+        if (control.role === "form") {
+          for (const childId of control.children) {
+            const child = controlByArtifactId.get(childId);
+
+            if (child?.role === "dataCard") {
+              registerEdge({
+                sourceArtifactId: control.artifactId,
+                targetArtifactId: child.artifactId,
+                dependencyType: "form-data-card",
+                provenance: child.provenance,
+                confidence: child.confidence,
+                resolved: true
+              });
+            }
+          }
+        }
+
+        if (control.role === "dataCard" && control.boundField) {
+          registerEdge({
+            sourceArtifactId: control.artifactId,
+            targetArtifactId: buildArtifactId(
+              "field",
+              `${canvasApp.appId}-${control.boundField}`
+            ),
+            dependencyType: "data-card-bound-field",
+            provenance: control.provenance,
+            confidence: control.confidence,
+            resolved: true
+          });
+        }
+
+        for (const formula of control.formulas) {
+          registerEdge({
+            sourceArtifactId: control.artifactId,
+            targetArtifactId: formula.artifactId,
+            dependencyType: "control-formula",
+            provenance: formula.provenance,
+            confidence: formula.confidence,
+            resolved: true
+          });
         }
       }
     }
@@ -730,6 +827,70 @@ export const analyseSolutionFolder = async (
       (count, app) => count + app.formulas.length,
       0
     ),
+    canvasScreensByReadiness: {
+      high: canvasResult.data.reduce(
+        (count, app) =>
+          count +
+          app.screens.filter((screen) => screen.migrationReadiness === "high").length,
+        0
+      ),
+      medium: canvasResult.data.reduce(
+        (count, app) =>
+          count +
+          app.screens.filter((screen) => screen.migrationReadiness === "medium").length,
+        0
+      ),
+      low: canvasResult.data.reduce(
+        (count, app) =>
+          count +
+          app.screens.filter((screen) => screen.migrationReadiness === "low").length,
+        0
+      ),
+      blocked: canvasResult.data.reduce(
+        (count, app) =>
+          count +
+          app.screens.filter((screen) => screen.migrationReadiness === "blocked").length,
+        0
+      )
+    },
+    canvasControlsByRole: canvasResult.data.reduce<Record<string, number>>((roles, app) => {
+      for (const control of app.screens.flatMap((screen) => screen.controls)) {
+        roles[control.role] = (roles[control.role] ?? 0) + 1;
+      }
+
+      return roles;
+    }, {}),
+    canvasBlockedControls: canvasResult.data.reduce(
+      (count, app) =>
+        count +
+        app.screens.reduce(
+          (screenCount, screen) =>
+            screenCount +
+            screen.controls.filter(
+              (control) => control.migrationReadiness === "blocked"
+            ).length,
+          0
+        ),
+      0
+    ),
+    canvasUnknownControls: canvasResult.data.reduce(
+      (count, app) =>
+        count +
+        app.screens.reduce(
+          (screenCount, screen) =>
+            screenCount + screen.controls.filter((control) => control.role === "unknown").length,
+          0
+        ),
+      0
+    ),
+    canvasComplexFormulas: canvasResult.data.reduce(
+      (count, app) =>
+        count + app.formulas.filter((formula) => formula.complexity === "complex").length,
+      0
+    ),
+    canvasLayoutWarnings: ir.warnings.filter((warning) =>
+      warning.code.startsWith("CANVAS_LAYOUT_")
+    ).length,
     environmentVariables: infrastructureResult.data.environmentVariables.length,
     connectionReferences: infrastructureResult.data.connectionReferences.length,
     securityRoles: infrastructureResult.data.security.roles.length,
@@ -753,6 +914,12 @@ export const analyseSolutionFolder = async (
     canvasScreensParsed: ir.analysisSummary.canvasScreens,
     canvasControlsParsed: ir.analysisSummary.canvasControls,
     canvasFormulasParsed: ir.analysisSummary.canvasFormulas,
+    canvasScreensByReadiness: ir.analysisSummary.canvasScreensByReadiness,
+    canvasControlsByRole: ir.analysisSummary.canvasControlsByRole,
+    canvasBlockedControls: ir.analysisSummary.canvasBlockedControls,
+    canvasUnknownControls: ir.analysisSummary.canvasUnknownControls,
+    canvasComplexFormulas: ir.analysisSummary.canvasComplexFormulas,
+    canvasLayoutWarnings: ir.analysisSummary.canvasLayoutWarnings,
     environmentVariables: ir.analysisSummary.environmentVariables,
     connectionReferences: ir.analysisSummary.connectionReferences,
     securityRoles: ir.analysisSummary.securityRoles,

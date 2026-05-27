@@ -17,6 +17,8 @@ This document tracks deterministic mappings between Power Platform constructs an
 - `dataverse.relationships`
 - `dataverse.optionSets`
 - `canvasApps` (apps, screens, controls, formulas, resources, references)
+- `canvasApps.screens[].controls[].normalizedLayout` (layout mode/responsive hints/visibility/order)
+- `canvasApps.screens[].controls[].role` and readiness metadata
 - `environmentVariables`
 - `connectionReferences`
 - `security.roles`
@@ -46,6 +48,9 @@ Those remain assessment-engine responsibilities in later milestones.
 Canvas IR notes for future React generation:
 
 - Canvas app inventory now includes app properties, screen/control hierarchy, control layout metadata, raw formulas, and extracted references.
+- Canvas controls now include layout normalization (`absolute`, `verticalStack`, `horizontalStack`, `grid`, `galleryTemplate`, `formLayout`, `unknown`) while preserving raw source layout properties.
+- Canvas controls now include role classification (`button`, `input`, `gallery`, `form`, `dataCard`, etc.) with confidence to support staged UI migration mapping.
+- Canvas apps/screens/controls now include heuristic migration-readiness metadata (`high`, `medium`, `low`, `blocked`) and complexity dimensions (layout/formula/data-binding).
 - Power Fx is stored as raw expressions with lightweight function/reference classification only.
 - Unknown controls/properties are preserved and flagged to avoid silent migration fidelity loss.
 

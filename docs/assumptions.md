@@ -9,6 +9,7 @@
 5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, structured Canvas extraction, and infrastructure metadata extraction.
 6. Full Power Fx semantic translation, flow semantic parsing, generators, and scoring engines remain out of scope for this sprint.
 7. Lightweight summary counts in IR are parser telemetry only; they are not migration risk/complexity scoring.
+8. Canvas migration-readiness in this pass is heuristic metadata for UI migration preparation, not final assessment engine output.
 
 ## Repository assumptions
 
@@ -48,6 +49,7 @@ Where:
 - `provenance` captures where parser output came from, to preserve traceability into reports and generated artefacts.
 - Parse failures are never silent: malformed XML and unknown file layouts always produce structured warnings.
 - Canvas malformed source files and unknown control/property shapes produce warnings/unsupported records while preserving parseable structure.
+- Canvas layout normalization preserves raw layout properties and derives best-effort normalized layout mode/responsive hints.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.
 - Unresolved references are represented both as warnings and as unresolved dependency edges.
 
@@ -60,3 +62,4 @@ Where:
 5. Dataverse and infrastructure artifacts include provenance and per-artifact confidence fields.
 6. Dependency graph edges are deterministic and sorted, with unresolved edges carrying `unresolvedWarning`.
 7. Canvas IR preserves raw Power Fx expressions and extracted references (functions, data sources, variables, collections, navigation targets) without semantic execution.
+8. Control roles and readiness states are confidence-scored heuristics intended to prioritize future React migration work, not to auto-generate UI code yet.

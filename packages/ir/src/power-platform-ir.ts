@@ -180,8 +180,13 @@ export const dependencyTypeSchema = z.enum([
   "solution-workflow",
   "solution-canvas-app",
   "canvas-app-screen",
+  "screen-layout-container",
   "screen-control",
   "control-child-control",
+  "gallery-template-control",
+  "form-data-card",
+  "data-card-bound-field",
+  "control-formula",
   "control-data-source",
   "formula-data-source",
   "formula-variable",
@@ -228,6 +233,19 @@ export const analysisSummarySchema = z
     canvasScreens: z.number().int().nonnegative(),
     canvasControls: z.number().int().nonnegative(),
     canvasFormulas: z.number().int().nonnegative(),
+    canvasScreensByReadiness: z
+      .object({
+        high: z.number().int().nonnegative(),
+        medium: z.number().int().nonnegative(),
+        low: z.number().int().nonnegative(),
+        blocked: z.number().int().nonnegative()
+      })
+      .strict(),
+    canvasControlsByRole: z.record(z.string(), z.number().int().nonnegative()),
+    canvasBlockedControls: z.number().int().nonnegative(),
+    canvasUnknownControls: z.number().int().nonnegative(),
+    canvasComplexFormulas: z.number().int().nonnegative(),
+    canvasLayoutWarnings: z.number().int().nonnegative(),
     environmentVariables: z.number().int().nonnegative(),
     connectionReferences: z.number().int().nonnegative(),
     securityRoles: z.number().int().nonnegative(),

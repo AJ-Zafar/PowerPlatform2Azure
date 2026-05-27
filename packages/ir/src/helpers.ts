@@ -118,6 +118,17 @@ export const createEmptyPowerPlatformIR = (
       canvasScreens: 0,
       canvasControls: 0,
       canvasFormulas: 0,
+      canvasScreensByReadiness: {
+        high: 0,
+        medium: 0,
+        low: 0,
+        blocked: 0
+      },
+      canvasControlsByRole: {},
+      canvasBlockedControls: 0,
+      canvasUnknownControls: 0,
+      canvasComplexFormulas: 0,
+      canvasLayoutWarnings: 0,
       environmentVariables: 0,
       connectionReferences: 0,
       securityRoles: 0,
