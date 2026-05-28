@@ -7,6 +7,7 @@ import {
   generationPlanSchema,
   type GeneratedArtifact,
   type FunctionsGenerationPlanDetails,
+  type InfraGenerationPlanDetails,
   type GenerationManualReviewItem,
   type GenerationPlan,
   type GenerationPlanAction,
@@ -58,6 +59,7 @@ export interface PlanGenerationInput {
   manualReviewItems?: GenerationManualReviewItem[];
   sqlPlan?: SqlGenerationPlanDetails | null;
   functionsPlan?: FunctionsGenerationPlanDetails | null;
+  infraPlan?: InfraGenerationPlanDetails | null;
 }
 
 export interface PlannedArtifactWrite {
@@ -245,7 +247,8 @@ export const planGeneration = (input: PlanGenerationInput): PlanGenerationResult
     manualReviewItems: orderedManualReview,
     summary,
     sqlPlan: input.sqlPlan ?? null,
-    functionsPlan: input.functionsPlan ?? null
+    functionsPlan: input.functionsPlan ?? null,
+    infraPlan: input.infraPlan ?? null
   });
 
   return {
@@ -472,6 +475,47 @@ export const renderGenerationPlanMarkdown = (plan: GenerationPlan): string => {
     lines.push(`- needsConfig: ${plan.functionsPlan.deploymentReadiness.needsConfig}`);
     lines.push(`- needsManualLogic: ${plan.functionsPlan.deploymentReadiness.needsManualLogic}`);
     lines.push(`- blocked: ${plan.functionsPlan.deploymentReadiness.blocked}`);
+  }
+
+  lines.push("");
+  lines.push("## Infra plan");
+  lines.push("");
+  if (!plan.infraPlan) {
+    lines.push("- Not applicable.");
+  } else {
+    lines.push("### Planned resources");
+    lines.push(...markdownList(plan.infraPlan.plannedResources.map((value) => `\`${value}\``)));
+    lines.push("");
+    lines.push("### Planned modules");
+    lines.push(...markdownList(plan.infraPlan.plannedModules.map((value) => `\`${value}\``)));
+    lines.push("");
+    lines.push("### Environment parameter files");
+    lines.push(
+      ...markdownList(plan.infraPlan.environmentParameterFiles.map((value) => `\`${value}\``))
+    );
+    lines.push("");
+    lines.push("### Security manual review items");
+    lines.push(...markdownList(plan.infraPlan.securityManualReviewItems));
+    lines.push("");
+    lines.push("### Unresolved configuration items");
+    lines.push(...markdownList(plan.infraPlan.unresolvedConfigurationItems));
+    lines.push("");
+    lines.push("### Content hashes");
+    lines.push(
+      ...markdownList(
+        plan.infraPlan.contentHashes.map(
+          (entry) => `\`${entry.path}\`: \`${entry.contentHash}\``
+        )
+      )
+    );
+    lines.push("");
+    lines.push("### Deployment readiness");
+    lines.push(`- scaffoldOnly: ${plan.infraPlan.deploymentReadiness.scaffoldOnly}`);
+    lines.push(`- needsConfig: ${plan.infraPlan.deploymentReadiness.needsConfig}`);
+    lines.push(
+      `- needsSecurityReview: ${plan.infraPlan.deploymentReadiness.needsSecurityReview}`
+    );
+    lines.push(`- blocked: ${plan.infraPlan.deploymentReadiness.blocked}`);
   }
 
   lines.push("");

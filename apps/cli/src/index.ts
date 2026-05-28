@@ -8,6 +8,7 @@ import {
   generateAssessmentReportMarkdown
 } from "@power-exit/assessment";
 import {
+  generateAzureInfraFromPowerPlatformIR,
   generateAzureFunctionsFromPowerPlatformIR,
   generateCanvasReactFromPowerPlatformIR,
   generateDataverseSqlFromPowerPlatformIR,
@@ -66,6 +67,14 @@ interface GenerateReactArgs {
 }
 
 interface GenerateFunctionsArgs {
+  irFilePath: string;
+  outputFolder: string;
+  dryRun: boolean;
+  force: boolean;
+  clean: boolean;
+}
+
+interface GenerateInfraArgs {
   irFilePath: string;
   outputFolder: string;
   dryRun: boolean;
@@ -323,6 +332,63 @@ const parseGenerateFunctionsArgs = (args: string[]): GenerateFunctionsArgs => {
   };
 };
 
+const parseGenerateInfraArgs = (args: string[]): GenerateInfraArgs => {
+  if (args.length < 3) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit generate infra <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]"
+    );
+  }
+
+  const [irFilePath, ...flags] = args;
+  let outputFolder: string | undefined;
+  let dryRun = false;
+  let force = false;
+  let clean = false;
+
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+
+    if (flag === "--out") {
+      outputFolder = flags[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (flag === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+
+    if (flag === "--force") {
+      force = true;
+      continue;
+    }
+
+    if (flag === "--clean") {
+      clean = true;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  if (!outputFolder) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Missing required --out <output-folder> argument."
+    );
+  }
+
+  return {
+    irFilePath: path.resolve(irFilePath),
+    outputFolder: path.resolve(outputFolder),
+    dryRun,
+    force,
+    clean
+  };
+};
+
 const ensureInputFolder = async (solutionFolder: string): Promise<void> => {
   let metadata;
 
@@ -499,6 +565,16 @@ const buildManualReviewItems = (input: {
       blocked: boolean;
     };
   };
+  infraPlan?: {
+    securityManualReviewItems: string[];
+    unresolvedConfigurationItems: string[];
+    deploymentReadiness: {
+      scaffoldOnly: boolean;
+      needsConfig: boolean;
+      needsSecurityReview: boolean;
+      blocked: boolean;
+    };
+  };
 }): GenerationManualReviewItem[] => {
   const reviewItems: GenerationManualReviewItem[] = [];
 
@@ -588,6 +664,40 @@ const buildManualReviewItems = (input: {
       severity: "high",
       message:
         "Functions scaffold is blocked for deployment readiness and requires manual trigger/adapter implementation.",
+      relatedPaths: [],
+      sourceArtifactIds: []
+    });
+  }
+
+  input.infraPlan?.securityManualReviewItems.forEach((item, index) => {
+    reviewItems.push({
+      id: `review:infra-security:${index}:${item}`,
+      category: "infra-security-review",
+      severity: "high",
+      message: item,
+      relatedPaths: [],
+      sourceArtifactIds: []
+    });
+  });
+
+  input.infraPlan?.unresolvedConfigurationItems.forEach((item, index) => {
+    reviewItems.push({
+      id: `review:infra-unresolved-config:${index}:${item}`,
+      category: "infra-unresolved-config",
+      severity: "medium",
+      message: item,
+      relatedPaths: [],
+      sourceArtifactIds: []
+    });
+  });
+
+  if (input.infraPlan?.deploymentReadiness.blocked) {
+    reviewItems.push({
+      id: "review:infra-deployment-readiness:blocked",
+      category: "infra-deployment-readiness",
+      severity: "high",
+      message:
+        "Infra scaffold is blocked for deployment readiness due to missing solution metadata placeholders.",
       relatedPaths: [],
       sourceArtifactIds: []
     });
@@ -988,6 +1098,93 @@ const executeGenerateFunctions = async (args: string[], stdout: WriteFn): Promis
   );
 };
 
+const executeGenerateInfra = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const parsedArgs = parseGenerateInfraArgs(args);
+
+  await ensureInputFile(parsedArgs.irFilePath);
+  await ensureOutputFolder(parsedArgs.outputFolder);
+  let irPayload: unknown;
+
+  try {
+    irPayload = JSON.parse(await readFile(parsedArgs.irFilePath, "utf-8")) as unknown;
+  } catch {
+    throw new CliError("INVALID_IR_JSON", "IR input is not valid JSON.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  let validatedIr;
+  try {
+    validatedIr = validatePowerPlatformIR(irPayload);
+  } catch {
+    throw new CliError("IR_VALIDATION_FAILURE", "Input IR failed schema validation.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  const generation = await generateAzureInfraFromPowerPlatformIR(validatedIr, {
+    invocationProvenance: {
+      sourcePath: parsedArgs.irFilePath,
+      sourceType: "cli"
+    },
+    outputFolder: parsedArgs.outputFolder
+  });
+
+  const artifactPaths = generation.artifacts.map((artifact) => artifact.filePath);
+  let existingFiles = await loadExistingFiles(parsedArgs.outputFolder, artifactPaths);
+  if (parsedArgs.clean) {
+    if (parsedArgs.dryRun) {
+      existingFiles = existingFiles.filter((entry) => !hasGeneratedFileMarker(entry.content));
+    } else {
+      await cleanGeneratedFiles(parsedArgs.outputFolder);
+      existingFiles = await loadExistingFiles(parsedArgs.outputFolder, artifactPaths);
+    }
+  }
+  const manualReviewItems = buildManualReviewItems({
+    warnings: generation.warnings,
+    unsupportedFeatures: generation.unsupportedFeatures,
+    infraPlan: generation.output.infraPlan
+  });
+  const planned = planGeneration({
+    artifacts: generation.artifacts,
+    existingFiles,
+    force: parsedArgs.force,
+    warnings: generation.warnings,
+    unsupportedFeatures: generation.unsupportedFeatures,
+    manualReviewItems,
+    infraPlan: generation.output.infraPlan
+  });
+  await writeGenerationPlanFiles(
+    parsedArgs.outputFolder,
+    serializeGenerationPlan(planned.plan),
+    renderGenerationPlanMarkdown(planned.plan)
+  );
+
+  if (!parsedArgs.dryRun) {
+    await writePlannedArtifacts(parsedArgs.outputFolder, planned.writes);
+  }
+
+  stdout(
+    JSON.stringify({
+      command: "generate-infra",
+      status: "success",
+      irFilePath: parsedArgs.irFilePath,
+      outputFolder: parsedArgs.outputFolder,
+      resourcesPlanned: generation.output.resourcesPlanned,
+      modulesPlanned: generation.output.modulesPlanned,
+      parameterFilesGenerated: generation.output.parameterFilesGenerated,
+      warnings: planned.plan.summary.warnings,
+      unsupportedFeatures: planned.plan.summary.unsupportedFeatures,
+      dryRun: parsedArgs.dryRun,
+      force: parsedArgs.force,
+      clean: parsedArgs.clean,
+      skippedFiles: planned.plan.skippedFiles.length,
+      overwrittenFiles: planned.plan.overwrittenFiles.length,
+      planSummary: planned.plan.summary
+    })
+  );
+};
+
 const executeGenerate = async (args: string[], stdout: WriteFn): Promise<void> => {
   const [subcommand, ...subcommandArgs] = args;
 
@@ -1006,9 +1203,14 @@ const executeGenerate = async (args: string[], stdout: WriteFn): Promise<void> =
     return;
   }
 
+  if (subcommand === "infra") {
+    await executeGenerateInfra(subcommandArgs, stdout);
+    return;
+  }
+
   throw new CliError(
     "INVALID_COMMAND",
-    "Supported generate commands are: sql, react, functions."
+    "Supported generate commands are: sql, react, functions, infra."
   );
 };
 

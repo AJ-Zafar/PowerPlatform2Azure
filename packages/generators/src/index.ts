@@ -3,6 +3,9 @@ export {
   createGenerator,
   generationFormulaHotspotSchema,
   functionsGenerationPlanDetailsSchema,
+  infraContentHashEntrySchema,
+  infraDeploymentReadinessSchema,
+  infraGenerationPlanDetailsSchema,
   functionsManualReviewHotspotSchema,
   functionsPlannedFunctionSchema,
   functionsUnresolvedDependencySchema,
@@ -26,6 +29,9 @@ export {
   type GeneratedArtifact,
   type GenerationFormulaHotspot,
   type FunctionsGenerationPlanDetails,
+  type InfraContentHashEntry,
+  type InfraDeploymentReadiness,
+  type InfraGenerationPlanDetails,
   type FunctionsManualReviewHotspot,
   type FunctionsPlannedFunction,
   type FunctionsUnresolvedDependency,
@@ -67,6 +73,11 @@ export {
   type AzureFunctionsGenerationOutput,
   type AzureFunctionsGeneratorInput
 } from "./functions";
+export {
+  generateAzureInfraArtifacts,
+  generateAzureInfraFromPowerPlatformIR,
+  type AzureInfraGenerationOutput
+} from "./infra";
 export {
   GENERATED_FILE_MARKER_TEXT,
   computeContentHash,

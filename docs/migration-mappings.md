@@ -305,7 +305,73 @@ Current limitations:
 - Connector-specific adapters are typed placeholders only and require manual implementation.
 - Secrets and production environment values are not generated.
 
+## Implemented generator mapping: migration workloads -> Azure infra Bicep scaffold
+
+CLI:
+
+```bash
+power-exit generate infra <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
+```
+
+Generated artifacts:
+
+- `infra/main.bicep`
+- `infra/parameters.dev.json`
+- `infra/parameters.test.json`
+- `infra/parameters.prod.json`
+- `infra/modules/app-service.bicep`
+- `infra/modules/function-app.bicep`
+- `infra/modules/storage.bicep`
+- `infra/modules/sql-server.bicep`
+- `infra/modules/sql-database.bicep`
+- `infra/modules/key-vault.bicep`
+- `infra/modules/app-insights.bicep`
+- `infra/modules/managed-identity.bicep`
+- `infra/README.generated.md`
+- `infra/generation-report.md`
+- `infra/migration-notes.md`
+- `generation-plan.json`
+- `generation-plan.md`
+
+Deterministic mapping currently implemented:
+
+1. Workload detection from validated IR signals:
+   - React workload -> App Service scaffold path.
+   - Functions workload -> Function App + Storage + App Insights + Managed Identity scaffold path.
+   - SQL workload -> SQL Server + SQL Database scaffold path.
+2. Shared baseline security resources:
+   - Key Vault scaffold.
+   - Managed identity scaffold.
+   - Key Vault reference placeholders for app settings.
+3. Environment parameterization:
+   - deterministic `parameters.dev.json`, `parameters.test.json`, `parameters.prod.json`.
+   - placeholder-only values for location/SKUs and environment-specific naming.
+4. Security-first TODO posture:
+   - private networking/private endpoints
+   - Entra ID auth enforcement
+   - SQL firewall/network hardening
+   - RBAC least-privilege role assignment
+   - monitoring/alerting setup
+   - backup/retention policy definition
+   - environment promotion/release governance
+5. Infra generation plan metadata emitted in `infraPlan`:
+   - planned resources
+   - planned modules
+   - environment parameter files
+   - security manual review items
+   - unresolved configuration items
+   - content hashes
+   - deployment readiness flags (`scaffoldOnly`, `needsConfig`, `needsSecurityReview`, `blocked`)
+
+Overwrite safety behavior:
+
+- Default mode skips conflicting existing files and records skip warnings/review items.
+- `--force` allows planned overwrite actions.
+- `--dry-run` writes only plan files (`generation-plan.json`, `generation-plan.md`), not generated infra artifacts.
+- `--dry-run --clean` performs planning as if marker-tagged files were cleaned, without mutating the filesystem.
+- `--clean` removes only marker-tagged generated files and leaves unmarked files untouched.
+
 Remaining planned mapping section:
 
 1. Azure Functions scaffold hardening into deployable service adapters (post-MVP).
-2. Bicep/infrastructure generation (separate milestone).
+2. Infra scaffold extension for production-grade networking policy templates and environment promotion automation.

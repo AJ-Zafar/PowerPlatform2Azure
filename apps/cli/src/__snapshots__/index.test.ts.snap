@@ -487,6 +487,10 @@ exports[`power-exit generate react command > matches react generation-plan markd
 
 - Not applicable.
 
+## Infra plan
+
+- Not applicable.
+
 Review \`generation-plan.json\` and resolve skipped/manual items before committing generated files.
 "
 `;
@@ -565,6 +569,10 @@ exports[`power-exit generate sql command > matches SQL generation-plan markdown 
 
 ### Naming collisions
 - None.
+
+## Infra plan
+
+- Not applicable.
 
 Review \`generation-plan.json\` and resolve skipped/manual items before committing generated files.
 "

@@ -9,7 +9,7 @@
 5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, structured Canvas extraction, structured Cloud Flow extraction, and infrastructure metadata extraction.
 6. This sprint includes first-pass deterministic assessment heuristics and report generation from validated IR.
 7. This sprint adds deterministic SQL (`power-exit generate sql`) and React skeleton (`power-exit generate react`) generators from validated IR.
-8. Full Power Fx semantic translation, production-ready Azure Functions logic, Bicep generation, and non-heuristic assessment scoring remain out of scope.
+8. Full Power Fx semantic translation, production-ready Azure Functions/infra deployment logic, and non-heuristic assessment scoring remain out of scope.
 9. React generation in this pass is scaffold-oriented (route/component skeletons + TODO placeholders), not polished production UI conversion.
 10. No AI API, model API, or external service dependency is used for generator output in this pass.
 11. Lightweight summary counts in IR remain parser telemetry; assessment outputs consume these signals but remain heuristic.
@@ -22,6 +22,9 @@
 18. Azure Functions generation maps flow triggers/actions and canvas data operations into typed handler contracts and adapter TODO stubs without semantic execution.
 19. Azure Functions generation emits typed connector adapter boundaries (`src/adapters/*.ts`) and never includes live connector credentials or real API calls.
 20. No secrets are emitted; generated settings files use placeholders exclusively.
+21. Azure infra generation is scaffold-only and deterministic; it does not deploy resources and does not emit credential/secret values.
+22. Infra generation defaults to managed identity + Key Vault reference patterns and emits explicit TODOs for private networking, Entra ID auth, RBAC, monitoring, and backup/retention hardening.
+23. Infra generation plan metadata (`infraPlan`) is included for review workflows and captures resources/modules/parameter files/security review items/unresolved config/content hashes/deployment readiness.
 
 ## Repository assumptions
 

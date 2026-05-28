@@ -130,6 +130,18 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: Expected scaffold files/directories (`package.json`, `host.json`, `tsconfig.json`, `local.settings.example.json`, `src/functions`, `src/services`, `src/adapters`, `src/utils`) are missing.
     - Handling: packaging validation emits warnings so deployment cannot be treated as ready.
 
+30. `infra.missing-solution-metadata`
+    - Trigger: IR solution metadata is placeholder/unknown and cannot provide reliable naming conventions.
+    - Handling: infra generator emits warning + blocked deployment readiness flag in `infraPlan`.
+
+31. `infra.no-workload-detected`
+    - Trigger: IR does not indicate SQL/React/Functions workload requirements.
+    - Handling: infra generator emits warning and produces placeholder-only scaffold paths for manual review.
+
+32. `infra.security.manual-review-required`
+    - Trigger: infra scaffold generation always requires human hardening for networking, identity, RBAC, monitoring, backup, and promotion policy.
+    - Handling: generator emits explicit security manual review items in `infraPlan` and migration notes.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
@@ -143,8 +155,10 @@ Detailed entries are added as parser milestones are implemented.
 - React generator does not use AI/external model APIs and does not perform semantic Power Fx translation in this pass.
 - Dry-run mode is planning-only and intentionally does not emit generated SQL/React artifacts.
 - Dry-run mode is planning-only and intentionally does not emit generated Functions scaffold artifacts.
+- Dry-run mode is planning-only and intentionally does not emit generated infra/Bicep scaffold artifacts.
 - Safe-write mode can leave skipped files that require manual conflict resolution or explicit `--force`.
 - Azure Functions output is scaffold-only: trigger/action handlers, service adapters, and auth/validation flows are placeholders.
+- Azure infra output is scaffold-only: resources are placeholders with no deployment execution, no live credentials, and explicit manual hardening TODOs.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
 - Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
 - Canvas readiness scoring is preparatory metadata and not a full migration assessment score.

@@ -13,7 +13,8 @@ export const generatorCapabilitySchema = z.enum([
   "assessment-report-markdown",
   "azure-sql-ddl",
   "react-screen-skeleton",
-  "azure-functions-scaffold"
+  "azure-functions-scaffold",
+  "azure-infra-bicep-scaffold"
 ]);
 
 export type GeneratorCapability = z.infer<typeof generatorCapabilitySchema>;
@@ -321,6 +322,40 @@ export const functionsGenerationPlanDetailsSchema = z
 
 export type FunctionsGenerationPlanDetails = z.infer<typeof functionsGenerationPlanDetailsSchema>;
 
+export const infraDeploymentReadinessSchema = z
+  .object({
+    scaffoldOnly: z.boolean(),
+    needsConfig: z.boolean(),
+    needsSecurityReview: z.boolean(),
+    blocked: z.boolean()
+  })
+  .strict();
+
+export type InfraDeploymentReadiness = z.infer<typeof infraDeploymentReadinessSchema>;
+
+export const infraContentHashEntrySchema = z
+  .object({
+    path: z.string().min(1),
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/)
+  })
+  .strict();
+
+export type InfraContentHashEntry = z.infer<typeof infraContentHashEntrySchema>;
+
+export const infraGenerationPlanDetailsSchema = z
+  .object({
+    plannedResources: z.array(z.string().min(1)),
+    plannedModules: z.array(z.string().min(1)),
+    environmentParameterFiles: z.array(z.string().min(1)),
+    securityManualReviewItems: z.array(z.string().min(1)),
+    unresolvedConfigurationItems: z.array(z.string().min(1)),
+    contentHashes: z.array(infraContentHashEntrySchema),
+    deploymentReadiness: infraDeploymentReadinessSchema
+  })
+  .strict();
+
+export type InfraGenerationPlanDetails = z.infer<typeof infraGenerationPlanDetailsSchema>;
+
 export const generationPlanSummarySchema = z
   .object({
     totalPlannedFiles: z.number().int().nonnegative(),
@@ -350,7 +385,8 @@ export const generationPlanSchema = z
     manualReviewItems: z.array(generationManualReviewItemSchema),
     summary: generationPlanSummarySchema,
     sqlPlan: sqlGenerationPlanDetailsSchema.nullable(),
-    functionsPlan: functionsGenerationPlanDetailsSchema.nullable()
+    functionsPlan: functionsGenerationPlanDetailsSchema.nullable(),
+    infraPlan: infraGenerationPlanDetailsSchema.nullable()
   })
   .strict();
 
