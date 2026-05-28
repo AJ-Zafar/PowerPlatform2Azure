@@ -298,5 +298,79 @@
         ]
       }
     ]
+  },
+  "visualProperties": {
+    "apps": [
+      {
+        "appName": "Visual Mapping App",
+        "appId": "visual-mapping-app",
+        "screens": [
+          {
+            "screenName": "Visual Screen",
+            "migrationReadiness": "medium",
+            "layoutMode": "absolute",
+            "controls": [
+              {
+                "controlName": "VisualButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "layoutProperties": {
+                  "X": 24,
+                  "Y": 36,
+                  "Width": 240,
+                  "Height": 56,
+                  "Fill": "#112233",
+                  "Color": "#ffffff",
+                  "Align": "Center",
+                  "Visible": true,
+                  "DisplayMode": "Disabled"
+                },
+                "properties": {
+                  "BorderColor": "#445566",
+                  "BorderThickness": 2,
+                  "BorderRadius": 8,
+                  "Font": "Segoe UI",
+                  "FontWeight": "Bold",
+                  "Size": 18,
+                  "Padding": 12
+                }
+              },
+              {
+                "controlName": "FormulaText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "layoutProperties": {
+                  "X": "If(varX, 10, 20)",
+                  "Fill": "If(varFill, Color.Red, Color.Blue)",
+                  "Visible": "isVisible"
+                },
+                "properties": {},
+                "formulas": [
+                  {
+                    "propertyName": "Fill",
+                    "rawExpression": "If(varFill, Color.Red, Color.Blue)"
+                  }
+                ]
+              },
+              {
+                "controlName": "HiddenCard",
+                "controlType": "container",
+                "role": "card",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "layoutProperties": {
+                  "Visible": false
+                },
+                "properties": {}
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

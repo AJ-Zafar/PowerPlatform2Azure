@@ -33,6 +33,8 @@ interface ReactFixtureControl {
   responsiveHint: CanvasResponsiveHint;
   parent?: string;
   migrationReadiness?: CanvasMigrationReadiness;
+  layoutProperties?: Record<string, unknown>;
+  properties?: Record<string, unknown>;
   formulas?: ReactFixtureFormula[];
 }
 
@@ -204,13 +206,23 @@ const buildCanvasApps = (fixtureCase: ReactFixtureCase): CanvasApp[] =>
             .filter((candidate) => candidate.parent === control.controlName)
             .map((child) => controlIdByName.get(child.controlName))
             .filter((childId): childId is string => Boolean(childId)),
-          properties: {},
+          properties: control.properties ?? {},
           formulasByProperty: formulas.map((formula) => ({
             propertyName: formula.propertyName ?? "Unknown",
             formulaArtifactId: formula.artifactId
           })),
           formulas,
-          layoutProperties: {},
+          layoutProperties: {
+            X: control.layoutProperties?.X as number | string | undefined,
+            Y: control.layoutProperties?.Y as number | string | undefined,
+            Width: control.layoutProperties?.Width as number | string | undefined,
+            Height: control.layoutProperties?.Height as number | string | undefined,
+            Visible: control.layoutProperties?.Visible as boolean | string | undefined,
+            DisplayMode: control.layoutProperties?.DisplayMode as string | undefined,
+            Fill: control.layoutProperties?.Fill as string | undefined,
+            Color: control.layoutProperties?.Color as string | undefined,
+            Align: control.layoutProperties?.Align as string | undefined
+          },
           normalizedLayout: {
             parentRelativePosition: {},
             inferredLayoutMode: control.layoutMode,
@@ -403,6 +415,54 @@ describe("generateCanvasReactArtifacts", () => {
 
     expect(notes).toContain("Blocked Screen");
     expect(notes).toContain("manual conversion");
+  });
+
+  it("maps supported visual properties into inline style and safe attributes", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const canvasApps = buildCanvasApps(fixtures.visualProperties);
+    const result = await generateCanvasReactArtifacts(canvasApps);
+    const screen = getArtifactContent(
+      result,
+      "visual-mapping-app/components/generated/visual-screen.tsx"
+    );
+
+    expect(screen).toContain("style={{");
+    expect(screen).toContain("position: \"absolute\"");
+    expect(screen).toContain("left: 24");
+    expect(screen).toContain("top: 36");
+    expect(screen).toContain("width: 240");
+    expect(screen).toContain("height: 56");
+    expect(screen).toContain("backgroundColor: \"#112233\"");
+    expect(screen).toContain("color: \"#ffffff\"");
+    expect(screen).toContain("borderColor: \"#445566\"");
+    expect(screen).toContain("borderWidth: 2");
+    expect(screen).toContain("borderRadius: 8");
+    expect(screen).toContain("fontFamily: \"Segoe UI\"");
+    expect(screen).toContain("fontWeight: \"bold\"");
+    expect(screen).toContain("fontSize: 18");
+    expect(screen).toContain("padding: 12");
+    expect(screen).toContain("textAlign: \"center\"");
+    expect(screen).toContain("disabled");
+    expect(screen).toContain("Visible=false");
+  });
+
+  it("preserves formula-based visual properties as TODO comments and warnings", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const canvasApps = buildCanvasApps(fixtures.visualProperties);
+    const result = await generateCanvasReactArtifacts(canvasApps);
+    const screen = getArtifactContent(
+      result,
+      "visual-mapping-app/components/generated/visual-screen.tsx"
+    );
+
+    expect(screen).toContain("TODO: Convert Canvas property formula for X");
+    expect(screen).toContain("TODO: Convert Canvas property formula for Fill");
+    expect(result.warnings.some((warning) => warning.code === "REACT_VISUAL_PROPERTY_FORMULA_TODO")).toBe(
+      true
+    );
+    expect(
+      result.warnings.some((warning) => warning.code === "REACT_VISUAL_PROPERTY_UNCERTAIN")
+    ).toBe(true);
   });
 
   it("matches screen component snapshot output", async () => {

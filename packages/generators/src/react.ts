@@ -107,7 +107,7 @@ const sortControls = (controls: readonly CanvasControl[]): CanvasControl[] =>
 
 const layoutClassHint = (control: CanvasControl): string => {
   const modeClassMap: Record<CanvasControl["normalizedLayout"]["inferredLayoutMode"], string> = {
-    absolute: "layout-absolute relative",
+    absolute: "layout-absolute absolute",
     verticalStack: "layout-vertical-stack flex flex-col gap-2",
     horizontalStack: "layout-horizontal-stack flex flex-row gap-2",
     grid: "layout-grid grid grid-cols-2 gap-2",
@@ -126,6 +126,589 @@ const layoutClassHint = (control: CanvasControl): string => {
   return `${modeClassMap[control.normalizedLayout.inferredLayoutMode]} ${
     responsiveClassMap[control.normalizedLayout.responsiveHint]
   } canvas-role-${slugify(control.role)}`;
+};
+
+interface VisualRenderHints {
+  styleEntries: Array<{ key: string; valueCode: string }>;
+  comments: string[];
+  hiddenPlaceholder: boolean;
+  disabled: boolean;
+  readOnly: boolean;
+}
+
+const isFormulaLikeValue = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  if (/^#?[a-zA-Z0-9-]+$/.test(trimmed) && !trimmed.includes("(")) {
+    return false;
+  }
+
+  return /[A-Za-z_]+\(|\b(Self|Parent|ThisItem|If|Switch|LookUp|Patch|Color|RGBA)\b/.test(trimmed);
+};
+
+const getCanvasPropertyValue = (control: CanvasControl, propertyName: string): unknown => {
+  const layoutValue = control.layoutProperties[propertyName as keyof typeof control.layoutProperties];
+  if (layoutValue !== undefined) {
+    return layoutValue;
+  }
+
+  return control.properties[propertyName];
+};
+
+const stringifyVisualProperties = (values: Record<string, unknown>): string =>
+  safeComment(JSON.stringify(values));
+
+const toQuotedCode = (value: string): string => `"${safeComment(value)}"`;
+
+const parseNumericStyleValue = (
+  control: CanvasControl,
+  propertyName: string,
+  value: unknown,
+  styleKey: string,
+  styleEntries: Array<{ key: string; valueCode: string }>,
+  comments: string[],
+  warnings: GenerationWarning[],
+  context: GeneratorContext
+): void => {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    styleEntries.push({ key: styleKey, valueCode: `${value}` });
+    return;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+      styleEntries.push({ key: styleKey, valueCode: `${Number(trimmed)}` });
+      return;
+    }
+
+    if (isFormulaLikeValue(trimmed)) {
+      comments.push(`TODO: Convert Canvas property formula for ${propertyName}: ${trimmed}`);
+      warnings.push(
+        createWarning({
+          code: "REACT_VISUAL_PROPERTY_FORMULA_TODO",
+          message: `Property "${propertyName}" on control "${control.controlName}" is formula-based and needs manual conversion.`,
+          sourceArtifactIds: [control.artifactId],
+          sourceLocation: control.provenance.sourcePath,
+          provenance: context.invocationProvenance
+        })
+      );
+      return;
+    }
+  }
+
+  warnings.push(
+    createWarning({
+      code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+      message: `Property "${propertyName}" on control "${control.controlName}" could not be safely converted to numeric style.`,
+      sourceArtifactIds: [control.artifactId],
+      sourceLocation: control.provenance.sourcePath,
+      provenance: context.invocationProvenance
+    })
+  );
+};
+
+const parseStringStyleValue = (
+  control: CanvasControl,
+  propertyName: string,
+  value: unknown,
+  styleKey: string,
+  styleEntries: Array<{ key: string; valueCode: string }>,
+  comments: string[],
+  warnings: GenerationWarning[],
+  context: GeneratorContext
+): void => {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+
+    if (isFormulaLikeValue(trimmed)) {
+      comments.push(`TODO: Convert Canvas property formula for ${propertyName}: ${trimmed}`);
+      warnings.push(
+        createWarning({
+          code: "REACT_VISUAL_PROPERTY_FORMULA_TODO",
+          message: `Property "${propertyName}" on control "${control.controlName}" is formula-based and needs manual conversion.`,
+          sourceArtifactIds: [control.artifactId],
+          sourceLocation: control.provenance.sourcePath,
+          provenance: context.invocationProvenance
+        })
+      );
+      return;
+    }
+
+    styleEntries.push({ key: styleKey, valueCode: toQuotedCode(trimmed) });
+    return;
+  }
+
+  warnings.push(
+    createWarning({
+      code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+      message: `Property "${propertyName}" on control "${control.controlName}" could not be safely converted to string style.`,
+      sourceArtifactIds: [control.artifactId],
+      sourceLocation: control.provenance.sourcePath,
+      provenance: context.invocationProvenance
+    })
+  );
+};
+
+const deriveVisualRenderHints = (
+  control: CanvasControl,
+  warnings: GenerationWarning[],
+  context: GeneratorContext
+): VisualRenderHints => {
+  const styleEntries: Array<{ key: string; valueCode: string }> = [];
+  const comments: string[] = [];
+  const canvasVisualProps: Record<string, unknown> = {};
+  const controlFormulaProperties = new Set(
+    control.formulas
+      .map((formula) => (formula.propertyName ?? "").trim().toLowerCase())
+      .filter((propertyName) => propertyName.length > 0)
+  );
+  let hiddenPlaceholder = false;
+  let disabled = false;
+  let readOnly = false;
+  const includeProperty = (propertyName: string): void => {
+    const value = getCanvasPropertyValue(control, propertyName);
+    if (value !== undefined) {
+      canvasVisualProps[propertyName] = value;
+    }
+  };
+  [
+    "X",
+    "Y",
+    "Width",
+    "Height",
+    "Fill",
+    "Color",
+    "BorderColor",
+    "BorderThickness",
+    "BorderRadius",
+    "Font",
+    "FontWeight",
+    "Size",
+    "Align",
+    "Padding",
+    "Visible",
+    "DisplayMode"
+  ].forEach(includeProperty);
+
+  if (Object.keys(canvasVisualProps).length > 0) {
+    comments.push(`Canvas visual properties: ${stringifyVisualProperties(canvasVisualProps)}`);
+  }
+
+  const addFormulaTodoIfExplicit = (propertyName: string, value: unknown): boolean => {
+    if (!controlFormulaProperties.has(propertyName.toLowerCase())) {
+      return false;
+    }
+
+    comments.push(
+      `TODO: Convert Canvas property formula for ${propertyName}: ${
+        typeof value === "string" ? value : "[formula]"
+      }`
+    );
+    warnings.push(
+      createWarning({
+        code: "REACT_VISUAL_PROPERTY_FORMULA_TODO",
+        message: `Property "${propertyName}" on control "${control.controlName}" is formula-based and needs manual conversion.`,
+        sourceArtifactIds: [control.artifactId],
+        sourceLocation: control.provenance.sourcePath,
+        provenance: context.invocationProvenance
+      })
+    );
+
+    return true;
+  };
+
+  const xValue = getCanvasPropertyValue(control, "X");
+  const yValue = getCanvasPropertyValue(control, "Y");
+  if (control.normalizedLayout.inferredLayoutMode === "absolute") {
+    styleEntries.push({ key: "position", valueCode: toQuotedCode("absolute") });
+    if (!addFormulaTodoIfExplicit("X", xValue)) {
+      parseNumericStyleValue(
+        control,
+        "X",
+        xValue,
+        "left",
+        styleEntries,
+        comments,
+        warnings,
+        context
+      );
+    }
+    if (!addFormulaTodoIfExplicit("Y", yValue)) {
+      parseNumericStyleValue(
+        control,
+        "Y",
+        yValue,
+        "top",
+        styleEntries,
+        comments,
+        warnings,
+        context
+      );
+    }
+  }
+
+  const widthValue = getCanvasPropertyValue(control, "Width");
+  if (!addFormulaTodoIfExplicit("Width", widthValue)) {
+    parseNumericStyleValue(
+      control,
+      "Width",
+      widthValue,
+      "width",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const heightValue = getCanvasPropertyValue(control, "Height");
+  if (!addFormulaTodoIfExplicit("Height", heightValue)) {
+    parseNumericStyleValue(
+      control,
+      "Height",
+      heightValue,
+      "height",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const fillValue = getCanvasPropertyValue(control, "Fill");
+  if (!addFormulaTodoIfExplicit("Fill", fillValue)) {
+    parseStringStyleValue(
+      control,
+      "Fill",
+      fillValue,
+      "backgroundColor",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const colorValue = getCanvasPropertyValue(control, "Color");
+  if (!addFormulaTodoIfExplicit("Color", colorValue)) {
+    parseStringStyleValue(
+      control,
+      "Color",
+      colorValue,
+      "color",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const borderColorValue = getCanvasPropertyValue(control, "BorderColor");
+  if (!addFormulaTodoIfExplicit("BorderColor", borderColorValue)) {
+    parseStringStyleValue(
+      control,
+      "BorderColor",
+      borderColorValue,
+      "borderColor",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const borderThicknessValue = getCanvasPropertyValue(control, "BorderThickness");
+  if (!addFormulaTodoIfExplicit("BorderThickness", borderThicknessValue)) {
+    parseNumericStyleValue(
+      control,
+      "BorderThickness",
+      borderThicknessValue,
+      "borderWidth",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const borderRadiusValue = getCanvasPropertyValue(control, "BorderRadius");
+  if (!addFormulaTodoIfExplicit("BorderRadius", borderRadiusValue)) {
+    parseNumericStyleValue(
+      control,
+      "BorderRadius",
+      borderRadiusValue,
+      "borderRadius",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const fontValue = getCanvasPropertyValue(control, "Font");
+  if (!addFormulaTodoIfExplicit("Font", fontValue)) {
+    parseStringStyleValue(
+      control,
+      "Font",
+      fontValue,
+      "fontFamily",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const fontWeightValue = getCanvasPropertyValue(control, "FontWeight");
+  if (!addFormulaTodoIfExplicit("FontWeight", fontWeightValue)) {
+    if (fontWeightValue !== undefined && fontWeightValue !== null) {
+      if (typeof fontWeightValue === "number") {
+        styleEntries.push({ key: "fontWeight", valueCode: `${fontWeightValue}` });
+      } else if (typeof fontWeightValue === "string") {
+        const normalized = fontWeightValue.trim();
+        if (isFormulaLikeValue(normalized)) {
+          comments.push(`TODO: Convert Canvas property formula for FontWeight: ${normalized}`);
+          warnings.push(
+            createWarning({
+              code: "REACT_VISUAL_PROPERTY_FORMULA_TODO",
+              message: `Property "FontWeight" on control "${control.controlName}" is formula-based and needs manual conversion.`,
+              sourceArtifactIds: [control.artifactId],
+              sourceLocation: control.provenance.sourcePath,
+              provenance: context.invocationProvenance
+            })
+          );
+        } else {
+          const mapped =
+            normalized.toLowerCase() === "bold"
+              ? "bold"
+              : normalized.toLowerCase() === "normal"
+                ? "normal"
+                : normalized;
+          styleEntries.push({ key: "fontWeight", valueCode: toQuotedCode(mapped.toLowerCase()) });
+        }
+      } else {
+        warnings.push(
+          createWarning({
+            code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+            message: `Property "FontWeight" on control "${control.controlName}" could not be safely converted.`,
+            sourceArtifactIds: [control.artifactId],
+            sourceLocation: control.provenance.sourcePath,
+            provenance: context.invocationProvenance
+          })
+        );
+      }
+    }
+  }
+
+  const sizeValue = getCanvasPropertyValue(control, "Size");
+  if (!addFormulaTodoIfExplicit("Size", sizeValue)) {
+    parseNumericStyleValue(
+      control,
+      "Size",
+      sizeValue,
+      "fontSize",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const alignValue = getCanvasPropertyValue(control, "Align");
+  if (!addFormulaTodoIfExplicit("Align", alignValue) && alignValue !== undefined && alignValue !== null) {
+    if (typeof alignValue === "string") {
+      const normalized = alignValue.trim().toLowerCase();
+      if (isFormulaLikeValue(normalized)) {
+        comments.push(`TODO: Convert Canvas property formula for Align: ${alignValue}`);
+        warnings.push(
+          createWarning({
+            code: "REACT_VISUAL_PROPERTY_FORMULA_TODO",
+            message: `Property "Align" on control "${control.controlName}" is formula-based and needs manual conversion.`,
+            sourceArtifactIds: [control.artifactId],
+            sourceLocation: control.provenance.sourcePath,
+            provenance: context.invocationProvenance
+          })
+        );
+      } else {
+        const mappedAlign: Record<string, string> = {
+          center: "center",
+          left: "left",
+          right: "right",
+          justify: "justify"
+        };
+        const aligned = mappedAlign[normalized];
+        if (aligned) {
+          styleEntries.push({ key: "textAlign", valueCode: toQuotedCode(aligned) });
+        } else {
+          warnings.push(
+            createWarning({
+              code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+              message: `Property "Align" value "${alignValue}" on control "${control.controlName}" is not a known safe textAlign mapping.`,
+              sourceArtifactIds: [control.artifactId],
+              sourceLocation: control.provenance.sourcePath,
+              provenance: context.invocationProvenance
+            })
+          );
+        }
+      }
+    } else {
+      warnings.push(
+        createWarning({
+          code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+          message: `Property "Align" on control "${control.controlName}" could not be safely converted.`,
+          sourceArtifactIds: [control.artifactId],
+          sourceLocation: control.provenance.sourcePath,
+          provenance: context.invocationProvenance
+        })
+      );
+    }
+  }
+
+  const paddingValue = getCanvasPropertyValue(control, "Padding");
+  if (!addFormulaTodoIfExplicit("Padding", paddingValue)) {
+    parseNumericStyleValue(
+      control,
+      "Padding",
+      paddingValue,
+      "padding",
+      styleEntries,
+      comments,
+      warnings,
+      context
+    );
+  }
+
+  const visibleValue = getCanvasPropertyValue(control, "Visible");
+  if (!addFormulaTodoIfExplicit("Visible", visibleValue) && visibleValue !== undefined) {
+    if (typeof visibleValue === "boolean") {
+      if (!visibleValue) {
+        hiddenPlaceholder = true;
+        comments.push("Visible=false; control rendered as hidden-state placeholder in MVP.");
+      }
+    } else if (typeof visibleValue === "string") {
+      const normalized = visibleValue.trim().toLowerCase();
+      if (normalized === "false") {
+        hiddenPlaceholder = true;
+        comments.push("Visible=false; control rendered as hidden-state placeholder in MVP.");
+      } else if (normalized !== "true") {
+        if (isFormulaLikeValue(visibleValue)) {
+          comments.push(`TODO: Convert Canvas property formula for Visible: ${visibleValue}`);
+          warnings.push(
+            createWarning({
+              code: "REACT_VISUAL_PROPERTY_FORMULA_TODO",
+              message: `Property "Visible" on control "${control.controlName}" is formula-based and needs manual conversion.`,
+              sourceArtifactIds: [control.artifactId],
+              sourceLocation: control.provenance.sourcePath,
+              provenance: context.invocationProvenance
+            })
+          );
+        } else {
+          warnings.push(
+            createWarning({
+              code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+              message: `Property "Visible" value "${visibleValue}" on control "${control.controlName}" is not safely mappable.`,
+              sourceArtifactIds: [control.artifactId],
+              sourceLocation: control.provenance.sourcePath,
+              provenance: context.invocationProvenance
+            })
+          );
+        }
+      }
+    } else {
+      warnings.push(
+        createWarning({
+          code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+          message: `Property "Visible" on control "${control.controlName}" could not be safely converted.`,
+          sourceArtifactIds: [control.artifactId],
+          sourceLocation: control.provenance.sourcePath,
+          provenance: context.invocationProvenance
+        })
+      );
+    }
+  }
+
+  const displayModeValue = getCanvasPropertyValue(control, "DisplayMode");
+  if (!addFormulaTodoIfExplicit("DisplayMode", displayModeValue) && displayModeValue !== undefined) {
+    if (typeof displayModeValue === "string") {
+      const normalized = displayModeValue.trim().toLowerCase();
+      if (isFormulaLikeValue(displayModeValue)) {
+        comments.push(`TODO: Convert Canvas property formula for DisplayMode: ${displayModeValue}`);
+        warnings.push(
+          createWarning({
+            code: "REACT_VISUAL_PROPERTY_FORMULA_TODO",
+            message: `Property "DisplayMode" on control "${control.controlName}" is formula-based and needs manual conversion.`,
+            sourceArtifactIds: [control.artifactId],
+            sourceLocation: control.provenance.sourcePath,
+            provenance: context.invocationProvenance
+          })
+        );
+      } else if (normalized.includes("disabled")) {
+        disabled = true;
+      } else if (normalized.includes("view") || normalized.includes("readonly")) {
+        readOnly = true;
+      } else if (!normalized.includes("edit")) {
+        warnings.push(
+          createWarning({
+            code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+            message: `Property "DisplayMode" value "${displayModeValue}" on control "${control.controlName}" is not a known safe mapping.`,
+            sourceArtifactIds: [control.artifactId],
+            sourceLocation: control.provenance.sourcePath,
+            provenance: context.invocationProvenance
+          })
+        );
+      }
+    } else {
+      warnings.push(
+        createWarning({
+          code: "REACT_VISUAL_PROPERTY_UNCERTAIN",
+          message: `Property "DisplayMode" on control "${control.controlName}" could not be safely converted.`,
+          sourceArtifactIds: [control.artifactId],
+          sourceLocation: control.provenance.sourcePath,
+          provenance: context.invocationProvenance
+        })
+      );
+    }
+  }
+
+  return {
+    styleEntries,
+    comments: sortByStableKey(Array.from(new Set(comments)), (comment) => comment),
+    hiddenPlaceholder,
+    disabled,
+    readOnly
+  };
+};
+
+const styleAttributeCode = (
+  indent: string,
+  styleEntries: Array<{ key: string; valueCode: string }>
+): string => {
+  if (styleEntries.length === 0) {
+    return "";
+  }
+
+  const body = styleEntries
+    .map((entry) => `${indent}  ${entry.key}: ${entry.valueCode},`)
+    .join("\n");
+
+  return ` style={{
+${body}
+${indent}}}`;
 };
 
 const collectFormulaRecords = (screen: CanvasScreen): Array<{
@@ -192,6 +775,13 @@ const renderControl = (
     .join("\n");
   const classHint = layoutClassHint(control);
   const layoutComment = `${indent}{/* Canvas layout: mode=${control.normalizedLayout.inferredLayoutMode}, responsive=${control.normalizedLayout.responsiveHint}, readiness=${control.migrationReadiness} */}`;
+  const visualHints = deriveVisualRenderHints(control, warnings, context);
+  const visualComments = visualHints.comments
+    .map((comment) => `${indent}{/* ${safeComment(comment)} */}`)
+    .join("\n");
+  const styleAttribute = styleAttributeCode(indent, visualHints.styleEntries);
+  const disabledAttribute = visualHints.disabled ? " disabled" : "";
+  const readOnlyAttribute = visualHints.readOnly ? " readOnly" : "";
   const formulaHandlerByProperty =
     formulaHandlerByControlId.get(control.artifactId) ?? new Map<string, string>();
   const onSelectHandler = formulaHandlerByProperty.get("onselect");
@@ -222,10 +812,17 @@ const renderControl = (
     );
 
     return `${layoutComment}
-${indent}<div className="${classHint} unsupported-control" data-control-name="${control.controlName}">
+${visualComments ? `${visualComments}\n` : ""}${indent}<div className="${classHint} unsupported-control" data-control-name="${control.controlName}">
 ${indent}  {/* TODO: Unsupported Canvas control role "${control.role}" */}
 ${indent}  <p>TODO: Unsupported Canvas control role "${control.role}" for "${control.controlName}".</p>
 ${childMarkup ? `${childMarkup}\n` : ""}${indent}</div>`;
+  }
+
+  if (visualHints.hiddenPlaceholder) {
+    return `${layoutComment}
+${visualComments ? `${visualComments}\n` : ""}${indent}<div className="hidden-state-placeholder ${classHint}" data-control-name="${control.controlName}">
+${indent}  <p>TODO: ${control.controlName} is hidden in Canvas (Visible=false).</p>
+${indent}</div>`;
   }
 
   if (control.migrationReadiness === "blocked" || control.migrationReadiness === "low") {
@@ -240,11 +837,11 @@ ${childMarkup ? `${childMarkup}\n` : ""}${indent}</div>`;
     );
   }
 
-  const commonAttributes = `className="${classHint}" data-control-name="${control.controlName}"`;
+  const commonAttributes = `className="${classHint}" data-control-name="${control.controlName}"${styleAttribute}`;
 
   const wrap = (openTag: string, closeTag: string, inner: string): string =>
     `${layoutComment}
-${indent}${openTag}
+${visualComments ? `${visualComments}\n` : ""}${indent}${openTag}
 ${inner}
 ${indent}${closeTag}`;
 
@@ -259,29 +856,29 @@ ${indent}${closeTag}`;
       return wrap(`<div ${commonAttributes}>`, "</div>", childOrPlaceholder);
     case "text":
       return `${layoutComment}
-${indent}<p ${commonAttributes}>${control.controlName}</p>`;
+${visualComments ? `${visualComments}\n` : ""}${indent}<p ${commonAttributes}>${control.controlName}</p>`;
     case "heading":
       return `${layoutComment}
-${indent}<h2 ${commonAttributes}>${control.controlName}</h2>`;
+${visualComments ? `${visualComments}\n` : ""}${indent}<h2 ${commonAttributes}>${control.controlName}</h2>`;
     case "button":
       return `${layoutComment}
-${indent}<button ${commonAttributes}${onSelectHandler ? ` onClick={${onSelectHandler}}` : ""}>${control.controlName}</button>`;
+${visualComments ? `${visualComments}\n` : ""}${indent}<button ${commonAttributes}${disabledAttribute}${onSelectHandler ? ` onClick={${onSelectHandler}}` : ""}>${control.controlName}</button>`;
     case "input":
       return `${layoutComment}
-${indent}<input type="text" ${commonAttributes} placeholder="${control.controlName}"${
+${visualComments ? `${visualComments}\n` : ""}${indent}<input type="text" ${commonAttributes}${disabledAttribute}${readOnlyAttribute} placeholder="${control.controlName}"${
         onChangeHandler ? ` onChange={${onChangeHandler}}` : ""
       } />`;
     case "select":
       return `${layoutComment}
-${indent}<select ${commonAttributes}${onChangeHandler ? ` onChange={${onChangeHandler}}` : ""}>
+${visualComments ? `${visualComments}\n` : ""}${indent}<select ${commonAttributes}${disabledAttribute}${onChangeHandler ? ` onChange={${onChangeHandler}}` : ""}>
 ${indent}  <option value="">TODO: map options for ${control.controlName}</option>
 ${indent}</select>`;
     case "dateInput":
       return `${layoutComment}
-${indent}<input type="date" ${commonAttributes}${onChangeHandler ? ` onChange={${onChangeHandler}}` : ""} />`;
+${visualComments ? `${visualComments}\n` : ""}${indent}<input type="date" ${commonAttributes}${disabledAttribute}${readOnlyAttribute}${onChangeHandler ? ` onChange={${onChangeHandler}}` : ""} />`;
     case "gallery":
       return `${layoutComment}
-${indent}<div ${commonAttributes}>
+${visualComments ? `${visualComments}\n` : ""}${indent}<div ${commonAttributes}>
 ${indent}  <p>Gallery placeholder for ${control.controlName}</p>
 ${indent}  <ul>
 ${indent}    <li>TODO: map gallery item template</li>
@@ -289,24 +886,24 @@ ${indent}  </ul>
 ${childMarkup ? `${childMarkup}\n` : ""}${indent}</div>`;
     case "form":
       return `${layoutComment}
-${indent}<form ${commonAttributes}>
+${visualComments ? `${visualComments}\n` : ""}${indent}<form ${commonAttributes}>
 ${childMarkup || `${indent}  <p>TODO: map form fields</p>`}
 ${indent}</form>`;
     case "dataCard":
       return `${layoutComment}
-${indent}<div ${commonAttributes} data-card="true">
+${visualComments ? `${visualComments}\n` : ""}${indent}<div ${commonAttributes} data-card="true">
 ${indent}  <label>${control.controlName}</label>
 ${indent}  <input type="text" placeholder="TODO: map ${control.controlName}" />
 ${childMarkup ? `${childMarkup}\n` : ""}${indent}</div>`;
     case "image":
       return `${layoutComment}
-${indent}<img ${commonAttributes} src="/placeholder-image.png" alt="${control.controlName}" />`;
+${visualComments ? `${visualComments}\n` : ""}${indent}<img ${commonAttributes} src="/placeholder-image.png" alt="${control.controlName}" />`;
     case "icon":
       return `${layoutComment}
-${indent}<span ${commonAttributes}>[icon:${control.controlName}]</span>`;
+${visualComments ? `${visualComments}\n` : ""}${indent}<span ${commonAttributes}>[icon:${control.controlName}]</span>`;
     default:
       return `${layoutComment}
-${indent}<div ${commonAttributes}>
+${visualComments ? `${visualComments}\n` : ""}${indent}<div ${commonAttributes}>
 ${indent}  <p>TODO: map ${control.controlName}</p>
 ${childMarkup ? `${childMarkup}\n` : ""}${indent}</div>`;
   }
