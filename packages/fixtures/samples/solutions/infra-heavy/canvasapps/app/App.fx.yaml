@@ -1,0 +1,5 @@
+App:
+  Name: OpsDashboard
+  Data:
+    ConnectionReference: contoso_outlook
+    ApiBaseUrl: contoso_ApiBaseUrl

@@ -1,0 +1,139 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateAzureInfraArtifacts > matches generated infra main.bicep snapshot output 1`] = `
+"targetScope = 'resourceGroup'
+
+@description('Deterministic scaffold base name derived from solution metadata.')
+param baseName string = 'full-stack-infra-solution'
+
+@description('Environment short name (dev/test/prod).')
+param environmentName string
+
+@description('Deployment location placeholder. Set per environment parameter file.')
+param location string = resourceGroup().location
+
+@description('Enable React web workload resources.')
+param deployReact bool = true
+
+@description('Enable Azure Functions workload resources.')
+param deployFunctions bool = true
+
+@description('Enable Azure SQL workload resources.')
+param deploySql bool = true
+
+@description('Optional tags applied to all resources.')
+param tags object = {}
+
+@description('App Service plan SKU placeholder.')
+param appServiceSkuName string = 'B1'
+
+@description('SQL SKU placeholder.')
+param sqlSkuName string = 'S0'
+
+module managedIdentity './modules/managed-identity.bicep' = {
+  name: 'managedIdentity-\${baseName}-\${environmentName}'
+  params: {
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    tags: tags
+  }
+}
+
+module keyVault './modules/key-vault.bicep' = {
+  name: 'keyVault-\${baseName}-\${environmentName}'
+  params: {
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    tags: tags
+  }
+}
+
+module appInsights './modules/app-insights.bicep' = {
+  name: 'appInsights-\${baseName}-\${environmentName}'
+  params: {
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    tags: tags
+  }
+}
+
+module storage './modules/storage.bicep' = if (deployFunctions) {
+  name: 'storage-\${baseName}-\${environmentName}'
+  params: {
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    tags: tags
+  }
+}
+
+module functionApp './modules/function-app.bicep' = if (deployFunctions) {
+  name: 'functionApp-\${baseName}-\${environmentName}'
+  params: {
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    storageAccountName: storage.outputs.storageAccountName
+    appInsightsConnectionSettingName: appInsights.outputs.connectionSettingName
+    keyVaultUri: keyVault.outputs.keyVaultUri
+    managedIdentityId: managedIdentity.outputs.resourceId
+    tags: tags
+  }
+}
+
+module appService './modules/app-service.bicep' = if (deployReact) {
+  name: 'appService-\${baseName}-\${environmentName}'
+  params: {
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    appServiceSkuName: appServiceSkuName
+    keyVaultUri: keyVault.outputs.keyVaultUri
+    managedIdentityId: managedIdentity.outputs.resourceId
+    tags: tags
+  }
+}
+
+module sqlServer './modules/sql-server.bicep' = if (deploySql) {
+  name: 'sqlServer-\${baseName}-\${environmentName}'
+  params: {
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    managedIdentityPrincipalId: managedIdentity.outputs.principalId
+    tags: tags
+  }
+}
+
+module sqlDatabase './modules/sql-database.bicep' = if (deploySql) {
+  name: 'sqlDatabase-\${baseName}-\${environmentName}'
+  params: {
+    sqlServerName: sqlServer.outputs.sqlServerName
+    baseName: baseName
+    environmentName: environmentName
+    location: location
+    sqlSkuName: sqlSkuName
+    tags: tags
+  }
+}
+
+// TODO: configure networking/private endpoints for Key Vault, Storage, SQL, and App resources.
+// TODO: enforce Entra ID auth settings for application and data-plane access.
+// TODO: validate SQL firewall rules and private routing strategy per environment.
+// TODO: assign least-privilege RBAC role assignments to managed identities.
+// TODO: configure monitoring, alerting, backup, and retention policies.
+// TODO: define environment promotion strategy and release governance.
+
+output keyVaultName string = keyVault.outputs.keyVaultName
+output managedIdentityPrincipalId string = managedIdentity.outputs.principalId
+output appInsightsName string = appInsights.outputs.appInsightsName
+output functionAppName string = deployFunctions ? functionApp.outputs.functionAppName : ''
+output webAppName string = deployReact ? appService.outputs.webAppName : ''
+output sqlServerName string = deploySql ? sqlServer.outputs.sqlServerName : ''
+output sqlDatabaseName string = deploySql ? sqlDatabase.outputs.sqlDatabaseName : ''
+"
+`;

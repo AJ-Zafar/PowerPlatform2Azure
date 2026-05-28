@@ -1,0 +1,7 @@
+Screen:
+  Name: CustomScreen
+  Controls:
+    - Name: cmpHero
+      Type: CustomWidget
+      Properties:
+        SomeProp: "x"

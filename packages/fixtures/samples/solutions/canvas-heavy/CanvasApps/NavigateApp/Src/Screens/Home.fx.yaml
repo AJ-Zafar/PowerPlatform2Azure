@@ -1,0 +1,7 @@
+Screen:
+  Name: Home
+  Controls:
+    - Name: btnGoMissing
+      Type: Button
+      Properties:
+        OnSelect: Navigate(MissingScreen, ScreenTransition.None)

@@ -1,0 +1,9 @@
+Screen:
+  Name: Experimental
+  Controls:
+    - Name: expControl
+      Type: QuantumWidget
+      Properties:
+        StrangeProperty:
+          nested: true
+        OnSelect: LaunchQuantumBridge()

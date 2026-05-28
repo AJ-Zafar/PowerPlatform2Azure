@@ -1,0 +1,4 @@
+Name: GalleryApp
+DataSources:
+  - Name: Contacts
+    Type: Dataverse

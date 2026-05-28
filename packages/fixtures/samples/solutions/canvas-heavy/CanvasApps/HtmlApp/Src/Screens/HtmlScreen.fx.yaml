@@ -1,0 +1,7 @@
+Screen:
+  Name: HtmlScreen
+  Controls:
+    - Name: htmlBody
+      Type: HtmlText
+      Properties:
+        HtmlText: "<b>Hello</b>"

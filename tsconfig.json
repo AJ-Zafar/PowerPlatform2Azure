@@ -1,0 +1,29 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "apps/cli"
+    },
+    {
+      "path": "apps/web"
+    },
+    {
+      "path": "packages/assessment"
+    },
+    {
+      "path": "packages/fixtures"
+    },
+    {
+      "path": "packages/generators"
+    },
+    {
+      "path": "packages/ir"
+    },
+    {
+      "path": "packages/parsers"
+    },
+    {
+      "path": "packages/powerfx"
+    }
+  ]
+}

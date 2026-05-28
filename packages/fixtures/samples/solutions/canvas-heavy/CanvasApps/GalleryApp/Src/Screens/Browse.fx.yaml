@@ -1,0 +1,12 @@
+Screen:
+  Name: Browse
+  Controls:
+    - Name: galContacts
+      Type: Gallery
+      Properties:
+        Items: Contacts
+      Children:
+        - Name: lblContactName
+          Type: Label
+          Properties:
+            Text: ThisItem.fullname

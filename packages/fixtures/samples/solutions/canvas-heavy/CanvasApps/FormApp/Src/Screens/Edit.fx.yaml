@@ -1,0 +1,12 @@
+Screen:
+  Name: Edit
+  Controls:
+    - Name: frmAccount
+      Type: Form
+      Properties:
+        DataSource: Accounts
+      Children:
+        - Name: datName
+          Type: DataCard
+          Properties:
+            Default: ThisItem.name

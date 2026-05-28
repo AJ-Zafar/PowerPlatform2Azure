@@ -1,0 +1,27 @@
+<Roles>
+  <Role>
+    <Name>Salesperson</Name>
+    <Privileges>
+      <Privilege>
+        <Name>prvReadAccount</Name>
+        <EntityLogicalName>account</EntityLogicalName>
+        <Scope>Global</Scope>
+      </Privilege>
+      <Privilege>
+        <Name>prvWriteAccount</Name>
+        <EntityLogicalName>account</EntityLogicalName>
+        <Scope>Local</Scope>
+      </Privilege>
+    </Privileges>
+  </Role>
+  <Role>
+    <Name>SupportAgent</Name>
+    <Privileges>
+      <Privilege>
+        <Name>prvReadCase</Name>
+        <EntityLogicalName>incident</EntityLogicalName>
+        <Scope>Deep</Scope>
+      </Privilege>
+    </Privileges>
+  </Role>
+</Roles>

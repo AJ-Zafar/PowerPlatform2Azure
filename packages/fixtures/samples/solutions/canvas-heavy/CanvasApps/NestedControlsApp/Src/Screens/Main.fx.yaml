@@ -1,0 +1,19 @@
+Screen:
+  Name: Main
+  Controls:
+    - Name: conRoot
+      Type: Container
+      Properties:
+        X: 0
+        Y: 0
+      Children:
+        - Name: conInner
+          Type: Container
+          Children:
+            - Name: conLevel3
+              Type: Container
+              Children:
+                - Name: lblDeep
+                  Type: Label
+                  Properties:
+                    Text: "Nested"

@@ -1,0 +1,128 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateAssessmentReportMarkdown > matches markdown snapshot output 1`] = `
+"# Power Exit Migration Assessment Report
+
+## Executive summary
+- Overall readiness: **blocked**.
+- Overall risk score: **100/100**.
+- Overall complexity score: **71/100**.
+- Overall confidence: **0.84**.
+
+## Overall readiness
+- Readiness state: **blocked**.
+- Blockers identified: **5**.
+- Quick wins identified: **2**.
+
+## Overall risk/complexity/confidence
+- Risk: **100/100**.
+- Complexity: **71/100**.
+- Confidence: **0.84**.
+
+## Key blockers
+- Blocked cloud flows detected — 1 blocked flows and 1 unsupported flow features.
+- Premium/custom connectors in cloud flows — 3 premium/custom connectors detected.
+- Missing connection references — 8 missing connection reference warnings.
+- Premium/custom connection footprint — 3 premium/custom connectors detected in flow summary.
+- Unresolved dependency references — 12 unresolved dependency edges (12 flow-related).
+
+## Quick wins
+- Low Dataverse schema volume — Prioritize this schema in Wave 1 as a quick validation pass for data model migration.
+- Small security role footprint — Include these roles in an early security validation wave after schema migration.
+
+## Dataverse assessment
+- **Dataverse**: readiness **high**, score **100/100**, confidence **0.96**.
+### Dataverse findings
+
+- **Low Dataverse schema volume** (info) — Dataverse schema volume is relatively small and suitable for an early migration wave. Evidence: 0 entities and 0 relationships. Recommendation: Prioritize this schema in Wave 1 as a quick validation pass for data model migration.
+
+## Canvas assessment
+- **Canvas**: readiness **high**, score **100/100**, confidence **0.96**.
+### Canvas findings
+
+- None.
+
+## Cloud Flow assessment
+- **Cloud Flows**: readiness **blocked**, score **25/100**, confidence **0.95**.
+### Cloud Flow findings
+
+- **Blocked cloud flows detected** (high) — Some cloud flows are currently blocked due to unsupported or high-complexity features. Evidence: 1 blocked flows and 1 unsupported flow features. Recommendation: Split blocked flows into manual redesign tasks and isolate them to late migration waves.
+- **Premium/custom connectors in cloud flows** (high) — Premium or custom connectors increase migration complexity and target-platform dependency risk. Evidence: 3 premium/custom connectors detected. Recommendation: Inventory connector dependencies and define connector-specific replacement or integration strategies.
+- **Complex flow control structures detected** (medium) — Loops, parallel branches, or child-flow orchestration increase migration complexity. Evidence: 2 complex control-flow warnings. Recommendation: Model complex control flow as dedicated migration work items with explicit test coverage.
+- **HTTP/webhook or human approval flow actions present** (medium) — HTTP/webhook and human-in-the-loop actions often require architecture decisions beyond simple migration. Evidence: 2 HTTP/webhook warnings and 1 human-action warnings. Recommendation: Define integration and approval orchestration target patterns before migrating these flows.
+
+## Security assessment
+- **Security**: readiness **high**, score **100/100**, confidence **0.96**.
+### Security findings
+
+- **Small security role footprint** (info) — Security inventory is relatively small and suitable for early migration validation. Evidence: 0 security roles identified. Recommendation: Include these roles in an early security validation wave after schema migration.
+
+## Connection and dependency assessment
+- **Connections**: readiness **blocked**, score **11/100**, confidence **0.92**.
+- **Dependencies**: readiness **blocked**, score **28/100**, confidence **0.91**.
+### Connection/dependency findings
+
+- **Missing connection references** (high) — Some flow actions reference missing or unresolved connection references. Evidence: 8 missing connection reference warnings. Recommendation: Reconcile connection reference names with flow definitions before migration planning.
+- **Premium/custom connection footprint** (high) — Premium or custom connectors increase integration risk and may require manual target integration work. Evidence: 3 premium/custom connectors detected in flow summary. Recommendation: Create connector-specific migration runbooks and validate equivalent target integrations early.
+- **Unresolved dependency references** (high) — Dependency graph contains unresolved references that increase migration risk. Evidence: 12 unresolved dependency edges (12 flow-related). Recommendation: Resolve missing references and rerun analysis before wave planning and execution.
+
+## Unsupported features
+- flow.action.unsupported-type.quantumaction (medium) at \`workflows/unknown-action-type-flow.json\` — Action type "QuantumAction" is not supported by the current flow parser.
+
+## Warnings
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/approval-human-action-flow.json\` — Flow action "start_approval" references unresolved connection reference "shared_approvals".
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/child-flow-action-flow.json\` — Flow action "run_child_flow" references unresolved connection reference "Run_a_Child_Flow".
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/child-flow-action-flow.json\` — Flow action "run_child_flow" references unresolved connection reference "shared_logicflows".
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/custom-connector-flow.json\` — Flow action "invoke_custom" references unresolved connection reference "contoso_missing_custom".
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/custom-connector-flow.json\` — Flow action "invoke_custom" references unresolved connection reference "custom_myconnector".
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/dataverse-trigger-flow.json\` — Flow action "get_row" references unresolved connection reference "shared_commondataserviceforapps".
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/http-action-flow.json\` — Flow action "invoke_api" references unresolved connection reference "ENV_API_BASE".
+- DEPENDENCY_UNRESOLVED_FLOW_CONNECTION_REFERENCE (warning) at \`workflows/manual-trigger-flow.json\` — Flow action "send_email" references unresolved connection reference "shared_office365".
+- DEPENDENCY_UNRESOLVED_FLOW_DATAVERSE_ENTITY (warning) at \`workflows/dataverse-trigger-flow.json\` — Flow action "get_row" references unresolved Dataverse entity "accounts".
+- DEPENDENCY_UNRESOLVED_FLOW_EXPRESSION_REFERENCE (warning) at \`workflows/condition-scope-flow.json\` — Flow expression "expression" references unresolved variable "flag".
+- DEPENDENCY_UNRESOLVED_FLOW_EXPRESSION_REFERENCE (warning) at \`workflows/http-action-flow.json\` — Flow expression "inputs.uri" references unresolved variable "ENV_API_BASE".
+- DEPENDENCY_UNRESOLVED_FLOW_EXPRESSION_REFERENCE (warning) at \`workflows/unknown-action-type-flow.json\` — Flow expression "inputs.payload" references unresolved variable "mystery".
+- FLOW_ACTION_UNSUPPORTED_TYPE (warning) at \`workflows/unknown-action-type-flow.json\` — Flow action "mystery_step" has unsupported type "QuantumAction".
+- FLOW_CHILD_FLOW_ACTION (warning) at \`workflows/child-flow-action-flow.json\` — Flow action "run_child_flow" runs a child flow.
+- FLOW_HTTP_ACTION (warning) at \`workflows/http-action-flow.json\` — Flow action "invoke_api" uses HTTP and may require manual migration hardening.
+- FLOW_HTTP_OR_WEBHOOK_TRIGGER (warning) at \`workflows/dataverse-trigger-flow.json\` — Trigger "when_row_added" uses HTTP/webhook semantics and may require manual migration.
+- FLOW_HUMAN_IN_THE_LOOP_ACTION (warning) at \`workflows/approval-human-action-flow.json\` — Flow action "start_approval" appears to require human approval.
+- FLOW_JSON_INVALID (warning) at \`workflows/malformed-flow.json\` — Flow JSON definition is malformed and was skipped.
+- FLOW_LOOP_ACTION (warning) at \`workflows/apply-to-each-loop-flow.json\` — Flow action "for_each_items" introduces loop control flow.
+- FLOW_PREMIUM_OR_CUSTOM_CONNECTOR (warning) at \`workflows/approval-human-action-flow.json\` — Flow action "start_approval" uses premium connector "shared_approvals".
+- FLOW_PREMIUM_OR_CUSTOM_CONNECTOR (warning) at \`workflows/child-flow-action-flow.json\` — Flow action "run_child_flow" uses premium connector "shared_logicflows".
+- FLOW_PREMIUM_OR_CUSTOM_CONNECTOR (warning) at \`workflows/custom-connector-flow.json\` — Flow action "invoke_custom" uses custom connector "custom_myconnector".
+- FLOW_XML_PARTIAL_METADATA (warning) at \`workflows/legacy-workflow-metadata.xml\` — Flow XML metadata was parsed using best-effort extraction.
+
+## Recommended migration waves
+### Wave 0 — Discovery and remediation
+- Description: Resolve blockers, malformed artifacts, unsupported critical features, and unresolved dependencies.
+- Evidence findings: flows-blocked-readiness, flows-premium-custom-connectors, connections-missing-references, connections-premium-custom, dependencies-unresolved-edges
+- Evidence artifacts: \`connection-reference:contoso_approvals\`, \`connection-reference:contoso_approvals\`, \`connection-reference:contoso_dataverse\`, \`connection-reference:contoso_dataverse\`, \`connection-reference:contoso_missing_custom\`, \`connection-reference:contoso_outlook\`, \`connection-reference:contoso_outlook\`, \`connection-reference:custom_myconnector\`, \`connection-reference:env_api_base\`, \`connection-reference:run_a_child_flow\`, \`connection-reference:shared_approvals\`, \`connection-reference:shared_commondataserviceforapps\`, \`connection-reference:shared_logicflows\`, \`connection-reference:shared_office365\`, \`entity:accounts\`, \`flow-action:approval-human-action-flow-start_approval\`, \`flow-action:child-flow-action-flow-run_child_flow\`, \`flow-action:child-flow-action-flow-run_child_flow\`, \`flow-action:custom-connector-flow-invoke_custom\`, \`flow-action:custom-connector-flow-invoke_custom\`, \`flow-action:dataverse-trigger-flow-get_row\`, \`flow-action:dataverse-trigger-flow-get_row\`, \`flow-action:http-action-flow-invoke_api\`, \`flow-action:manual-trigger-flow-send_email\`, \`flow-expression:condition-scope-flow-check_flag-expression-1\`, \`flow-expression:http-action-flow-invoke_api-inputs.uri-1\`, \`flow-expression:unknown-action-type-flow-mystery_step-inputs.payload-1\`, \`flow-variable:condition-scope-flow-flag\`, \`flow-variable:http-action-flow-env_api_base\`, \`flow-variable:unknown-action-type-flow-mystery\`, \`flow:apply-to-each-loop-flow\`, \`flow:apply-to-each-loop-flow\`, \`flow:approval-human-action-flow\`, \`flow:approval-human-action-flow\`, \`flow:child-flow-action-flow\`, \`flow:child-flow-action-flow\`, \`flow:condition-scope-flow\`, \`flow:condition-scope-flow\`, \`flow:custom-connector-flow\`, \`flow:custom-connector-flow\`, \`flow:dataverse-trigger-flow\`, \`flow:dataverse-trigger-flow\`, \`flow:email-trigger-flow\`, \`flow:email-trigger-flow\`, \`flow:http-action-flow\`, \`flow:http-action-flow\`, \`flow:legacy-workflow-metadata\`, \`flow:legacy-workflow-metadata\`, \`flow:manual-trigger-flow\`, \`flow:manual-trigger-flow\`, \`flow:parallel-branches-flow\`, \`flow:parallel-branches-flow\`, \`flow:recurrence-trigger-flow\`, \`flow:recurrence-trigger-flow\`, \`flow:runafter-dependencies-flow\`, \`flow:runafter-dependencies-flow\`, \`flow:simple-sequential-actions-flow\`, \`flow:simple-sequential-actions-flow\`, \`flow:unknown-action-type-flow\`, \`flow:unknown-action-type-flow\`
+
+### Wave 1 — Low-risk Dataverse/schema items
+- Description: Start with lower-risk Dataverse entities and relationships once blockers are addressed.
+- Evidence findings: dataverse-low-volume-quick-win
+- Evidence artifacts: None
+
+### Wave 2 — Simple flows and simple Canvas screens
+- Description: Migrate high-readiness Canvas screens and low-risk flows to validate target patterns.
+- Evidence findings: dataverse-low-volume-quick-win, security-low-volume-quick-win
+- Evidence artifacts: None
+
+### Wave 3 — Complex Canvas/Flow items
+- Description: Address complex layout/formula and orchestration cases requiring deeper redesign and validation.
+- Evidence findings: flows-blocked-readiness, flows-premium-custom-connectors, flows-control-flow-complexity, flows-http-human-actions
+- Evidence artifacts: \`flow:apply-to-each-loop-flow\`, \`flow:apply-to-each-loop-flow\`, \`flow:approval-human-action-flow\`, \`flow:approval-human-action-flow\`, \`flow:child-flow-action-flow\`, \`flow:child-flow-action-flow\`, \`flow:condition-scope-flow\`, \`flow:condition-scope-flow\`, \`flow:custom-connector-flow\`, \`flow:custom-connector-flow\`, \`flow:dataverse-trigger-flow\`, \`flow:dataverse-trigger-flow\`, \`flow:email-trigger-flow\`, \`flow:email-trigger-flow\`, \`flow:http-action-flow\`, \`flow:http-action-flow\`, \`flow:legacy-workflow-metadata\`, \`flow:legacy-workflow-metadata\`, \`flow:manual-trigger-flow\`, \`flow:manual-trigger-flow\`, \`flow:parallel-branches-flow\`, \`flow:parallel-branches-flow\`, \`flow:recurrence-trigger-flow\`, \`flow:recurrence-trigger-flow\`, \`flow:runafter-dependencies-flow\`, \`flow:runafter-dependencies-flow\`, \`flow:simple-sequential-actions-flow\`, \`flow:simple-sequential-actions-flow\`, \`flow:unknown-action-type-flow\`, \`flow:unknown-action-type-flow\`
+
+### Wave 4 — Blocked/manual architecture decisions
+- Description: Handle residual blocked components with manual architecture decisions and explicit approvals.
+- Evidence findings: flows-blocked-readiness, flows-premium-custom-connectors, connections-missing-references, connections-premium-custom, dependencies-unresolved-edges
+- Evidence artifacts: \`connection-reference:contoso_approvals\`, \`connection-reference:contoso_approvals\`, \`connection-reference:contoso_dataverse\`, \`connection-reference:contoso_dataverse\`, \`connection-reference:contoso_missing_custom\`, \`connection-reference:contoso_outlook\`, \`connection-reference:contoso_outlook\`, \`connection-reference:custom_myconnector\`, \`connection-reference:env_api_base\`, \`connection-reference:run_a_child_flow\`, \`connection-reference:shared_approvals\`, \`connection-reference:shared_commondataserviceforapps\`, \`connection-reference:shared_logicflows\`, \`connection-reference:shared_office365\`, \`entity:accounts\`, \`flow-action:approval-human-action-flow-start_approval\`, \`flow-action:child-flow-action-flow-run_child_flow\`, \`flow-action:child-flow-action-flow-run_child_flow\`, \`flow-action:custom-connector-flow-invoke_custom\`, \`flow-action:custom-connector-flow-invoke_custom\`, \`flow-action:dataverse-trigger-flow-get_row\`, \`flow-action:dataverse-trigger-flow-get_row\`, \`flow-action:http-action-flow-invoke_api\`, \`flow-action:manual-trigger-flow-send_email\`, \`flow-expression:condition-scope-flow-check_flag-expression-1\`, \`flow-expression:http-action-flow-invoke_api-inputs.uri-1\`, \`flow-expression:unknown-action-type-flow-mystery_step-inputs.payload-1\`, \`flow-variable:condition-scope-flow-flag\`, \`flow-variable:http-action-flow-env_api_base\`, \`flow-variable:unknown-action-type-flow-mystery\`, \`flow:apply-to-each-loop-flow\`, \`flow:apply-to-each-loop-flow\`, \`flow:approval-human-action-flow\`, \`flow:approval-human-action-flow\`, \`flow:child-flow-action-flow\`, \`flow:child-flow-action-flow\`, \`flow:condition-scope-flow\`, \`flow:condition-scope-flow\`, \`flow:custom-connector-flow\`, \`flow:custom-connector-flow\`, \`flow:dataverse-trigger-flow\`, \`flow:dataverse-trigger-flow\`, \`flow:email-trigger-flow\`, \`flow:email-trigger-flow\`, \`flow:http-action-flow\`, \`flow:http-action-flow\`, \`flow:legacy-workflow-metadata\`, \`flow:legacy-workflow-metadata\`, \`flow:manual-trigger-flow\`, \`flow:manual-trigger-flow\`, \`flow:parallel-branches-flow\`, \`flow:parallel-branches-flow\`, \`flow:recurrence-trigger-flow\`, \`flow:recurrence-trigger-flow\`, \`flow:runafter-dependencies-flow\`, \`flow:runafter-dependencies-flow\`, \`flow:simple-sequential-actions-flow\`, \`flow:simple-sequential-actions-flow\`, \`flow:unknown-action-type-flow\`, \`flow:unknown-action-type-flow\`
+
+## Next steps
+- Validate blocker remediation scope and ownership.
+- Confirm migration wave sequencing with engineering and platform teams.
+- Rerun \`power-exit analyse --report\` after remediation to refresh readiness/risk outputs.
+"
+`;

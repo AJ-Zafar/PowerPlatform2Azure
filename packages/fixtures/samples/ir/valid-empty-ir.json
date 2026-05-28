@@ -1,0 +1,86 @@
+{
+  "solution": {
+    "artifactId": "solution:default",
+    "name": "Unknown Solution",
+    "uniqueName": "unknown_solution",
+    "version": "0.0.0",
+    "sourceFolder": "unknown-solution",
+    "publisher": {
+      "uniqueName": "unknown_publisher",
+      "displayName": "Unknown Publisher"
+    },
+    "managed": false,
+    "localizedNames": [],
+    "provenance": {
+      "sourcePath": "unknown-solution",
+      "sourceType": "solution"
+    },
+    "confidence": 1
+  },
+  "dataverse": {
+    "entities": [],
+    "relationships": [],
+    "optionSets": []
+  },
+  "canvasApps": [],
+  "cloudFlows": [],
+  "security": {
+    "roles": []
+  },
+  "environmentVariables": [],
+  "connectionReferences": [],
+  "dependencyGraph": {
+    "edges": []
+  },
+  "analysisSummary": {
+    "filesScanned": 0,
+    "classifiedFiles": 0,
+    "unknownFiles": 0,
+    "solutionMetadataPresence": false,
+    "entities": 0,
+    "attributes": 0,
+    "relationships": 0,
+    "choices": 0,
+    "canvasApps": 0,
+    "canvasScreens": 0,
+    "canvasControls": 0,
+    "canvasFormulas": 0,
+    "canvasScreensByReadiness": {
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "blocked": 0
+    },
+    "canvasControlsByRole": {},
+    "canvasBlockedControls": 0,
+    "canvasUnknownControls": 0,
+    "canvasComplexFormulas": 0,
+    "canvasLayoutWarnings": 0,
+    "flows": 0,
+    "flowTriggers": 0,
+    "flowActions": 0,
+    "flowConnectorsDetected": 0,
+    "flowPremiumCustomConnectors": 0,
+    "flowsByReadiness": {
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "blocked": 0
+    },
+    "unsupportedFlowFeatures": 0,
+    "unresolvedFlowDependencies": 0,
+    "environmentVariables": 0,
+    "connectionReferences": 0,
+    "securityRoles": 0,
+    "warnings": 0,
+    "unsupportedFeatures": 0,
+    "unresolvedDependencies": 0
+  },
+  "unsupportedFeatures": [],
+  "warnings": [],
+  "provenance": {
+    "sourcePath": "unknown-solution",
+    "sourceType": "solution"
+  },
+  "confidence": 1
+}

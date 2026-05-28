@@ -1,0 +1,12 @@
+<EnvironmentVariables>
+  <EnvironmentVariable>
+    <SchemaName>contoso_ApiBaseUrl</SchemaName>
+    <Type>String</Type>
+    <DefaultValue>https://api.contoso.example</DefaultValue>
+  </EnvironmentVariable>
+  <EnvironmentVariable>
+    <SchemaName>contoso_MaxRetries</SchemaName>
+    <Type>Number</Type>
+    <DefaultValue>3</DefaultValue>
+  </EnvironmentVariable>
+</EnvironmentVariables>

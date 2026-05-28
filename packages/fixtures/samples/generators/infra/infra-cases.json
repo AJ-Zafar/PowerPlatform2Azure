@@ -1,0 +1,79 @@
+{
+  "minimalSolutionInfra": {
+    "solution": {
+      "name": "Minimal Infra Solution",
+      "uniqueName": "minimal_infra_solution",
+      "publisher": "contoso"
+    },
+    "includeSql": false,
+    "includeFunctions": false,
+    "includeReact": false,
+    "securityRisk": "low"
+  },
+  "solutionWithSqlRequirement": {
+    "solution": {
+      "name": "SQL Infra Solution",
+      "uniqueName": "sql_infra_solution",
+      "publisher": "contoso"
+    },
+    "includeSql": true,
+    "includeFunctions": false,
+    "includeReact": false,
+    "securityRisk": "medium"
+  },
+  "solutionWithFunctionsRequirement": {
+    "solution": {
+      "name": "Functions Infra Solution",
+      "uniqueName": "functions_infra_solution",
+      "publisher": "contoso"
+    },
+    "includeSql": false,
+    "includeFunctions": true,
+    "includeReact": false,
+    "securityRisk": "medium"
+  },
+  "solutionWithReactRequirement": {
+    "solution": {
+      "name": "React Infra Solution",
+      "uniqueName": "react_infra_solution",
+      "publisher": "contoso"
+    },
+    "includeSql": false,
+    "includeFunctions": false,
+    "includeReact": true,
+    "securityRisk": "low"
+  },
+  "mixedFullStackSolution": {
+    "solution": {
+      "name": "Full Stack Infra Solution",
+      "uniqueName": "full_stack_infra_solution",
+      "publisher": "contoso"
+    },
+    "includeSql": true,
+    "includeFunctions": true,
+    "includeReact": true,
+    "securityRisk": "high"
+  },
+  "missingSolutionMetadata": {
+    "solution": {
+      "name": "",
+      "uniqueName": "",
+      "publisher": ""
+    },
+    "includeSql": true,
+    "includeFunctions": true,
+    "includeReact": false,
+    "securityRisk": "high"
+  },
+  "highRiskSecurityHeavySolution": {
+    "solution": {
+      "name": "Security Heavy Infra Solution",
+      "uniqueName": "security_heavy_infra_solution",
+      "publisher": "contoso-secure"
+    },
+    "includeSql": true,
+    "includeFunctions": true,
+    "includeReact": true,
+    "securityRisk": "critical"
+  }
+}

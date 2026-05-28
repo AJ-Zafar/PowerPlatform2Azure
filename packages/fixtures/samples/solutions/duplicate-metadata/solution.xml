@@ -1,0 +1,16 @@
+<ImportExportXml languagecode="1033">
+  <SolutionManifest>
+    <UniqueName>contoso_duplicate_metadata</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Duplicate Metadata" languagecode="1033" />
+    </LocalizedNames>
+    <Version>1.0.0.0</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>contoso</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Contoso Ltd" languagecode="1033" />
+      </LocalizedNames>
+    </Publisher>
+  </SolutionManifest>
+</ImportExportXml>

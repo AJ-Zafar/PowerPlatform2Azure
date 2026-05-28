@@ -1,0 +1,1 @@
+This file intentionally uses an unknown layout pattern to trigger unsupported discovery reporting.

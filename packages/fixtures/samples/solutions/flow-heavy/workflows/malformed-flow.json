@@ -1,0 +1,19 @@
+{
+  "name": "malformed-flow",
+  "properties": {
+    "displayName": "Malformed Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request"
+        }
+      },
+      "actions": {
+        "broken": {
+          "type": "Compose",
+          "inputs": "missing braces"
+        }
+      }
+    }
+  

@@ -1,0 +1,7 @@
+Component:
+  Name: FancyCard
+  Controls:
+    - Name: lblFancy
+      Type: Label
+      Properties:
+        Text: "Fancy"

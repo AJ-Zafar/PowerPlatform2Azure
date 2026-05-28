@@ -1,0 +1,263 @@
+{
+  "manualFlowHttp": {
+    "flows": [
+      {
+        "name": "Manual Account Update",
+        "displayName": "Manual Account Update",
+        "triggerClassification": "manual",
+        "triggerType": "Request",
+        "actions": [
+          {
+            "actionName": "UpdateAccount",
+            "actionType": "OpenApiConnection",
+            "connectorApi": "shared_commondataserviceforapps",
+            "operationId": "UpdateRecord"
+          },
+          {
+            "actionName": "SendWebhook",
+            "actionType": "Http",
+            "connectorApi": "shared_http",
+            "operationId": "HttpRequest"
+          },
+          {
+            "actionName": "ApprovalStep",
+            "actionType": "Approval",
+            "connectorApi": "shared_approvals"
+          },
+          {
+            "actionName": "ReviewCondition",
+            "actionType": "If",
+            "scopeControl": {
+              "isCondition": true
+            }
+          },
+          {
+            "actionName": "ScopeBlock",
+            "actionType": "Scope",
+            "scopeControl": {
+              "isScope": true
+            }
+          },
+          {
+            "actionName": "LoopBlock",
+            "actionType": "Foreach",
+            "scopeControl": {
+              "isLoop": true
+            }
+          },
+          {
+            "actionName": "UnknownStep",
+            "actionType": "MysteryAction"
+          },
+          {
+            "actionName": "CustomConnectorStep",
+            "actionType": "OpenApiConnection",
+            "connectorApi": "shared_contoso-custom",
+            "operationId": "DoCustomThing"
+          }
+        ],
+        "expressions": [
+          "@equals(triggerBody()?['approved'], true)"
+        ],
+        "dependencyReferences": [
+          {
+            "referenceType": "entity",
+            "referenceName": "account",
+            "resolved": true
+          },
+          {
+            "referenceType": "connectionReference",
+            "referenceName": "approvalsConnection",
+            "resolved": false
+          }
+        ]
+      }
+    ],
+    "canvasFormulas": []
+  },
+  "recurrenceFlowTimer": {
+    "flows": [
+      {
+        "name": "Nightly Data Sync",
+        "displayName": "Nightly Data Sync",
+        "triggerClassification": "recurrence",
+        "triggerType": "Recurrence",
+        "recurrence": {
+          "frequency": "Day",
+          "interval": 1
+        },
+        "actions": [
+          {
+            "actionName": "SyncEndpoint",
+            "actionType": "Http",
+            "connectorApi": "shared_http",
+            "operationId": "Post"
+          }
+        ],
+        "expressions": [
+          "@utcNow()"
+        ],
+        "dependencyReferences": []
+      }
+    ],
+    "canvasFormulas": []
+  },
+  "unsupportedTrigger": {
+    "flows": [
+      {
+        "name": "Mailbox Intake",
+        "displayName": "Mailbox Intake",
+        "triggerClassification": "email",
+        "triggerType": "WhenANewEmailArrivesV3",
+        "actions": [
+          {
+            "actionName": "CreateTicket",
+            "actionType": "OpenApiConnection",
+            "connectorApi": "shared_commondataserviceforapps",
+            "operationId": "CreateRecord"
+          }
+        ],
+        "expressions": [
+          "@triggerBody()?['subject']"
+        ],
+        "dependencyReferences": []
+      }
+    ],
+    "canvasFormulas": []
+  },
+  "dataverseTriggerFlow": {
+    "flows": [
+      {
+        "name": "Dataverse Change Intake",
+        "displayName": "Dataverse Change Intake",
+        "triggerClassification": "dataverse",
+        "triggerType": "WhenARowIsAddedModifiedOrDeleted",
+        "actions": [
+          {
+            "actionName": "SyncDataverseChange",
+            "actionType": "OpenApiConnection",
+            "connectorApi": "shared_commondataserviceforapps",
+            "operationId": "UpdateRecord"
+          }
+        ],
+        "expressions": [
+          "@triggerBody()?['accountid']"
+        ],
+        "dependencyReferences": []
+      }
+    ],
+    "canvasFormulas": []
+  },
+  "eventTriggerFlow": {
+    "flows": [
+      {
+        "name": "Event Grid Intake",
+        "displayName": "Event Grid Intake",
+        "triggerClassification": "event",
+        "triggerType": "EventGrid",
+        "actions": [
+          {
+            "actionName": "RelayEventPayload",
+            "actionType": "Http",
+            "connectorApi": "shared_http",
+            "operationId": "Post"
+          }
+        ],
+        "expressions": [
+          "@triggerBody()?['subject']"
+        ],
+        "dependencyReferences": []
+      }
+    ],
+    "canvasFormulas": []
+  },
+  "canvasPatchFormula": {
+    "flows": [],
+    "canvasFormulas": [
+      {
+        "owner": "control:SaveButton",
+        "propertyName": "OnSelect",
+        "rawExpression": "Patch(Accounts, Defaults(Accounts), { Name: TextInputName.Text })",
+        "likelyDataSources": [
+          "Accounts"
+        ]
+      }
+    ]
+  },
+  "canvasSubmitFormFormula": {
+    "flows": [],
+    "canvasFormulas": [
+      {
+        "owner": "control:CustomerForm",
+        "propertyName": "OnSuccess",
+        "rawExpression": "SubmitForm(CustomerForm)",
+        "likelyDataSources": [
+          "Customers"
+        ]
+      }
+    ]
+  },
+  "unresolvedDataSourceFormula": {
+    "flows": [],
+    "canvasFormulas": [
+      {
+        "owner": "control:UnknownDataButton",
+        "propertyName": "OnSelect",
+        "rawExpression": "Patch(UnknownSource, Defaults(UnknownSource), { Name: \"Test\" })",
+        "likelyDataSources": []
+      }
+    ]
+  },
+  "mixedFlowCanvasCase": {
+    "flows": [
+      {
+        "name": "Webhook Account Processor",
+        "displayName": "Webhook Account Processor",
+        "triggerClassification": "http",
+        "triggerType": "Request",
+        "actions": [
+          {
+            "actionName": "LookupAccount",
+            "actionType": "OpenApiConnection",
+            "connectorApi": "shared_commondataserviceforapps",
+            "operationId": "GetRecord"
+          },
+          {
+            "actionName": "ForwardHttp",
+            "actionType": "Http",
+            "connectorApi": "shared_http",
+            "operationId": "Post"
+          }
+        ],
+        "expressions": [
+          "@triggerOutputs()?['body/accountid']"
+        ],
+        "dependencyReferences": [
+          {
+            "referenceType": "entity",
+            "referenceName": "account",
+            "resolved": true
+          }
+        ]
+      }
+    ],
+    "canvasFormulas": [
+      {
+        "owner": "control:SearchButton",
+        "propertyName": "OnSelect",
+        "rawExpression": "Filter(Accounts, StartsWith(Name, SearchInput.Text))",
+        "likelyDataSources": [
+          "Accounts"
+        ]
+      },
+      {
+        "owner": "control:SortButton",
+        "propertyName": "OnSelect",
+        "rawExpression": "SortByColumns(Accounts, \"name\")",
+        "likelyDataSources": [
+          "Accounts"
+        ]
+      }
+    ]
+  }
+}

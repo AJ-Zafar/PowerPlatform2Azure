@@ -1,0 +1,35 @@
+{
+  "name": "custom-connector-flow",
+  "properties": {
+    "displayName": "Custom Connector Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "invoke_custom": {
+          "type": "ApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/custom_myconnector",
+              "operationId": "InvokeCustom",
+              "connection": {
+                "referenceName": "contoso_missing_custom"
+              }
+            },
+            "parameters": {
+              "id": "123"
+            }
+          }
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

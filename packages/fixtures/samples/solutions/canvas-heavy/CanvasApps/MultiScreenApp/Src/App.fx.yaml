@@ -1,0 +1,4 @@
+Name: MultiScreenApp
+DataSources:
+  - Name: Accounts
+    Type: Dataverse

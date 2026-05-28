@@ -1,0 +1,17 @@
+<ConnectionReferences>
+  <ConnectionReference>
+    <LogicalName>contoso_outlook</LogicalName>
+    <ConnectorType>shared_office365</ConnectorType>
+    <ConnectionMetadata>Outlook mailbox</ConnectionMetadata>
+  </ConnectionReference>
+  <ConnectionReference>
+    <LogicalName>contoso_dataverse</LogicalName>
+    <ConnectorType>shared_commondataserviceforapps</ConnectorType>
+    <ConnectionMetadata>Dataverse connection</ConnectionMetadata>
+  </ConnectionReference>
+  <ConnectionReference>
+    <LogicalName>contoso_approvals</LogicalName>
+    <ConnectorType>shared_approvals</ConnectorType>
+    <ConnectionMetadata>Approvals connector</ConnectionMetadata>
+  </ConnectionReference>
+</ConnectionReferences>

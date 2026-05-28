@@ -1,0 +1,6 @@
+<Workflow>
+  <Name>legacy-workflow-metadata</Name>
+  <DisplayName>Legacy Workflow Metadata</DisplayName>
+  <State>Started</State>
+  <TriggerType>Recurrence</TriggerType>
+</Workflow>

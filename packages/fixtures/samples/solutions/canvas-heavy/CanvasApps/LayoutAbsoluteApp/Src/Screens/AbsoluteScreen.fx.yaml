@@ -1,0 +1,21 @@
+Screen:
+  Name: AbsoluteScreen
+  Controls:
+    - Name: lblA
+      Type: Label
+      Properties:
+        Text: "A"
+        X: 12
+        Y: 16
+        Width: 100
+        Height: 24
+        ZIndex: 1
+    - Name: btnB
+      Type: Button
+      Properties:
+        Text: "B"
+        X: 140
+        Y: 16
+        Width: 120
+        Height: 32
+        ZIndex: 2

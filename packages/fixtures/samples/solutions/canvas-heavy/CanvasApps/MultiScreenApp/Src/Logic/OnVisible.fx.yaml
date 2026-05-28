@@ -1,0 +1,3 @@
+Formula:
+  Name: OnVisible
+  Expression: Navigate(Details, ScreenTransition.None)

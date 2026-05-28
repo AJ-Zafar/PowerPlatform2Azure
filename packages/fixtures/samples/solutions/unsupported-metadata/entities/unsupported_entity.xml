@@ -1,0 +1,22 @@
+<Entity>
+  <LogicalName>new_experimental</LogicalName>
+  <SchemaName>new_Experimental</SchemaName>
+  <DisplayName>Experimental Entity</DisplayName>
+  <OwnershipType>UserOwned</OwnershipType>
+  <PrimaryNameAttribute>new_name</PrimaryNameAttribute>
+  <PrimaryIdAttribute>new_experimentalid</PrimaryIdAttribute>
+  <Attributes>
+    <Attribute>
+      <LogicalName>new_experimentalid</LogicalName>
+      <SchemaName>new_ExperimentalId</SchemaName>
+      <Type>UniqueIdentifier</Type>
+      <RequiredLevel>SystemRequired</RequiredLevel>
+    </Attribute>
+    <Attribute>
+      <LogicalName>new_virtualcontrol</LogicalName>
+      <SchemaName>new_VirtualControl</SchemaName>
+      <Type>VirtualControl</Type>
+      <RequiredLevel>None</RequiredLevel>
+    </Attribute>
+  </Attributes>
+</Entity>

@@ -1,0 +1,42 @@
+{
+  "name": "runafter-dependencies-flow",
+  "properties": {
+    "displayName": "RunAfter Dependencies",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "action_a": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": "A"
+        },
+        "action_b": {
+          "type": "Compose",
+          "runAfter": {
+            "action_a": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "B"
+        },
+        "action_c": {
+          "type": "Compose",
+          "runAfter": {
+            "action_b": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "C"
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

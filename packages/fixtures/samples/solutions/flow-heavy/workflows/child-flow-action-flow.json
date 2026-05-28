@@ -1,0 +1,29 @@
+{
+  "name": "child-flow-action-flow",
+  "properties": {
+    "displayName": "Child Flow Action Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "run_child_flow": {
+          "type": "Workflow",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+              "operationId": "Run_a_Child_Flow"
+            }
+          }
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

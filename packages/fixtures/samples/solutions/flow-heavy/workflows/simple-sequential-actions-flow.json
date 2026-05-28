@@ -1,0 +1,33 @@
+{
+  "name": "simple-sequential-actions-flow",
+  "properties": {
+    "displayName": "Simple Sequential Actions",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "compose_one": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": "one"
+        },
+        "compose_two": {
+          "type": "Compose",
+          "runAfter": {
+            "compose_one": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "two"
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

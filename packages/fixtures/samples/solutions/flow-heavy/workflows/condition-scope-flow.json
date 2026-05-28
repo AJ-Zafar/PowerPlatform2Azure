@@ -1,0 +1,40 @@
+{
+  "name": "condition-scope-flow",
+  "properties": {
+    "displayName": "Condition Scope Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "check_flag": {
+          "type": "If",
+          "expression": "@equals(variables('flag'), true)",
+          "actions": {
+            "compose_true": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": "true path"
+            }
+          },
+          "else": {
+            "actions": {
+              "compose_false": {
+                "type": "Compose",
+                "runAfter": {},
+                "inputs": "false path"
+              }
+            }
+          },
+          "runAfter": {}
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

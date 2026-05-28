@@ -1,0 +1,16 @@
+<Entity>
+  <LogicalName>account</LogicalName>
+  <SchemaName>Account</SchemaName>
+  <DisplayName>Account</DisplayName>
+  <OwnershipType>UserOwned</OwnershipType>
+  <PrimaryNameAttribute>name</PrimaryNameAttribute>
+  <PrimaryIdAttribute>accountid</PrimaryIdAttribute>
+  <Attributes>
+    <Attribute>
+      <LogicalName>accountid</LogicalName>
+      <SchemaName>AccountId</SchemaName>
+      <Type>UniqueIdentifier</Type>
+      <RequiredLevel>SystemRequired</RequiredLevel>
+    </Attribute>
+  </Attributes>
+</Entity>
