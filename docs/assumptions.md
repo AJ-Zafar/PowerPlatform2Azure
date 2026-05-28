@@ -18,6 +18,9 @@
 14. Default generation mode is overwrite-safe: conflicting existing files are skipped unless `--force` is explicitly set.
 15. `--dry-run` is a non-emitting mode for generated artifacts; only plan files are written for review.
 16. `--clean` only removes files carrying the Power Exit generated-file marker and must not delete user-owned files.
+17. Azure Functions generation is scaffold-only and deterministic; it does not implement production business logic.
+18. Azure Functions generation maps flow triggers/actions and canvas data operations into TODO stubs without semantic execution.
+19. No secrets are emitted; generated settings files use placeholders exclusively.
 
 ## Repository assumptions
 
@@ -66,6 +69,8 @@ Where:
 - React skeleton generation preserves formulas as comments/TODO handlers and surfaces unsupported controls as visible placeholders.
 - React generation now emits deterministic formula hotspot planning metadata for manual migration handoff.
 - SQL generation now emits deterministic SQL plan metadata (tables/columns/FKs/join tables/unresolved/collisions) for review.
+- Azure Functions generation emits deterministic functions planning metadata (planned functions, trigger types, unsupported actions, unresolved dependencies, manual hotspots).
+- Flow expressions and canvas formulas are preserved as comments/TODO context, not executed or translated semantically end-to-end.
 - Unknown layouts, unresolved dependencies, and malformed artifacts reduce confidence and increase risk by design.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.
 - Unresolved references are represented both as warnings and as unresolved dependency edges.

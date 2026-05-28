@@ -67,6 +67,7 @@ power-exit analyse <solution-folder> --out <output-folder> --report
 power-exit report <ir-json> --out <output-folder>
 power-exit generate sql <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 power-exit generate react <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
+power-exit generate functions <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 ```
 
 Current behavior in this sprint:
@@ -108,6 +109,15 @@ Current behavior in this sprint:
 4. Default safe-write mode skips conflicting existing files (unless `--force`) and records skip warnings/manual review items.
 5. Write Next.js-style generated routes/components plus `migration-notes.md` and `generation-report.md` only for planned `create`/`overwrite` actions (or no generated files when `--dry-run`).
 6. Print structured summary counts (apps, screens, controls, formulas preserved/classified, hotspots, unsupported controls, warnings, plan summary).
+
+`generate functions` command behavior:
+
+1. Read and validate an existing `ir.json`.
+2. Run deterministic Azure Functions scaffold generation from Cloud Flow IR + Canvas formula data-operation hotspots.
+3. Build deterministic `generation-plan.json` + `generation-plan.md` including planned functions, trigger types, source ids, unsupported actions, unresolved dependencies, and manual review hotspots.
+4. Default safe-write mode skips conflicting existing files (unless `--force`).
+5. Write scaffold files (or only plan files when `--dry-run`).
+6. Print structured summary counts (total functions, flow functions, canvas API functions, warnings, unsupported features, plan summary).
 
 `--clean` behavior:
 
@@ -158,6 +168,7 @@ Generator architecture rules:
 - `warnings[]`
 - `unsupportedFeatures[]`
 - `formulaHotspots[]` (React)
+- `functionsPlan` (Functions generator)
 - `manualReviewItems[]`
 - `summary` metrics
 - `sqlPlan` details (SQL generator)
@@ -169,6 +180,57 @@ Recommended review flow before committing generated outputs:
 3. Resolve or accept `skippedFiles` and `manualReviewItems`.
 4. Re-run generation with `--force` only when explicit overwrite intent is confirmed.
 5. Use `--clean` only when you want to clear previously generated (marker-tagged) files safely.
+
+## Azure Functions scaffold generation (Milestone 10 pass)
+
+Current scaffold output:
+
+- `package.json`
+- `tsconfig.json`
+- `host.json`
+- `local.settings.example.json`
+- `README.generated.md`
+- `src/functions/*`
+- `src/services/dataverseService.ts`
+- `src/services/sqlService.ts`
+- `src/services/httpClient.ts`
+- `src/services/authContext.ts`
+- `src/services/validation.ts`
+- `src/utils/logger.ts`
+- `generation-report.md`
+- `migration-notes.md`
+
+Flow trigger mapping strategy:
+
+- `manual` / `http` -> HTTP function scaffold
+- `recurrence` -> timer function scaffold
+- `dataverse` -> webhook TODO placeholder
+- `email` -> queue/webhook TODO placeholder
+- unknown -> TODO placeholder
+
+Flow action mapping strategy:
+
+- Dataverse-like actions -> `dataverseService` TODO calls
+- HTTP-like actions -> `httpClient` TODO calls
+- Approval/human actions -> manual workflow TODO
+- Condition/scope/loop actions -> structured control-flow TODO comments
+- Connector actions -> connector adapter TODO comments
+- Unknown actions -> unsupported-action TODO + warning/unsupported record
+
+Canvas formula API stub strategy:
+
+- Generates HTTP API stubs for data-operation hotspots:
+  - `Patch`, `SubmitForm`, `Remove`, `RemoveIf`
+  - `Collect`, `ClearCollect`
+  - `LookUp`, `Filter`, `Search`, `SortByColumns`
+- Groups handlers by likely data source where available.
+- Emits warnings/manual review hotspots for unresolved data source binding.
+
+Security/no-secrets assumptions:
+
+- No runtime secrets are generated.
+- `local.settings.example.json` contains placeholders only.
+- Generated code is migration scaffolding, not production-ready business logic.
 
 ## Azure SQL DDL generation (first generator)
 

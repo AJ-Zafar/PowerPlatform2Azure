@@ -6,6 +6,7 @@ import { sortByStableKey, stableStringify } from "@power-exit/ir";
 import {
   generationPlanSchema,
   type GeneratedArtifact,
+  type FunctionsGenerationPlanDetails,
   type GenerationManualReviewItem,
   type GenerationPlan,
   type GenerationPlanAction,
@@ -56,6 +57,7 @@ export interface PlanGenerationInput {
   formulaHotspots?: GenerationPlan["formulaHotspots"];
   manualReviewItems?: GenerationManualReviewItem[];
   sqlPlan?: SqlGenerationPlanDetails | null;
+  functionsPlan?: FunctionsGenerationPlanDetails | null;
 }
 
 export interface PlannedArtifactWrite {
@@ -242,7 +244,8 @@ export const planGeneration = (input: PlanGenerationInput): PlanGenerationResult
     formulaHotspots: orderedHotspots,
     manualReviewItems: orderedManualReview,
     summary,
-    sqlPlan: input.sqlPlan ?? null
+    sqlPlan: input.sqlPlan ?? null,
+    functionsPlan: input.functionsPlan ?? null
   });
 
   return {
@@ -367,6 +370,51 @@ export const renderGenerationPlanMarkdown = (plan: GenerationPlan): string => {
     lines.push("");
     lines.push("### Naming collisions");
     lines.push(...markdownList(plan.sqlPlan.namingCollisions.map((value) => `\`${value}\``)));
+  }
+
+  if (plan.functionsPlan) {
+    lines.push("");
+    lines.push("## Functions plan");
+    lines.push("");
+    lines.push("### Planned functions");
+    if (plan.functionsPlan.plannedFunctions.length === 0) {
+      lines.push("- None.");
+    } else {
+      plan.functionsPlan.plannedFunctions.forEach((plannedFunction) => {
+        lines.push(
+          `- \`${plannedFunction.functionName}\` trigger=\`${plannedFunction.triggerType}\` sourceArtifacts=${plannedFunction.sourceArtifactIds.length}`
+        );
+      });
+    }
+    lines.push("");
+    lines.push("### Unsupported actions");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.unsupportedActions.map(
+          (action) =>
+            `${action.flowName}.${action.actionName} (\`${action.actionType}\`)`
+        )
+      )
+    );
+    lines.push("");
+    lines.push("### Unresolved dependencies");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.unresolvedDependencies.map(
+          (dependency) =>
+            `${dependency.referenceType}:${dependency.referenceName}`
+        )
+      )
+    );
+    lines.push("");
+    lines.push("### Manual review hotspots");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.manualReviewHotspots.map(
+          (hotspot) => `[${hotspot.severity}] ${hotspot.message}`
+        )
+      )
+    );
   }
 
   lines.push("");

@@ -58,6 +58,16 @@ interface GenerationPlanPayload {
     unresolvedRelationships: string[];
     namingCollisions: string[];
   } | null;
+  functionsPlan: {
+    plannedFunctions: Array<{
+      functionName: string;
+      triggerType: string;
+      sourceArtifactIds: string[];
+    }>;
+    manualReviewHotspots: Array<{ message: string }>;
+    unsupportedActions: Array<{ actionName: string }>;
+    unresolvedDependencies: Array<{ referenceName: string }>;
+  } | null;
   summary: GenerationPlanSummary;
 }
 
@@ -944,6 +954,180 @@ describe("power-exit generate react command", () => {
     ).toBe(0);
 
     expect(await readFile(path.join(generateOutput, "generation-plan.md"), "utf-8")).toMatchSnapshot();
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+});
+
+describe("power-exit generate functions command", () => {
+  it("validates IR input and writes Azure Functions scaffold files", async () => {
+    const tempRoot = await createTempDirectory();
+    const analyseOutput = path.join(tempRoot, "analyse-out");
+    const generateOutput = path.join(tempRoot, "generate-functions-out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/flow-heavy"
+    );
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    expect(await runCli(["analyse", inputFolder, "--out", analyseOutput], () => undefined, () => undefined)).toBe(0);
+    expect(
+      await runCli(
+        [
+          "generate",
+          "functions",
+          path.join(analyseOutput, "ir.json"),
+          "--out",
+          generateOutput
+        ],
+        stdOut.push.bind(stdOut),
+        stdErr.push.bind(stdErr)
+      )
+    ).toBe(0);
+
+    expect(await fileExists(path.join(generateOutput, "host.json"))).toBe(true);
+    expect(await fileExists(path.join(generateOutput, "package.json"))).toBe(true);
+    expect(await fileExists(path.join(generateOutput, "generation-report.md"))).toBe(true);
+    expect(await fileExists(path.join(generateOutput, "migration-notes.md"))).toBe(true);
+    expect(await fileExists(path.join(generateOutput, "src/services/dataverseService.ts"))).toBe(true);
+    expect(stdOut[0]).toContain('"command":"generate-functions"');
+    expect(stdOut[0]).toContain('"functionsGenerated"');
+    expect(stdOut[0]).toContain('"flowFunctionsGenerated"');
+    expect(stdOut[0]).toContain('"canvasApiFunctionsGenerated"');
+    expect(stdErr).toEqual([]);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("supports --dry-run and writes only generation plan files", async () => {
+    const tempRoot = await createTempDirectory();
+    const analyseOutput = path.join(tempRoot, "analyse-out");
+    const generateOutput = path.join(tempRoot, "generate-functions-out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/flow-heavy"
+    );
+
+    expect(await runCli(["analyse", inputFolder, "--out", analyseOutput], () => undefined, () => undefined)).toBe(0);
+    expect(
+      await runCli(
+        [
+          "generate",
+          "functions",
+          path.join(analyseOutput, "ir.json"),
+          "--out",
+          generateOutput,
+          "--dry-run"
+        ],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+
+    expect(await fileExists(path.join(generateOutput, "host.json"))).toBe(false);
+    expect(await fileExists(path.join(generateOutput, "generation-plan.json"))).toBe(true);
+    expect(await fileExists(path.join(generateOutput, "generation-plan.md"))).toBe(true);
+
+    const plan = await readGenerationPlan(generateOutput);
+    expect(plan.functionsPlan).not.toBeNull();
+    expect((plan.functionsPlan?.plannedFunctions.length ?? 0) > 0).toBe(true);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("skips conflicting files by default and overwrites with --force", async () => {
+    const tempRoot = await createTempDirectory();
+    const analyseOutput = path.join(tempRoot, "analyse-out");
+    const generateOutput = path.join(tempRoot, "generate-functions-out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/flow-heavy"
+    );
+    const existingUserContent = "{\n  \"version\": \"custom\"\n}\n";
+
+    expect(await runCli(["analyse", inputFolder, "--out", analyseOutput], () => undefined, () => undefined)).toBe(0);
+    await mkdir(generateOutput, { recursive: true });
+    await writeFile(path.join(generateOutput, "host.json"), existingUserContent, "utf-8");
+
+    expect(
+      await runCli(
+        [
+          "generate",
+          "functions",
+          path.join(analyseOutput, "ir.json"),
+          "--out",
+          generateOutput
+        ],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    expect(await readFile(path.join(generateOutput, "host.json"), "utf-8")).toBe(existingUserContent);
+    const skippedPlan = await readGenerationPlan(generateOutput);
+    expect(skippedPlan.skippedFiles.some((entry) => entry.path === "host.json")).toBe(true);
+
+    expect(
+      await runCli(
+        [
+          "generate",
+          "functions",
+          path.join(analyseOutput, "ir.json"),
+          "--out",
+          generateOutput,
+          "--force"
+        ],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    expect(await readFile(path.join(generateOutput, "host.json"), "utf-8")).toContain("version");
+    const forcedPlan = await readGenerationPlan(generateOutput);
+    expect(forcedPlan.overwrittenFiles.some((entry) => entry.path === "host.json")).toBe(true);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("supports --clean for marker-tagged generated function files only", async () => {
+    const tempRoot = await createTempDirectory();
+    const analyseOutput = path.join(tempRoot, "analyse-out");
+    const generateOutput = path.join(tempRoot, "generate-functions-out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/flow-heavy"
+    );
+    const markerLines =
+      "/* Generated by Power Exit. */\n/* Do not edit directly unless you intend to own the generated file. */\n";
+    const userOwnedHost = "{\n  \"version\": \"user\"\n}\n";
+
+    expect(await runCli(["analyse", inputFolder, "--out", analyseOutput], () => undefined, () => undefined)).toBe(0);
+    await mkdir(path.join(generateOutput, "src/services"), { recursive: true });
+    await writeFile(path.join(generateOutput, "host.json"), userOwnedHost, "utf-8");
+    await writeFile(
+      path.join(generateOutput, "src/services/httpClient.ts"),
+      `${markerLines}\nexport const httpClient = {};`,
+      "utf-8"
+    );
+
+    expect(
+      await runCli(
+        [
+          "generate",
+          "functions",
+          path.join(analyseOutput, "ir.json"),
+          "--out",
+          generateOutput,
+          "--clean"
+        ],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+
+    expect(await readFile(path.join(generateOutput, "host.json"), "utf-8")).toBe(userOwnedHost);
+    expect(await readFile(path.join(generateOutput, "src/services/httpClient.ts"), "utf-8")).toContain(
+      "Generated by Power Exit."
+    );
 
     await rm(tempRoot, { recursive: true, force: true });
   });

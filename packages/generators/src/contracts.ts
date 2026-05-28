@@ -12,7 +12,8 @@ export const generatorCapabilitySchema = z.enum([
   "ir-json",
   "assessment-report-markdown",
   "azure-sql-ddl",
-  "react-screen-skeleton"
+  "react-screen-skeleton",
+  "azure-functions-scaffold"
 ]);
 
 export type GeneratorCapability = z.infer<typeof generatorCapabilitySchema>;
@@ -177,6 +178,61 @@ export const sqlGenerationPlanDetailsSchema = z
 
 export type SqlGenerationPlanDetails = z.infer<typeof sqlGenerationPlanDetailsSchema>;
 
+export const functionsPlannedFunctionSchema = z
+  .object({
+    functionName: z.string().min(1),
+    triggerType: z.string().min(1),
+    sourceArtifactIds: z.array(artifactIdSchema),
+    sourceFlowArtifactId: artifactIdSchema.optional(),
+    sourceActionArtifactIds: z.array(artifactIdSchema),
+    sourceFormulaArtifactIds: z.array(artifactIdSchema)
+  })
+  .strict();
+
+export type FunctionsPlannedFunction = z.infer<typeof functionsPlannedFunctionSchema>;
+
+export const functionsManualReviewHotspotSchema = z
+  .object({
+    message: z.string().min(1),
+    severity: unsupportedFeatureSeveritySchema,
+    sourceArtifactIds: z.array(artifactIdSchema)
+  })
+  .strict();
+
+export type FunctionsManualReviewHotspot = z.infer<typeof functionsManualReviewHotspotSchema>;
+
+export const functionsUnsupportedActionSchema = z
+  .object({
+    flowName: z.string().min(1),
+    actionName: z.string().min(1),
+    actionType: z.string().min(1),
+    sourceArtifactId: artifactIdSchema
+  })
+  .strict();
+
+export type FunctionsUnsupportedAction = z.infer<typeof functionsUnsupportedActionSchema>;
+
+export const functionsUnresolvedDependencySchema = z
+  .object({
+    referenceType: z.string().min(1),
+    referenceName: z.string().min(1),
+    sourceArtifactId: artifactIdSchema
+  })
+  .strict();
+
+export type FunctionsUnresolvedDependency = z.infer<typeof functionsUnresolvedDependencySchema>;
+
+export const functionsGenerationPlanDetailsSchema = z
+  .object({
+    plannedFunctions: z.array(functionsPlannedFunctionSchema),
+    manualReviewHotspots: z.array(functionsManualReviewHotspotSchema),
+    unsupportedActions: z.array(functionsUnsupportedActionSchema),
+    unresolvedDependencies: z.array(functionsUnresolvedDependencySchema)
+  })
+  .strict();
+
+export type FunctionsGenerationPlanDetails = z.infer<typeof functionsGenerationPlanDetailsSchema>;
+
 export const generationPlanSummarySchema = z
   .object({
     totalPlannedFiles: z.number().int().nonnegative(),
@@ -205,7 +261,8 @@ export const generationPlanSchema = z
     formulaHotspots: z.array(generationFormulaHotspotSchema),
     manualReviewItems: z.array(generationManualReviewItemSchema),
     summary: generationPlanSummarySchema,
-    sqlPlan: sqlGenerationPlanDetailsSchema.nullable()
+    sqlPlan: sqlGenerationPlanDetailsSchema.nullable(),
+    functionsPlan: functionsGenerationPlanDetailsSchema.nullable()
   })
   .strict();
 

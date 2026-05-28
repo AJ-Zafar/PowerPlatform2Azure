@@ -2,6 +2,11 @@ export {
   createGenerationResultSchema,
   createGenerator,
   generationFormulaHotspotSchema,
+  functionsGenerationPlanDetailsSchema,
+  functionsManualReviewHotspotSchema,
+  functionsPlannedFunctionSchema,
+  functionsUnresolvedDependencySchema,
+  functionsUnsupportedActionSchema,
   generationManualReviewItemSchema,
   generationOverwrittenFileSchema,
   generationPlanActionSchema,
@@ -20,6 +25,11 @@ export {
   validateGenerationResult,
   type GeneratedArtifact,
   type GenerationFormulaHotspot,
+  type FunctionsGenerationPlanDetails,
+  type FunctionsManualReviewHotspot,
+  type FunctionsPlannedFunction,
+  type FunctionsUnresolvedDependency,
+  type FunctionsUnsupportedAction,
   type GenerationManualReviewItem,
   type GenerationOverwrittenFile,
   type GenerationPlan,
@@ -50,6 +60,12 @@ export {
   generateCanvasReactFromPowerPlatformIR,
   type CanvasReactGenerationOutput
 } from "./react";
+export {
+  generateAzureFunctionsArtifacts,
+  generateAzureFunctionsFromPowerPlatformIR,
+  type AzureFunctionsGenerationOutput,
+  type AzureFunctionsGeneratorInput
+} from "./functions";
 export {
   GENERATED_FILE_MARKER_TEXT,
   computeContentHash,

@@ -106,6 +106,18 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: `--clean` is used and a file does not contain the Power Exit generated-file marker.
     - Handling: file is preserved and may still conflict during generation; review `generation-plan.json` skipped files.
 
+24. `flow.trigger.<classification>.manual-functions-mapping`
+    - Trigger: Azure Functions scaffold generation encounters trigger classifications that are not directly mapped to production-ready runtime semantics (`dataverse`, `email`, `unknown` etc.).
+    - Handling: function stubs include TODO placeholders, warnings are emitted, and manual review hotspots are added.
+
+25. `flow.action.unsupported-for-functions-scaffold`
+    - Trigger: Cloud Flow action type does not have a deterministic scaffold mapping.
+    - Handling: unsupported action TODO is emitted in generated function, warning + unsupported feature are recorded.
+
+26. `functions.canvas.unresolved-datasource`
+    - Trigger: Canvas formula data-operation hotspot lacks resolvable data source binding.
+    - Handling: warning + manual hotspot are emitted and handler is routed to manual-review scaffold grouping.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
@@ -118,7 +130,9 @@ Detailed entries are added as parser milestones are implemented.
 - React skeleton generation is deterministic and conservative; unsupported controls are placeholders and require manual conversion.
 - React generator does not use AI/external model APIs and does not perform semantic Power Fx translation in this pass.
 - Dry-run mode is planning-only and intentionally does not emit generated SQL/React artifacts.
+- Dry-run mode is planning-only and intentionally does not emit generated Functions scaffold artifacts.
 - Safe-write mode can leave skipped files that require manual conflict resolution or explicit `--force`.
+- Azure Functions output is scaffold-only: trigger/action handlers, service adapters, and auth/validation flows are placeholders.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
 - Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
 - Canvas readiness scoring is preparatory metadata and not a full migration assessment score.

@@ -214,6 +214,80 @@ Future optional enhancement path:
 2. Optionally run prompt-driven UI refinement (v0/LLM-assisted) as a separate reviewable stage.
 3. Preserve traceability back to generated baseline files so human reviewers can diff and approve changes.
 
+## Implemented generator mapping: Cloud Flows + Canvas data-operation hotspots -> Azure Functions scaffolds
+
+CLI:
+
+```bash
+power-exit generate functions <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
+```
+
+Generated artifacts:
+
+- `package.json`
+- `tsconfig.json`
+- `host.json`
+- `local.settings.example.json`
+- `README.generated.md`
+- `src/functions/*`
+- `src/services/dataverseService.ts`
+- `src/services/sqlService.ts`
+- `src/services/httpClient.ts`
+- `src/services/authContext.ts`
+- `src/services/validation.ts`
+- `src/utils/logger.ts`
+- `generation-report.md`
+- `migration-notes.md`
+- `generation-plan.json`
+- `generation-plan.md`
+
+Deterministic mapping currently implemented:
+
+1. Flow trigger mappings:
+   - `manual`, `http` -> HTTP function scaffold
+   - `recurrence` -> timer function scaffold
+   - `dataverse` -> webhook TODO placeholder scaffold
+   - `email` -> queue/webhook TODO placeholder scaffold
+   - unknown -> TODO placeholder scaffold
+2. Flow action mappings:
+   - Dataverse-like actions -> `dataverseService` TODO call
+   - HTTP-like actions -> `httpClient` TODO call
+   - Approval/human actions -> manual workflow TODO comment
+   - Condition/scope/loop actions -> structured control-flow TODO comments
+   - Connector actions -> connector service TODO comment
+   - Unknown actions -> unsupported action TODO + warning/unsupported feature
+3. Flow expressions are preserved as comments in generated function stubs.
+4. Canvas data-operation hotspot mappings:
+   - `Patch`, `SubmitForm`, `Remove`, `RemoveIf`
+   - `Collect`, `ClearCollect`
+   - `LookUp`, `Filter`, `Search`, `SortByColumns`
+5. Canvas formula API handlers are grouped by likely data source where available.
+6. Unresolved formula data source bindings emit warnings and manual review hotspots.
+7. Functions generation plan metadata includes:
+   - planned functions
+   - trigger type
+   - source flow/action/formula ids
+   - unsupported actions
+   - unresolved dependencies
+   - manual review hotspots
+
+Overwrite safety behavior:
+
+- Default mode skips conflicting existing files and records skip warnings/review items.
+- `--force` allows planned overwrite actions.
+- `--dry-run` writes only plan files (`generation-plan.json`, `generation-plan.md`), not generated Functions scaffold artifacts.
+- `--dry-run --clean` performs planning as if marker-tagged files were cleaned, without mutating the filesystem.
+- `--clean` removes only marker-tagged generated files and leaves unmarked files untouched.
+
+Current limitations:
+
+- Scaffold output is intentionally non-production and contains TODO placeholders.
+- No full Power Fx semantic execution is attempted.
+- No Cloud Flow runtime semantic execution is attempted.
+- Connector-specific adapters are placeholders only.
+- Secrets and production environment values are not generated.
+
 Remaining planned mapping section:
 
-1. Flow migration advisory mappings for future Azure Functions / Logic Apps generation.
+1. Azure Functions scaffold hardening into deployable service adapters (post-MVP).
+2. Bicep/infrastructure generation (separate milestone).
