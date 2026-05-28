@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateAzureFunctionsArtifacts > matches generated flow function snapshot output 1`] = `
+"import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+import { authContext } from "../services/authContext";
+import { dataverseService } from "../services/dataverseService";
+import { httpClient } from "../services/httpClient";
+import { logger } from "../utils/logger";
+
+export async function flowManualAccountUpdate(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  void request;
+  const principal = authContext.fromInvocation(context);
+  logger.info("Executing flow scaffold", { flowName: "Manual Account Update", principal });
+// Trigger expression: @equals(triggerBody()?['approved'], true)
+  // Flow action ApprovalStep (Approval, connector=shared_approvals)
+  // TODO: manual workflow TODO - approval/human interaction requires manual orchestration.
+  // Flow action LoopBlock (Foreach)
+  // TODO: loop TODO - map loop cardinality, batching, and idempotency safeguards.
+  // Flow action ReviewCondition (If)
+  // TODO: condition TODO - map Power Automate condition branches into explicit TypeScript control flow.
+  // Flow action ScopeBlock (Scope)
+  // TODO: scope TODO - model scope boundaries, retries, and error handling explicitly.
+  // Flow action SendWebhook (Http, connector=shared_http)
+  await httpClient.todoHttpAction("Manual Account Update", "SendWebhook", context);
+  // Flow action UnknownStep (MysteryAction)
+  // TODO: unsupported action "MysteryAction" - manual migration implementation required.
+  // Flow action UpdateAccount (OpenApiConnection, connector=shared_commondataserviceforapps)
+  await dataverseService.todoDataverseAction("Manual Account Update", "UpdateAccount", context);
+  return {
+    status: 202,
+    jsonBody: {
+      message: "Flow scaffold executed.",
+      flowName: "Manual Account Update"
+    }
+  };
+}
+
+app.http("flowManualAccountUpdate", {
+  route: "flow-manual-account-update",
+  methods: ["GET", "POST"],
+  authLevel: "function",
+  handler: flowManualAccountUpdate
+});
+"
+`;

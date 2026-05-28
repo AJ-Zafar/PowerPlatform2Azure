@@ -1,0 +1,53 @@
+{
+  "name": "dataverse-trigger-flow",
+  "properties": {
+    "displayName": "Dataverse Trigger Flow",
+    "state": "Started",
+    "connectionReferences": {
+      "contoso_dataverse": {
+        "connectionName": "shared-dataverse-1",
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      }
+    },
+    "definition": {
+      "triggers": {
+        "when_row_added": {
+          "type": "ApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger",
+              "connection": {
+                "referenceName": "contoso_dataverse"
+              }
+            },
+            "parameters": {
+              "entityName": "accounts"
+            }
+          }
+        }
+      },
+      "actions": {
+        "get_row": {
+          "type": "ApiConnection",
+          "runAfter": {},
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+              "operationId": "GetRowById",
+              "connection": {
+                "referenceName": "contoso_dataverse"
+              }
+            },
+            "parameters": {
+              "entityName": "accounts"
+            }
+          }
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

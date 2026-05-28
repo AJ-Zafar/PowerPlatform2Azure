@@ -1,0 +1,70 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateCanvasReactArtifacts > matches generated data service scaffold snapshot 1`] = `
+"export const dataService = {
+  async patchRecord(entityName: string, payload: Record<string, unknown>): Promise<void> {
+    // TODO: Implement API integration for Patch()
+    void entityName;
+    void payload;
+  },
+  async submitForm(formName: string, payload: Record<string, unknown>): Promise<void> {
+    // TODO: Implement API integration for SubmitForm()
+    void formName;
+    void payload;
+  },
+  async removeRecord(entityName: string, id: string): Promise<void> {
+    // TODO: Implement API integration for Remove()
+    void entityName;
+    void id;
+  },
+  async removeIf(entityName: string, filterExpression: string): Promise<void> {
+    // TODO: Implement API integration for RemoveIf()
+    void entityName;
+    void filterExpression;
+  }
+};
+"
+`;
+
+exports[`generateCanvasReactArtifacts > matches screen component snapshot output 1`] = `
+"import React from "react";
+import { navigationService } from "../../lib/generated/services/navigationService";
+
+
+export function HomeScreen(): JSX.Element {
+  const router = {
+    push: (path: string): void => {
+      void path;
+    },
+    back: (): void => {
+      // TODO: wire Next.js router back() in migration pass.
+    }
+  };
+
+  // Logic migration stubs
+async function handleSubmitButtonOnSelect(): Promise<void> {
+  // TODO: Convert Power Fx (control:SubmitButton.OnSelect)
+  // Navigate('Details Screen')
+  // Classified bucket: navigation
+  // Detected functions: navigate
+  navigationService.navigate(router, "/TODO_ROUTE");
+}
+
+  // Power Fx formulas requiring manual conversion:
+  // control:SubmitButton.OnSelect: Navigate('Details Screen')
+
+  // Layout scaffold
+  return (
+    <div className="canvas-screen-skeleton" data-app-name="Simple App" data-screen-name="Home Screen">
+    {/* Canvas layout: mode=verticalStack, responsive=stretch, readiness=high */}
+    <main className="layout-vertical-stack flex flex-col gap-2 responsive-stretch canvas-role-pagecontainer" data-control-name="MainContainer">
+      {/* Canvas layout: mode=unknown, responsive=fixed, readiness=high */}
+      <button className="layout-unknown responsive-fixed canvas-role-button" data-control-name="SubmitButton" onClick={handleSubmitButtonOnSelect}>SubmitButton</button>
+      {/* Canvas layout: mode=unknown, responsive=fixed, readiness=high */}
+      <h2 className="layout-unknown responsive-fixed canvas-role-heading" data-control-name="WelcomeHeading">WelcomeHeading</h2>
+    </main>
+    </div>
+  );
+}
+"
+`;

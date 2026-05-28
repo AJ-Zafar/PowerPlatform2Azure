@@ -1,0 +1,7 @@
+Screen:
+  Name: Edit
+  Controls:
+    - Name: btnSave
+      Type: Button
+      Properties:
+        OnSelect: 'Patch(Accounts, Defaults(Accounts), { name: "Demo" })'

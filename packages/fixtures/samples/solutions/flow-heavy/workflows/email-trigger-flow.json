@@ -1,0 +1,39 @@
+{
+  "name": "email-trigger-flow",
+  "properties": {
+    "displayName": "Email Trigger Flow",
+    "state": "Started",
+    "connectionReferences": {
+      "contoso_outlook": {
+        "connectionName": "shared-office365-1",
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "triggers": {
+        "on_new_email": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "OnNewEmailV3",
+              "connection": {
+                "referenceName": "contoso_outlook"
+              }
+            }
+          }
+        }
+      },
+      "actions": {
+        "compose_subject": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": "@triggerOutputs()?['body/subject']"
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

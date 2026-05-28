@@ -1,0 +1,571 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`power-exit generate react command > matches react generation-plan markdown snapshot 1`] = `
+"# Power Exit Generation Plan
+
+## Summary
+
+- Planned files: 109
+- Planned directories: 105
+- Create: 109
+- Overwrite: 0
+- Skip: 0
+- Unchanged: 0
+- Warnings: 28
+- Unsupported features: 5
+- Formula hotspots: 17
+- Manual review items: 50
+
+## Planned directories
+
+- collectapp
+- collectapp/app
+- collectapp/components
+- collectapp/components/generated
+- collectapp/lib
+- collectapp/lib/generated
+- collectapp/lib/generated/services
+- componentapp
+- componentapp/app
+- componentapp/lib
+- componentapp/lib/generated
+- componentapp/lib/generated/services
+- customcomponentusageapp
+- customcomponentusageapp/app
+- customcomponentusageapp/components
+- customcomponentusageapp/components/generated
+- customcomponentusageapp/lib
+- customcomponentusageapp/lib/generated
+- customcomponentusageapp/lib/generated/services
+- formapp
+- formapp/app
+- formapp/components
+- formapp/components/generated
+- formapp/lib
+- formapp/lib/generated
+- formapp/lib/generated/services
+- galleryapp
+- galleryapp/app
+- galleryapp/components
+- galleryapp/components/generated
+- galleryapp/lib
+- galleryapp/lib/generated
+- galleryapp/lib/generated/services
+- htmlapp
+- htmlapp/app
+- htmlapp/components
+- htmlapp/components/generated
+- htmlapp/lib
+- htmlapp/lib/generated
+- htmlapp/lib/generated/services
+- layoutabsoluteapp
+- layoutabsoluteapp/app
+- layoutabsoluteapp/components
+- layoutabsoluteapp/components/generated
+- layoutabsoluteapp/lib
+- layoutabsoluteapp/lib/generated
+- layoutabsoluteapp/lib/generated/services
+- layouthorizontalapp
+- layouthorizontalapp/app
+- layouthorizontalapp/components
+- layouthorizontalapp/components/generated
+- layouthorizontalapp/lib
+- layouthorizontalapp/lib/generated
+- layouthorizontalapp/lib/generated/services
+- layoutverticalapp
+- layoutverticalapp/app
+- layoutverticalapp/components
+- layoutverticalapp/components/generated
+- layoutverticalapp/lib
+- layoutverticalapp/lib/generated
+- layoutverticalapp/lib/generated/services
+- multiscreenapp
+- multiscreenapp/app
+- multiscreenapp/app/details
+- multiscreenapp/app/home
+- multiscreenapp/components
+- multiscreenapp/components/generated
+- multiscreenapp/lib
+- multiscreenapp/lib/generated
+- multiscreenapp/lib/generated/services
+- navigateapp
+- navigateapp/app
+- navigateapp/components
+- navigateapp/components/generated
+- navigateapp/lib
+- navigateapp/lib/generated
+- navigateapp/lib/generated/services
+- nestedcontrolsapp
+- nestedcontrolsapp/app
+- nestedcontrolsapp/components
+- nestedcontrolsapp/components/generated
+- nestedcontrolsapp/lib
+- nestedcontrolsapp/lib/generated
+- nestedcontrolsapp/lib/generated/services
+- patchapp
+- patchapp/app
+- patchapp/components
+- patchapp/components/generated
+- patchapp/lib
+- patchapp/lib/generated
+- patchapp/lib/generated/services
+- stateapp
+- stateapp/app
+- stateapp/components
+- stateapp/components/generated
+- stateapp/lib
+- stateapp/lib/generated
+- stateapp/lib/generated/services
+- unknownlayoutapp
+- unknownlayoutapp/app
+- unknownlayoutapp/components
+- unknownlayoutapp/components/generated
+- unknownlayoutapp/lib
+- unknownlayoutapp/lib/generated
+- unknownlayoutapp/lib/generated/services
+
+## Planned files
+
+- \`collectapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`collectapp/app/page.tsx\` (react-route) action=\`create\` hash=\`9d1f847f21223278533b88d52ac6b4a5691ef120b7bcee2f87e340697ac5f351\` confidence=0.90
+- \`collectapp/components/generated/home-screen.tsx\` (react-component) action=\`create\` hash=\`e8db65029312d4a735268933912f2d4cb17a1e3c9a67385f6229561b01bbfc4a\` confidence=1.00
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnLoad" has migration readiness "low" and requires manual conversion.
+- \`collectapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`collectapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`collectapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`collectapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`componentapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`componentapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`componentapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`componentapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`componentapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`customcomponentusageapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`customcomponentusageapp/app/page.tsx\` (react-route) action=\`create\` hash=\`a3feef8670f6f8bb8f58870f3c6b63817a37a16e5726daac04d9f3cba23e4054\` confidence=0.90
+- \`customcomponentusageapp/components/generated/customscreen-screen.tsx\` (react-component) action=\`create\` hash=\`16f9e1e2ac734cf53871d90bb16aa03367885ca16378d7d39cb73c3f16145ea5\` confidence=0.98
+  - warning [REACT_CONTROL_UNSUPPORTED_ROLE] Control "cmpHero" uses unsupported role "customComponent" and is rendered as placeholder.
+- \`customcomponentusageapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`customcomponentusageapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`customcomponentusageapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`customcomponentusageapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`formapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`formapp/app/page.tsx\` (react-route) action=\`create\` hash=\`9dc052bd86638652b498f2234b42827a1def39ae7ee09432b0fe72182ab6f353\` confidence=0.90
+- \`formapp/components/generated/edit-screen.tsx\` (react-component) action=\`create\` hash=\`53789d7f1bd4cc1ba42d1d415980ba3cc41c50e254dddf4a8d656bfdb5ea1b91\` confidence=0.98
+- \`formapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`formapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`formapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`formapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`galleryapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`galleryapp/app/page.tsx\` (react-route) action=\`create\` hash=\`8ef2a697dd23dc98d0f1229d78c16f97c608c299717db69322dbdb1209c90760\` confidence=0.90
+- \`galleryapp/components/generated/browse-screen.tsx\` (react-component) action=\`create\` hash=\`833f5540cfe9b406796597d3111ec273422f639081de4ab1d96524db5a5a07c0\` confidence=0.98
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblContactName" has migration readiness "low" and requires manual conversion.
+- \`galleryapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`galleryapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`galleryapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`galleryapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`generation-report.md\` (markdown-report) action=\`create\` hash=\`ef4830bd90e3af52600befdd53bfab4bc10936a20f3949e12129f121c457e8bb\` confidence=0.85
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnB" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnGoDetails" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnGoMissing" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnLeft" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnLoad" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnRight" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnSave" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnState" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conInner" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conLevel3" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conRoot" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conWeird" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "ctlLoose" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblA" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblBottom" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblContactName" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblDeep" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblDetails" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblTop" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_UNSUPPORTED_ROLE] Control "cmpHero" uses unsupported role "customComponent" and is rendered as placeholder.
+  - warning [REACT_CONTROL_UNSUPPORTED_ROLE] Control "htmlBody" uses unsupported role "html" and is rendered as placeholder.
+  - warning [REACT_FORMULA_UNSUPPORTED_FUNCTION] Formula uses unsupported functions (defaults); manual conversion required.
+  - warning [REACT_FORMULA_UNSUPPORTED_FUNCTION] Formula uses unsupported functions (defaults); manual conversion required.
+  - warning [REACT_FORMULA_UNSUPPORTED_FUNCTION] Formula uses unsupported functions (defaults); manual conversion required.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Height" on control "conVertical" is formula-based and needs manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conHorizontal" is formula-based and needs manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conVertical" is formula-based and needs manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conWeird" is formula-based and needs manual conversion.
+- \`htmlapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`htmlapp/app/page.tsx\` (react-route) action=\`create\` hash=\`346c65b0083b4d453bb96d12b824306e874cad3262e7c899bc7e01746c098267\` confidence=0.90
+- \`htmlapp/components/generated/htmlscreen-screen.tsx\` (react-component) action=\`create\` hash=\`ff774342442bc2ee7e5a3d46992b12d9fa8512d507572c109097d9b00753a1fa\` confidence=0.97
+  - warning [REACT_CONTROL_UNSUPPORTED_ROLE] Control "htmlBody" uses unsupported role "html" and is rendered as placeholder.
+- \`htmlapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`htmlapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`htmlapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`htmlapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`layoutabsoluteapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`layoutabsoluteapp/app/page.tsx\` (react-route) action=\`create\` hash=\`d96145f31a2c098ace5c0eda980c7c035b396e25b4bd2b425540b756c8c62394\` confidence=0.90
+- \`layoutabsoluteapp/components/generated/absolutescreen-screen.tsx\` (react-component) action=\`create\` hash=\`c22b8177144e660f879bc8450eb7644c2f4c61235ff6926e2d79a9904793d11e\` confidence=0.96
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnB" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblA" has migration readiness "low" and requires manual conversion.
+- \`layoutabsoluteapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`layoutabsoluteapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`layoutabsoluteapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`layoutabsoluteapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`layouthorizontalapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`layouthorizontalapp/app/page.tsx\` (react-route) action=\`create\` hash=\`64979ad9208e62ee2d6905ded1303c1b5f51a62fa2b192ad861d8f01fbebd696\` confidence=0.90
+- \`layouthorizontalapp/components/generated/horizontalscreen-screen.tsx\` (react-component) action=\`create\` hash=\`6d3429cb6af84779fc4ac3e14eb2af6e276352ccd31a5203f95a2c0a34e8f037\` confidence=0.96
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnLeft" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnRight" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conHorizontal" is formula-based and needs manual conversion.
+- \`layouthorizontalapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`layouthorizontalapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`layouthorizontalapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`layouthorizontalapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`layoutverticalapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`layoutverticalapp/app/page.tsx\` (react-route) action=\`create\` hash=\`afabb5a52ee687a269dcd864b8544c26b8cd0fb0cddc9951bc932d54b2e51356\` confidence=0.90
+- \`layoutverticalapp/components/generated/verticalscreen-screen.tsx\` (react-component) action=\`create\` hash=\`3ed150eb7a5454495aca52100b3b9a86f6fd5fc4da98b9d03fe0b45cfe3469a2\` confidence=0.96
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblBottom" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblTop" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Height" on control "conVertical" is formula-based and needs manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conVertical" is formula-based and needs manual conversion.
+- \`layoutverticalapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`layoutverticalapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`layoutverticalapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`layoutverticalapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`migration-notes.md\` (markdown-report) action=\`create\` hash=\`a25ec60ef940d223fe7a12384c3516a79ba9e4bb2251896bdf6fc409402cd11a\` confidence=0.85
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnB" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnGoDetails" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnGoMissing" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnLeft" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnLoad" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnRight" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnSave" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnState" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conInner" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conLevel3" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conRoot" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conWeird" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "ctlLoose" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblA" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblBottom" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblContactName" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblDeep" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblDetails" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblTop" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_UNSUPPORTED_ROLE] Control "cmpHero" uses unsupported role "customComponent" and is rendered as placeholder.
+  - warning [REACT_CONTROL_UNSUPPORTED_ROLE] Control "htmlBody" uses unsupported role "html" and is rendered as placeholder.
+  - warning [REACT_FORMULA_UNSUPPORTED_FUNCTION] Formula uses unsupported functions (defaults); manual conversion required.
+  - warning [REACT_FORMULA_UNSUPPORTED_FUNCTION] Formula uses unsupported functions (defaults); manual conversion required.
+  - warning [REACT_FORMULA_UNSUPPORTED_FUNCTION] Formula uses unsupported functions (defaults); manual conversion required.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Height" on control "conVertical" is formula-based and needs manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conHorizontal" is formula-based and needs manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conVertical" is formula-based and needs manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conWeird" is formula-based and needs manual conversion.
+- \`multiscreenapp/app/details/page.tsx\` (react-route) action=\`create\` hash=\`1131bcdcab7263606fff48d722388505281bc41288f8e73000c86c4be73da9c2\` confidence=0.90
+- \`multiscreenapp/app/home/page.tsx\` (react-route) action=\`create\` hash=\`3579fb8843b1e8c6d969b48f3ac9044b0eadd6607d9ed0e5658424f50147f1c4\` confidence=0.90
+- \`multiscreenapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`multiscreenapp/app/page.tsx\` (react-route) action=\`create\` hash=\`a11629fa304506fa8f5aaa6a0850ee8497c1d336360ac925eee7df7499bd1363\` confidence=0.90
+- \`multiscreenapp/components/generated/details-screen.tsx\` (react-component) action=\`create\` hash=\`afda9d2521d3823ed7a8020fc1c1d75706959cb5ad4ca15f7e9049a1b7e0a607\` confidence=0.95
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblDetails" has migration readiness "low" and requires manual conversion.
+- \`multiscreenapp/components/generated/home-screen.tsx\` (react-component) action=\`create\` hash=\`10fac302b7d3fab0826d6e67874dfe20bb7071dbfc4e77b418eb706e196c5465\` confidence=0.95
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnGoDetails" has migration readiness "low" and requires manual conversion.
+- \`multiscreenapp/components/generated/loosescreen-screen.tsx\` (react-component) action=\`create\` hash=\`cd53dd7953192614ea68eca1dfb13047c8f92655dcf1cdd8e18af4b1a313b232\` confidence=0.96
+  - warning [REACT_CONTROL_LOW_READINESS] Control "ctlLoose" has migration readiness "low" and requires manual conversion.
+- \`multiscreenapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`multiscreenapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`multiscreenapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`multiscreenapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`navigateapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`navigateapp/app/page.tsx\` (react-route) action=\`create\` hash=\`9d1f847f21223278533b88d52ac6b4a5691ef120b7bcee2f87e340697ac5f351\` confidence=0.90
+- \`navigateapp/components/generated/home-screen.tsx\` (react-component) action=\`create\` hash=\`fedf2f2942579942aa153e8301d5bd08e161fce7b5a56049ff9db8a0d6fb038d\` confidence=0.95
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnGoMissing" has migration readiness "low" and requires manual conversion.
+- \`navigateapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`navigateapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`navigateapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`navigateapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`nestedcontrolsapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`nestedcontrolsapp/app/page.tsx\` (react-route) action=\`create\` hash=\`f2118d382030a09dceac2aed4364fa981b3f1f214a85fb00f9e238d6560b4a9f\` confidence=0.90
+- \`nestedcontrolsapp/components/generated/main-screen.tsx\` (react-component) action=\`create\` hash=\`2910aac09f18b3645a6c28eb3e8fe491cde9fb1cc1315bff94f714db8313a9ea\` confidence=0.94
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conInner" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conLevel3" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conRoot" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_CONTROL_LOW_READINESS] Control "lblDeep" has migration readiness "low" and requires manual conversion.
+- \`nestedcontrolsapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`nestedcontrolsapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`nestedcontrolsapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`nestedcontrolsapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`patchapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`patchapp/app/page.tsx\` (react-route) action=\`create\` hash=\`9dc052bd86638652b498f2234b42827a1def39ae7ee09432b0fe72182ab6f353\` confidence=0.90
+- \`patchapp/components/generated/edit-screen.tsx\` (react-component) action=\`create\` hash=\`c99e31d9393de217a697d5667499d0d21fdbeddf57b5e75ec07f545f8fba84de\` confidence=0.94
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnSave" has migration readiness "low" and requires manual conversion.
+- \`patchapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`patchapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`patchapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`patchapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`stateapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`stateapp/app/page.tsx\` (react-route) action=\`create\` hash=\`9d1f847f21223278533b88d52ac6b4a5691ef120b7bcee2f87e340697ac5f351\` confidence=0.90
+- \`stateapp/components/generated/home-screen.tsx\` (react-component) action=\`create\` hash=\`cc5f3a1c60e405eea7374b72d47c0b341379843800ba55a3ae934b4f9a7892a3\` confidence=0.94
+  - warning [REACT_CONTROL_LOW_READINESS] Control "btnState" has migration readiness "low" and requires manual conversion.
+- \`stateapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`stateapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`stateapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`stateapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+- \`unknownlayoutapp/app/layout.tsx\` (react-layout) action=\`create\` hash=\`8fb28d6ccbb858333cbdacdacbf96cb3d6236f1bcbb3554acaeadd439a826bb4\` confidence=0.85
+- \`unknownlayoutapp/app/page.tsx\` (react-route) action=\`create\` hash=\`c26593865059edf00942127ee15696714bf9a53707d8672e364b5d61b9de2525\` confidence=0.90
+- \`unknownlayoutapp/components/generated/unknownlayoutscreen-screen.tsx\` (react-component) action=\`create\` hash=\`3759186235d6dafc186851725e3c2dd5acd059f2ad737b2655b3d99bf9ee7677\` confidence=0.94
+  - warning [REACT_CONTROL_LOW_READINESS] Control "conWeird" has migration readiness "low" and requires manual conversion.
+  - warning [REACT_VISUAL_PROPERTY_FORMULA_TODO] Property "Width" on control "conWeird" is formula-based and needs manual conversion.
+- \`unknownlayoutapp/lib/generated/services/dataService.ts\` (typescript-service) action=\`create\` hash=\`7b8436c54762756bd027f83cfeb96ce178bb6a592e6ef1784d5c4269bdf9e75e\` confidence=0.85
+- \`unknownlayoutapp/lib/generated/services/navigationService.ts\` (typescript-service) action=\`create\` hash=\`c4940af7792f11b29cf782581f4baf88b5e89888a29853d751b6e2a0c37abd7a\` confidence=0.85
+- \`unknownlayoutapp/lib/generated/services/queryHelpers.ts\` (typescript-service) action=\`create\` hash=\`2b790a6b9a67a7841a8dd4c89e0336ecd82923fba2edc2e46ade27cc9eff83f5\` confidence=0.85
+- \`unknownlayoutapp/lib/generated/services/stateService.ts\` (typescript-service) action=\`create\` hash=\`1b587f866e92c8494f54c8f6f85650a6f511102ed85a189f049713893742f6e3\` confidence=0.85
+
+## Skipped files
+
+- None.
+
+## Overwritten files
+
+- None.
+
+## Manual review items
+
+- [low] formula-hotspot: Map navigation formulas to route helpers and verify path/state handoff behavior.
+  - related paths: \`Home:btnGoDetails:OnSelect\`
+- [low] formula-hotspot: Map navigation formulas to route helpers and verify path/state handoff behavior.
+  - related paths: \`Home:btnGoMissing:OnSelect\`
+- [medium] formula-hotspot: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+  - related paths: \`Home:btnLoad:OnSelect\`
+- [high] formula-hotspot: Replace data formulas with explicit async service calls and contract-tested API adapters.
+  - related paths: \`Edit:btnSave:OnSelect\`
+- [medium] formula-hotspot: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+  - related paths: \`Home:btnState:OnSelect\`
+- [medium] formula-hotspot: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+  - related paths: \`app:CollectApp:(screen):OnSelect\`
+- [high] formula-hotspot: Replace data formulas with explicit async service calls and contract-tested API adapters.
+  - related paths: \`Edit:screen:Edit:OnSelect\`
+- [medium] formula-hotspot: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+  - related paths: \`Home:screen:Home:OnSelect\`
+- [low] formula-hotspot: Map navigation formulas to route helpers and verify path/state handoff behavior.
+  - related paths: \`Home:screen:Home:OnSelect\`
+- [low] formula-hotspot: Map navigation formulas to route helpers and verify path/state handoff behavior.
+  - related paths: \`Home:screen:Home:OnSelect\`
+- [medium] formula-hotspot: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+  - related paths: \`Home:screen:Home:OnSelect\`
+- [low] formula-hotspot: Map navigation formulas to route helpers and verify path/state handoff behavior.
+  - related paths: \`app:MultiScreenApp:(screen):OnSelect\`
+- [low] formula-hotspot: Map navigation formulas to route helpers and verify path/state handoff behavior.
+  - related paths: \`app:MultiScreenApp:(screen):OnVisible\`
+- [low] formula-hotspot: Map navigation formulas to route helpers and verify path/state handoff behavior.
+  - related paths: \`app:NavigateApp:(screen):OnSelect\`
+- [high] formula-hotspot: Replace data formulas with explicit async service calls and contract-tested API adapters.
+  - related paths: \`app:PatchApp:(screen):OnSelect\`
+- [medium] formula-hotspot: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+  - related paths: \`app:StateApp:(screen):OnSelect\`
+- [medium] formula-hotspot: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+  - related paths: \`app:StateApp:(screen):OnStart\`
+- [high] unsupported-feature: Canvas control role "customComponent" does not have a direct deterministic React mapping yet.
+- [medium] unsupported-feature: Canvas control role "html" does not have a direct deterministic React mapping yet.
+- [medium] unsupported-feature: Formula uses unsupported functions: defaults
+- [medium] unsupported-feature: Formula uses unsupported functions: defaults
+- [medium] unsupported-feature: Formula uses unsupported functions: defaults
+- [low] warning: Control "btnB" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "btnGoDetails" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "btnGoMissing" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "btnLeft" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "btnLoad" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "btnRight" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "btnSave" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "btnState" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "conInner" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "conLevel3" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "conRoot" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "conWeird" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "ctlLoose" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "lblA" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "lblBottom" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "lblContactName" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "lblDeep" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "lblDetails" has migration readiness "low" and requires manual conversion.
+- [low] warning: Control "lblTop" has migration readiness "low" and requires manual conversion.
+- [medium] warning: Control "cmpHero" uses unsupported role "customComponent" and is rendered as placeholder.
+- [medium] warning: Control "htmlBody" uses unsupported role "html" and is rendered as placeholder.
+- [medium] warning: Formula uses unsupported functions (defaults); manual conversion required.
+- [medium] warning: Formula uses unsupported functions (defaults); manual conversion required.
+- [medium] warning: Formula uses unsupported functions (defaults); manual conversion required.
+- [low] warning: Property "Height" on control "conVertical" is formula-based and needs manual conversion.
+- [low] warning: Property "Width" on control "conHorizontal" is formula-based and needs manual conversion.
+- [low] warning: Property "Width" on control "conVertical" is formula-based and needs manual conversion.
+- [low] warning: Property "Width" on control "conWeird" is formula-based and needs manual conversion.
+
+## Formula hotspots
+
+- [medium] app:CollectApp / (screen) / OnSelect -> stateManagement
+  - stub: \`handleCollectAppOnSelect\`
+  - formula: \`ClearCollect(colAccounts, Accounts)\`
+  - manual area: stateService + React state/reducer wiring
+  - recommendation: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+- [low] app:MultiScreenApp / (screen) / OnSelect -> navigation
+  - stub: \`handleMultiScreenAppOnSelect\`
+  - formula: \`Navigate(Details, ScreenTransition.None)\`
+  - manual area: navigationService + Next.js route wiring
+  - recommendation: Map navigation formulas to route helpers and verify path/state handoff behavior.
+- [low] app:MultiScreenApp / (screen) / OnVisible -> navigation
+  - stub: \`handleMultiScreenAppOnVisible\`
+  - formula: \`Navigate(Details, ScreenTransition.None)\`
+  - manual area: navigationService + Next.js route wiring
+  - recommendation: Map navigation formulas to route helpers and verify path/state handoff behavior.
+- [low] app:NavigateApp / (screen) / OnSelect -> navigation
+  - stub: \`handleNavigateAppOnSelect\`
+  - formula: \`Navigate(MissingScreen, ScreenTransition.None)\`
+  - manual area: navigationService + Next.js route wiring
+  - recommendation: Map navigation formulas to route helpers and verify path/state handoff behavior.
+- [high] app:PatchApp / (screen) / OnSelect -> dataOperations
+  - stub: \`handlePatchAppOnSelect\`
+  - formula: \`Patch(Accounts, Defaults(Accounts), { name: "Demo" })\`
+  - manual area: dataService + queryHelpers integration
+  - recommendation: Replace data formulas with explicit async service calls and contract-tested API adapters.
+- [medium] app:StateApp / (screen) / OnSelect -> stateManagement
+  - stub: \`handleStateAppOnSelect\`
+  - formula: \`UpdateContext({ localMode: "editing" })\`
+  - manual area: stateService + React state/reducer wiring
+  - recommendation: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+- [medium] app:StateApp / (screen) / OnStart -> stateManagement
+  - stub: \`handleStateAppOnStart\`
+  - formula: \`Set(appMode, "ready")\`
+  - manual area: stateService + React state/reducer wiring
+  - recommendation: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+- [high] Edit / btnSave / OnSelect -> dataOperations
+  - stub: \`handleBtnSaveOnSelect\`
+  - formula: \`Patch(Accounts, Defaults(Accounts), { name: "Demo" })\`
+  - manual area: dataService + queryHelpers integration
+  - recommendation: Replace data formulas with explicit async service calls and contract-tested API adapters.
+- [high] Edit / screen:Edit / OnSelect -> dataOperations
+  - stub: \`handleEditOnSelect\`
+  - formula: \`Patch(Accounts, Defaults(Accounts), { name: "Demo" })\`
+  - manual area: dataService + queryHelpers integration
+  - recommendation: Replace data formulas with explicit async service calls and contract-tested API adapters.
+- [low] Home / btnGoDetails / OnSelect -> navigation
+  - stub: \`handleBtnGoDetailsOnSelect\`
+  - formula: \`Navigate(Details, ScreenTransition.None)\`
+  - manual area: navigationService + Next.js route wiring
+  - recommendation: Map navigation formulas to route helpers and verify path/state handoff behavior.
+- [low] Home / btnGoMissing / OnSelect -> navigation
+  - stub: \`handleBtnGoMissingOnSelect\`
+  - formula: \`Navigate(MissingScreen, ScreenTransition.None)\`
+  - manual area: navigationService + Next.js route wiring
+  - recommendation: Map navigation formulas to route helpers and verify path/state handoff behavior.
+- [medium] Home / btnLoad / OnSelect -> stateManagement
+  - stub: \`handleBtnLoadOnSelect\`
+  - formula: \`ClearCollect(colAccounts, Accounts)\`
+  - manual area: stateService + React state/reducer wiring
+  - recommendation: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+- [medium] Home / btnState / OnSelect -> stateManagement
+  - stub: \`handleBtnStateOnSelect\`
+  - formula: \`UpdateContext({ localMode: "editing" })\`
+  - manual area: stateService + React state/reducer wiring
+  - recommendation: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+- [medium] Home / screen:Home / OnSelect -> stateManagement
+  - stub: \`handleHomeOnSelect\`
+  - formula: \`ClearCollect(colAccounts, Accounts)\`
+  - manual area: stateService + React state/reducer wiring
+  - recommendation: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+- [low] Home / screen:Home / OnSelect -> navigation
+  - stub: \`handleHomeOnSelect\`
+  - formula: \`Navigate(Details, ScreenTransition.None)\`
+  - manual area: navigationService + Next.js route wiring
+  - recommendation: Map navigation formulas to route helpers and verify path/state handoff behavior.
+- [low] Home / screen:Home / OnSelect -> navigation
+  - stub: \`handleHomeOnSelect\`
+  - formula: \`Navigate(MissingScreen, ScreenTransition.None)\`
+  - manual area: navigationService + Next.js route wiring
+  - recommendation: Map navigation formulas to route helpers and verify path/state handoff behavior.
+- [medium] Home / screen:Home / OnSelect -> stateManagement
+  - stub: \`handleHomeOnSelect\`
+  - formula: \`UpdateContext({ localMode: "editing" })\`
+  - manual area: stateService + React state/reducer wiring
+  - recommendation: Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.
+
+## SQL plan
+
+- Not applicable.
+
+Review \`generation-plan.json\` and resolve skipped/manual items before committing generated files.
+"
+`;
+
+exports[`power-exit generate sql command > matches SQL generation-plan markdown snapshot 1`] = `
+"# Power Exit Generation Plan
+
+## Summary
+
+- Planned files: 2
+- Planned directories: 0
+- Create: 2
+- Overwrite: 0
+- Skip: 0
+- Unchanged: 0
+- Warnings: 2
+- Unsupported features: 0
+- Formula hotspots: 0
+- Manual review items: 2
+
+## Planned directories
+
+- None.
+
+## Planned files
+
+- \`generation-report.md\` (markdown-report) action=\`create\` hash=\`3b492c43e5cc6f5d625d218ce0d0ae3fd13183fddca29a36a181406aafb36faa\` confidence=0.96
+  - warning [SQL_RELATIONSHIP_UNRESOLVED] Relationship "account_contacts" has no confidently resolvable lookup column in "account".
+  - warning [SQL_RELATIONSHIP_UNRESOLVED] Relationship "parent_account" has no confidently resolvable lookup column in "account".
+- \`schema.sql\` (sql-schema) action=\`create\` hash=\`34baf3f7d176001a497b9c299217392a6e9523a9c44a9ddf94d2808a47fa839e\` confidence=0.96
+  - warning [SQL_RELATIONSHIP_UNRESOLVED] Relationship "account_contacts" has no confidently resolvable lookup column in "account".
+  - warning [SQL_RELATIONSHIP_UNRESOLVED] Relationship "parent_account" has no confidently resolvable lookup column in "account".
+
+## Skipped files
+
+- None.
+
+## Overwritten files
+
+- None.
+
+## Manual review items
+
+- [low] warning: Relationship "account_contacts" has no confidently resolvable lookup column in "account".
+- [low] warning: Relationship "parent_account" has no confidently resolvable lookup column in "account".
+
+## Formula hotspots
+
+- None.
+
+## SQL plan
+
+### Tables to create
+- \`account\`
+- \`contact\`
+
+### Columns to create
+- \`account.accountid\`
+- \`account.name\`
+- \`account.revenue\`
+- \`contact.contactid\`
+- \`contact.fullname\`
+
+### Foreign keys to create
+- None.
+
+### Join tables to create
+- None.
+
+### Unsupported columns
+- None.
+
+### Unresolved relationships
+- \`account_contacts\`
+- \`parent_account\`
+
+### Naming collisions
+- None.
+
+Review \`generation-plan.json\` and resolve skipped/manual items before committing generated files.
+"
+`;

@@ -1,0 +1,19 @@
+Screen:
+  Name: VerticalScreen
+  Controls:
+    - Name: conVertical
+      Type: Container
+      Properties:
+        LayoutDirection: Vertical
+        Width: Parent.Width
+        Height: Parent.Height
+        Wrap: true
+      Children:
+        - Name: lblTop
+          Type: Label
+          Properties:
+            Text: "Top"
+        - Name: lblBottom
+          Type: Label
+          Properties:
+            Text: "Bottom"

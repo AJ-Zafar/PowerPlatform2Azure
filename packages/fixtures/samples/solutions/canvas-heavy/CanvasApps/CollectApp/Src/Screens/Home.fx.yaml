@@ -1,0 +1,7 @@
+Screen:
+  Name: Home
+  Controls:
+    - Name: btnLoad
+      Type: Button
+      Properties:
+        OnSelect: ClearCollect(colAccounts, Accounts)

@@ -1,0 +1,7 @@
+Screen:
+  Name: Details
+  Controls:
+    - Name: lblDetails
+      Type: Label
+      Properties:
+        Text: "Details"

@@ -1,0 +1,4 @@
+Name: FormApp
+DataSources:
+  - Name: Accounts
+    Type: Dataverse

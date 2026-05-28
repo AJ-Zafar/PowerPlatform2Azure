@@ -1,0 +1,483 @@
+{
+  "simpleScreen": {
+    "apps": [
+      {
+        "appName": "Simple App",
+        "appId": "simple-app",
+        "screens": [
+          {
+            "screenName": "Home Screen",
+            "migrationReadiness": "high",
+            "layoutMode": "verticalStack",
+            "controls": [
+              {
+                "controlName": "MainContainer",
+                "controlType": "container",
+                "role": "pageContainer",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "stretch"
+              },
+              {
+                "controlName": "WelcomeHeading",
+                "controlType": "label",
+                "role": "heading",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "MainContainer"
+              },
+              {
+                "controlName": "SubmitButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "MainContainer",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Navigate('Details Screen')"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "multipleScreens": {
+    "apps": [
+      {
+        "appName": "Routing App",
+        "appId": "routing-app",
+        "screens": [
+          {
+            "screenName": "Dashboard",
+            "migrationReadiness": "medium",
+            "layoutMode": "verticalStack",
+            "controls": [
+              {
+                "controlName": "DashboardRoot",
+                "controlType": "container",
+                "role": "pageContainer",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "stretch"
+              }
+            ]
+          },
+          {
+            "screenName": "Settings Screen",
+            "migrationReadiness": "low",
+            "layoutMode": "horizontalStack",
+            "controls": [
+              {
+                "controlName": "SettingsRoot",
+                "controlType": "container",
+                "role": "sectionContainer",
+                "layoutMode": "horizontalStack",
+                "responsiveHint": "wrap"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "nestedLayout": {
+    "apps": [
+      {
+        "appName": "Nested Layout App",
+        "appId": "nested-layout-app",
+        "screens": [
+          {
+            "screenName": "Nested Screen",
+            "migrationReadiness": "high",
+            "layoutMode": "grid",
+            "controls": [
+              {
+                "controlName": "GridRoot",
+                "controlType": "container",
+                "role": "sectionContainer",
+                "layoutMode": "grid",
+                "responsiveHint": "stretch"
+              },
+              {
+                "controlName": "CardOne",
+                "controlType": "container",
+                "role": "card",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "fillParent",
+                "parent": "GridRoot"
+              },
+              {
+                "controlName": "CardOneText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "CardOne"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "galleryAndForm": {
+    "apps": [
+      {
+        "appName": "Data App",
+        "appId": "data-app",
+        "screens": [
+          {
+            "screenName": "Browse",
+            "migrationReadiness": "medium",
+            "layoutMode": "galleryTemplate",
+            "controls": [
+              {
+                "controlName": "ItemsGallery",
+                "controlType": "gallery",
+                "role": "gallery",
+                "layoutMode": "galleryTemplate",
+                "responsiveHint": "stretch"
+              }
+            ]
+          },
+          {
+            "screenName": "Edit",
+            "migrationReadiness": "medium",
+            "layoutMode": "formLayout",
+            "controls": [
+              {
+                "controlName": "EditForm",
+                "controlType": "form",
+                "role": "form",
+                "layoutMode": "formLayout",
+                "responsiveHint": "stretch"
+              },
+              {
+                "controlName": "NameCard",
+                "controlType": "dataCard",
+                "role": "dataCard",
+                "layoutMode": "formLayout",
+                "responsiveHint": "stretch",
+                "parent": "EditForm"
+              },
+              {
+                "controlName": "DateField",
+                "controlType": "input",
+                "role": "dateInput",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "NameCard"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "formulas": {
+    "apps": [
+      {
+        "appName": "Formula App",
+        "appId": "formula-app",
+        "formulas": [
+          {
+            "propertyName": "OnStart",
+            "rawExpression": "Set(varAppStart, true)"
+          }
+        ],
+        "screens": [
+          {
+            "screenName": "Formula Screen",
+            "migrationReadiness": "medium",
+            "layoutMode": "absolute",
+            "formulas": [
+              {
+                "propertyName": "OnVisible",
+                "rawExpression": "UpdateContext({screenReady: true})"
+              }
+            ],
+            "controls": [
+              {
+                "controlName": "SaveButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Patch(Accounts, Defaults(Accounts), { Name: \"A\" })"
+                  }
+                ]
+              },
+              {
+                "controlName": "NameInput",
+                "controlType": "text",
+                "role": "input",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnChange",
+                    "rawExpression": "Set(varName, Self.Text)"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "formulaRefinement": {
+    "apps": [
+      {
+        "appName": "Formula Refinement App",
+        "appId": "formula-refinement-app",
+        "formulas": [
+          {
+            "propertyName": "OnStart",
+            "rawExpression": "Set(varBoot, true); ClearCollect(colUsers, Users)"
+          }
+        ],
+        "screens": [
+          {
+            "screenName": "Refine Screen",
+            "migrationReadiness": "medium",
+            "layoutMode": "absolute",
+            "formulas": [
+              {
+                "propertyName": "OnVisible",
+                "rawExpression": "If(Switch(varMode, \"A\", true, false), UpdateContext({ready: true}), UpdateContext({ready: false}))"
+              }
+            ],
+            "controls": [
+              {
+                "controlName": "PatchButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Patch(Accounts, Defaults(Accounts), { Name: \"A\" }); SubmitForm(EditForm1)"
+                  }
+                ]
+              },
+              {
+                "controlName": "NavButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Navigate(\"Details\"); Launch(\"https://example.com\")"
+                  }
+                ]
+              },
+              {
+                "controlName": "CollectionButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Collect(colMerged, SourceA, SourceB)"
+                  }
+                ]
+              },
+              {
+                "controlName": "FilterInput",
+                "controlType": "text",
+                "role": "input",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnChange",
+                    "rawExpression": "Filter(Accounts, StartsWith(Name, Self.Text)); SortByColumns(Accounts, \"name\")"
+                  }
+                ]
+              },
+              {
+                "controlName": "TransformText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "Text",
+                    "rawExpression": "Concatenate(Text(DateAdd(Today(), 1)), \"-\", Value(\"42\"), \"-\", CountRows(colUsers))"
+                  }
+                ]
+              },
+              {
+                "controlName": "UnknownLogicText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "Text",
+                    "rawExpression": "With({x:1}, Power(x,2))"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "unsupportedControls": {
+    "apps": [
+      {
+        "appName": "Unsupported Controls App",
+        "appId": "unsupported-controls-app",
+        "screens": [
+          {
+            "screenName": "Unsupported Screen",
+            "migrationReadiness": "blocked",
+            "layoutMode": "unknown",
+            "controls": [
+              {
+                "controlName": "HtmlTextControl",
+                "controlType": "html",
+                "role": "html",
+                "layoutMode": "unknown",
+                "responsiveHint": "unknown",
+                "migrationReadiness": "blocked"
+              },
+              {
+                "controlName": "CustomWidget",
+                "controlType": "component",
+                "role": "customComponent",
+                "layoutMode": "unknown",
+                "responsiveHint": "unknown",
+                "migrationReadiness": "blocked"
+              },
+              {
+                "controlName": "MysteryControl",
+                "controlType": "mystery",
+                "role": "unknown",
+                "layoutMode": "unknown",
+                "responsiveHint": "unknown",
+                "migrationReadiness": "low"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "blockedAndLowReadiness": {
+    "apps": [
+      {
+        "appName": "Readiness App",
+        "appId": "readiness-app",
+        "migrationReadiness": "low",
+        "screens": [
+          {
+            "screenName": "Blocked Screen",
+            "migrationReadiness": "blocked",
+            "layoutMode": "verticalStack",
+            "controls": [
+              {
+                "controlName": "BlockedControl",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "stretch",
+                "migrationReadiness": "blocked"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "visualProperties": {
+    "apps": [
+      {
+        "appName": "Visual Mapping App",
+        "appId": "visual-mapping-app",
+        "screens": [
+          {
+            "screenName": "Visual Screen",
+            "migrationReadiness": "medium",
+            "layoutMode": "absolute",
+            "controls": [
+              {
+                "controlName": "VisualButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "layoutProperties": {
+                  "X": 24,
+                  "Y": 36,
+                  "Width": 240,
+                  "Height": 56,
+                  "Fill": "#112233",
+                  "Color": "#ffffff",
+                  "Align": "Center",
+                  "Visible": true,
+                  "DisplayMode": "Disabled"
+                },
+                "properties": {
+                  "BorderColor": "#445566",
+                  "BorderThickness": 2,
+                  "BorderRadius": 8,
+                  "Font": "Segoe UI",
+                  "FontWeight": "Bold",
+                  "Size": 18,
+                  "Padding": 12
+                }
+              },
+              {
+                "controlName": "FormulaText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "layoutProperties": {
+                  "X": "If(varX, 10, 20)",
+                  "Fill": "If(varFill, Color.Red, Color.Blue)",
+                  "Visible": "isVisible"
+                },
+                "properties": {},
+                "formulas": [
+                  {
+                    "propertyName": "Fill",
+                    "rawExpression": "If(varFill, Color.Red, Color.Blue)"
+                  }
+                ]
+              },
+              {
+                "controlName": "HiddenCard",
+                "controlType": "container",
+                "role": "card",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "layoutProperties": {
+                  "Visible": false
+                },
+                "properties": {}
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

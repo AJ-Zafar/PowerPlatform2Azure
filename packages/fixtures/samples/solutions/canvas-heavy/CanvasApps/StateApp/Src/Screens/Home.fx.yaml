@@ -1,0 +1,7 @@
+Screen:
+  Name: Home
+  Controls:
+    - Name: btnState
+      Type: Button
+      Properties:
+        OnSelect: 'UpdateContext({ localMode: "editing" })'

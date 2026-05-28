@@ -1,0 +1,16 @@
+<ImportExportXml languagecode="1033">
+  <SolutionManifest>
+    <UniqueName>contoso_core</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Contoso Core" languagecode="1033" />
+    </LocalizedNames>
+    <Version>1.2.3.4</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>contoso</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Contoso Ltd" languagecode="1033" />
+      </LocalizedNames>
+    </Publisher>
+  </SolutionManifest>
+</ImportExportXml>

@@ -1,0 +1,10 @@
+<Entity>
+  <LogicalName>broken_entity</LogicalName>
+  <SchemaName>broken_Entity</SchemaName>
+  <DisplayName>Broken Entity</DisplayName>
+  <Attributes>
+    <Attribute>
+      <LogicalName>broken_name</LogicalName>
+      <Type>String</Type>
+  </Attributes>
+</Entity>

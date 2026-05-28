@@ -1,0 +1,8 @@
+Screen:
+  Name: UnknownLayoutScreen
+  Controls:
+    - Name: conWeird
+      Type: Container
+      Properties:
+        MysteryLayout: true
+        Width: Parent.Width

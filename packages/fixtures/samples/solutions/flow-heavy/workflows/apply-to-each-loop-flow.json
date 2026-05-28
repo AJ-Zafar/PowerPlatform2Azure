@@ -1,0 +1,31 @@
+{
+  "name": "apply-to-each-loop-flow",
+  "properties": {
+    "displayName": "Apply To Each Loop Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "for_each_items": {
+          "type": "Foreach",
+          "foreach": "@triggerBody()?['items']",
+          "actions": {
+            "compose_item": {
+              "type": "Compose",
+              "runAfter": {},
+              "inputs": "@item()"
+            }
+          },
+          "runAfter": {}
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

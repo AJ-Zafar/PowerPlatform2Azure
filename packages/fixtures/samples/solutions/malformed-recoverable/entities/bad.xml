@@ -1,0 +1,10 @@
+<Entity>
+  <LogicalName>new_bad</LogicalName>
+  <SchemaName>new_Bad</SchemaName>
+  <DisplayName>Bad Entity</DisplayName>
+  <Attributes>
+    <Attribute>
+      <LogicalName>new_missing_close</LogicalName>
+      <Type>String</Type>
+  </Attributes>
+</Entity>

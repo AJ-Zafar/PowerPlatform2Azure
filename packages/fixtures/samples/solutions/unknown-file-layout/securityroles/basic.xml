@@ -1,0 +1,15 @@
+<Roles>
+  <Role>
+    <Name>Basic User</Name>
+    <Privileges>
+      <Privilege>
+        <Name>prvReadContact</Name>
+        <Scope>Basic</Scope>
+      </Privilege>
+      <Privilege>
+        <Name>CustomPrivilege</Name>
+        <Scope>Basic</Scope>
+      </Privilege>
+    </Privileges>
+  </Role>
+</Roles>

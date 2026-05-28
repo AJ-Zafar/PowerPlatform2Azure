@@ -1,0 +1,26 @@
+{
+  "name": "unknown-action-type-flow",
+  "properties": {
+    "displayName": "Unknown Action Type Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "mystery_step": {
+          "type": "QuantumAction",
+          "runAfter": {},
+          "inputs": {
+            "payload": "@variables('mystery')"
+          }
+        }
+      },
+      "outputs": {}
+    }
+  }
+}

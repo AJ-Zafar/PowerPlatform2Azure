@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "references": [
+    {
+      "path": "../../packages/assessment"
+    },
+    {
+      "path": "../../packages/generators"
+    },
+    {
+      "path": "../../packages/parsers"
+    }
+  ],
+  "include": [
+    "src"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "recurrence-trigger-flow",
+  "properties": {
+    "displayName": "Recurrence Trigger Flow",
+    "state": "Started",
+    "definition": {
+      "triggers": {
+        "recurrence": {
+          "type": "Recurrence",
+          "recurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "timeZone": "UTC"
+          },
+          "inputs": {}
+        }
+      },
+      "actions": {
+        "compose_ping": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": "ping"
+        }
+      },
+      "outputs": {}
+    }
+  }
+}
