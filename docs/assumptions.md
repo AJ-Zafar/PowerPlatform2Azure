@@ -8,9 +8,10 @@
 4. Unsupported source constructs must be emitted as structured records and included in reports.
 5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, structured Canvas extraction, structured Cloud Flow extraction, and infrastructure metadata extraction.
 6. This sprint includes first-pass deterministic assessment heuristics and report generation from validated IR.
-7. Full Power Fx semantic translation, SQL/React/Azure generation, and non-heuristic assessment scoring remain out of scope.
-8. Lightweight summary counts in IR remain parser telemetry; assessment outputs consume these signals but remain heuristic.
-9. Canvas migration-readiness in this pass is heuristic metadata for UI migration preparation, not final conversion logic.
+7. This sprint adds the first deterministic SQL generator (`power-exit generate sql`) from validated Dataverse IR.
+8. Full Power Fx semantic translation, React/Azure Functions/Bicep generation, and non-heuristic assessment scoring remain out of scope.
+9. Lightweight summary counts in IR remain parser telemetry; assessment outputs consume these signals but remain heuristic.
+10. Canvas migration-readiness in this pass is heuristic metadata for UI migration preparation, not final conversion logic.
 
 ## Repository assumptions
 
@@ -54,6 +55,8 @@ Where:
 - Flow malformed JSON/XML files produce warnings and parsing continues for remaining flows.
 - Flow trigger/action parsing is best-effort and preserves raw inputs/expressions without execution.
 - Assessment scoring is deterministic and explainable, using explicit weighted heuristics over current IR signals.
+- Generator outputs are deterministic and generated only from validated IR, never from raw source files.
+- SQL generation emits explicit warnings/unsupported features when mapping confidence is insufficient.
 - Unknown layouts, unresolved dependencies, and malformed artifacts reduce confidence and increase risk by design.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.
 - Unresolved references are represented both as warnings and as unresolved dependency edges.

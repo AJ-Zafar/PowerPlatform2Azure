@@ -65,6 +65,7 @@ The CLI now supports a foundational command:
 power-exit analyse <solution-folder> --out <output-folder>
 power-exit analyse <solution-folder> --out <output-folder> --report
 power-exit report <ir-json> --out <output-folder>
+power-exit generate sql <ir-json> --out <output-folder>
 ```
 
 Current behavior in this sprint:
@@ -88,6 +89,52 @@ Current behavior in this sprint:
 1. Read and validate an existing `ir.json`.
 2. Run deterministic assessment heuristics across Dataverse, Canvas, Cloud Flows, Security, Connections, and Dependencies.
 3. Generate `assessment-report.md` with executive summary, risk/complexity/confidence, blockers, quick wins, domain sections, unsupported/warnings, migration waves, and next steps.
+
+`generate sql` command behavior:
+
+1. Read and validate an existing `ir.json`.
+2. Run the deterministic Dataverse-to-Azure SQL generator from `@power-exit/generators`.
+3. Write `schema.sql` and `generation-report.md`.
+4. Print structured summary counts (tables, columns, relationships, warnings, unsupported features).
+
+## Generator framework (Milestone 8)
+
+`@power-exit/generators` now exposes a deterministic generator contract layer:
+
+- `GeneratorContext`
+- `Generator<TInput, TOutput>`
+- `GeneratedArtifact`
+- `GenerationResult`
+- `GenerationWarning`
+- `GenerationUnsupportedFeature`
+- `GeneratorRegistry`
+- `GeneratorCapability`
+
+Every generated artifact includes artifact id, artifact type, output file path, content, source artifact ids, warnings, provenance, and confidence.
+
+Generator architecture rules:
+
+- Generators consume validated IR/assessment inputs only.
+- Generators do not read raw Power Platform source files.
+- Unsupported conversions are explicit generation warnings/unsupported records.
+- Output ordering and serialized content are deterministic.
+
+## Azure SQL DDL generation (first generator)
+
+Current SQL generator scope:
+
+- Dataverse entities -> SQL tables + primary keys.
+- Dataverse attributes -> SQL columns (string, memo, int, bigint, decimal, float, money, boolean, datetime, date, guid, lookup/owner/customer candidate IDs, choice/state/status as int).
+- One-to-many and many-to-one relationships -> foreign keys when resolvable.
+- Many-to-many relationships -> deterministic join table generation when resolvable.
+- Option sets/choices -> integer storage with mapping comments where discoverable.
+- Logical-name to SQL-name mappings -> emitted in `generation-report.md`.
+
+Current SQL generator limitations:
+
+- Calculated, rollup, file/image, activity party/partylist, and polymorphic/customer-heavy behaviors are surfaced as unsupported features requiring manual migration design.
+- Virtual table entities are flagged as unsupported for direct DDL parity.
+- Generated SQL is a deterministic migration starting point, not a guaranteed production schema.
 
 ## Assessment model (Milestone 7)
 

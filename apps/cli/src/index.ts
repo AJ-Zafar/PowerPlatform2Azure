@@ -7,6 +7,7 @@ import {
   assessPowerPlatformIR,
   generateAssessmentReportMarkdown
 } from "@power-exit/assessment";
+import { generateDataverseSqlFromPowerPlatformIR } from "@power-exit/generators";
 import { analyseSolutionFolder } from "@power-exit/parsers";
 
 type WriteFn = (line: string) => void;
@@ -34,6 +35,11 @@ interface AnalyseArgs {
 }
 
 interface ReportArgs {
+  irFilePath: string;
+  outputFolder: string;
+}
+
+interface GenerateSqlArgs {
   irFilePath: string;
   outputFolder: string;
 }
@@ -86,6 +92,42 @@ const parseReportArgs = (args: string[]): ReportArgs => {
     throw new CliError(
       "INVALID_ARGUMENTS",
       "Usage: power-exit report <ir-json> --out <output-folder>"
+    );
+  }
+
+  const [irFilePath, ...flags] = args;
+  let outputFolder: string | undefined;
+
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+
+    if (flag === "--out") {
+      outputFolder = flags[index + 1];
+      index += 1;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  if (!outputFolder) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Missing required --out <output-folder> argument."
+    );
+  }
+
+  return {
+    irFilePath: path.resolve(irFilePath),
+    outputFolder: path.resolve(outputFolder)
+  };
+};
+
+const parseGenerateSqlArgs = (args: string[]): GenerateSqlArgs => {
+  if (args.length < 3) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit generate sql <ir-json> --out <output-folder>"
     );
   }
 
@@ -299,6 +341,73 @@ const executeReport = async (args: string[], stdout: WriteFn): Promise<void> => 
   );
 };
 
+const executeGenerateSql = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const parsedArgs = parseGenerateSqlArgs(args);
+
+  await ensureInputFile(parsedArgs.irFilePath);
+  await ensureOutputFolder(parsedArgs.outputFolder);
+  let irPayload: unknown;
+
+  try {
+    irPayload = JSON.parse(await readFile(parsedArgs.irFilePath, "utf-8")) as unknown;
+  } catch {
+    throw new CliError("INVALID_IR_JSON", "IR input is not valid JSON.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  let validatedIr;
+  try {
+    validatedIr = validatePowerPlatformIR(irPayload);
+  } catch {
+    throw new CliError("IR_VALIDATION_FAILURE", "Input IR failed schema validation.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  const generation = await generateDataverseSqlFromPowerPlatformIR(validatedIr, {
+    invocationProvenance: {
+      sourcePath: parsedArgs.irFilePath,
+      sourceType: "cli"
+    },
+    outputFolder: parsedArgs.outputFolder
+  });
+
+  for (const artifact of generation.artifacts) {
+    const outputPath = path.join(parsedArgs.outputFolder, artifact.filePath);
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${artifact.content}\n`, "utf-8");
+  }
+
+  stdout(
+    JSON.stringify({
+      command: "generate-sql",
+      status: "success",
+      irFilePath: parsedArgs.irFilePath,
+      outputFolder: parsedArgs.outputFolder,
+      tablesGenerated: generation.output.tablesGenerated,
+      columnsGenerated: generation.output.columnsGenerated,
+      relationshipsGenerated: generation.output.relationshipsGenerated,
+      warnings: generation.warnings.length,
+      unsupportedFeatures: generation.unsupportedFeatures.length
+    })
+  );
+};
+
+const executeGenerate = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const [subcommand, ...subcommandArgs] = args;
+
+  if (subcommand === "sql") {
+    await executeGenerateSql(subcommandArgs, stdout);
+    return;
+  }
+
+  throw new CliError(
+    "INVALID_COMMAND",
+    "Supported generate commands are: sql."
+  );
+};
+
 const formatError = (error: unknown): string => {
   if (error instanceof CliError) {
     return JSON.stringify({
@@ -333,6 +442,11 @@ export const runCli = async (
       return 0;
     }
 
+    if (command === "generate") {
+      await executeGenerate(commandArgs, stdout);
+      return 0;
+    }
+
     if (!command) {
       throw new CliError(
         "INVALID_COMMAND",
@@ -342,7 +456,7 @@ export const runCli = async (
 
     throw new CliError(
       "INVALID_COMMAND",
-      "Supported commands are: analyse, report."
+      "Supported commands are: analyse, report, generate."
     );
   } catch (error) {
     stderr(formatError(error));

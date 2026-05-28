@@ -249,3 +249,76 @@ describe("power-exit analyse command", () => {
     await rm(tempRoot, { recursive: true, force: true });
   });
 });
+
+describe("power-exit generate sql command", () => {
+  it("validates IR input and writes schema.sql plus generation-report.md", async () => {
+    const tempRoot = await createTempDirectory();
+    const analyseOutput = path.join(tempRoot, "analyse-out");
+    const generateOutput = path.join(tempRoot, "generate-out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/dataverse-heavy"
+    );
+    const analyseStdOut: string[] = [];
+    const analyseStdErr: string[] = [];
+
+    const analyseExitCode = await runCli(
+      ["analyse", inputFolder, "--out", analyseOutput],
+      analyseStdOut.push.bind(analyseStdOut),
+      analyseStdErr.push.bind(analyseStdErr)
+    );
+
+    expect(analyseExitCode).toBe(0);
+    expect(analyseStdErr).toEqual([]);
+
+    const generateStdOut: string[] = [];
+    const generateStdErr: string[] = [];
+    const generateExitCode = await runCli(
+      [
+        "generate",
+        "sql",
+        path.join(analyseOutput, "ir.json"),
+        "--out",
+        generateOutput
+      ],
+      generateStdOut.push.bind(generateStdOut),
+      generateStdErr.push.bind(generateStdErr)
+    );
+
+    expect(generateExitCode).toBe(0);
+    expect(await readFile(path.join(generateOutput, "schema.sql"), "utf-8")).toContain(
+      "CREATE TABLE"
+    );
+    expect(await readFile(path.join(generateOutput, "generation-report.md"), "utf-8")).toContain(
+      "# Power Exit SQL Generation Report"
+    );
+    expect(generateStdOut[0]).toContain('"command":"generate-sql"');
+    expect(generateStdOut[0]).toContain('"tablesGenerated"');
+    expect(generateStdOut[0]).toContain('"columnsGenerated"');
+    expect(generateStdOut[0]).toContain('"relationshipsGenerated"');
+    expect(generateStdOut[0]).toContain('"warnings"');
+    expect(generateStdOut[0]).toContain('"unsupportedFeatures"');
+    expect(generateStdErr).toEqual([]);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("prints a structured error when generate sql input IR is missing", async () => {
+    const tempRoot = await createTempDirectory();
+    const output = path.join(tempRoot, "out");
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    const exitCode = await runCli(
+      ["generate", "sql", path.join(tempRoot, "missing-ir.json"), "--out", output],
+      stdOut.push.bind(stdOut),
+      stdErr.push.bind(stdErr)
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdOut).toEqual([]);
+    expect(stdErr[0]).toContain('"code":"INPUT_FILE_NOT_FOUND"');
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+});

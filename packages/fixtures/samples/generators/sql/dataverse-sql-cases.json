@@ -1,0 +1,428 @@
+{
+  "simpleTable": {
+    "entities": [
+      {
+        "logicalName": "account",
+        "schemaName": "Account",
+        "displayName": "Account",
+        "ownershipType": "userOwned",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "accountid",
+        "attributes": [
+          {
+            "logicalName": "accountid",
+            "schemaName": "AccountId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          },
+          {
+            "logicalName": "name",
+            "schemaName": "Name",
+            "type": "string",
+            "requiredLevel": "recommended",
+            "maxLength": 100
+          }
+        ]
+      }
+    ],
+    "relationships": [],
+    "optionSets": []
+  },
+  "multipleColumnTypes": {
+    "entities": [
+      {
+        "logicalName": "invoice",
+        "schemaName": "Invoice",
+        "displayName": "Invoice",
+        "ownershipType": "organizationOwned",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "invoiceid",
+        "attributes": [
+          {
+            "logicalName": "invoiceid",
+            "schemaName": "InvoiceId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          },
+          {
+            "logicalName": "name",
+            "schemaName": "Name",
+            "type": "string",
+            "requiredLevel": "recommended",
+            "maxLength": 200
+          },
+          {
+            "logicalName": "description",
+            "schemaName": "Description",
+            "type": "memo",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "quantity",
+            "schemaName": "Quantity",
+            "type": "integer",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "totalamount",
+            "schemaName": "TotalAmount",
+            "type": "decimal",
+            "requiredLevel": "none",
+            "precision": 18,
+            "scale": 2
+          },
+          {
+            "logicalName": "ratio",
+            "schemaName": "Ratio",
+            "type": "float",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "revenue",
+            "schemaName": "Revenue",
+            "type": "money",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "isactive",
+            "schemaName": "IsActive",
+            "type": "boolean",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "duedate",
+            "schemaName": "DueDate",
+            "type": "datetime",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "invoicedate",
+            "schemaName": "InvoiceDate",
+            "type": "date",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "revisionnumber",
+            "schemaName": "RevisionNumber",
+            "type": "bigint",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "ownerid",
+            "schemaName": "OwnerId",
+            "type": "owner",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "customerid",
+            "schemaName": "CustomerId",
+            "type": "lookup",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "statuscode",
+            "schemaName": "StatusCode",
+            "type": "picklist",
+            "requiredLevel": "none"
+          }
+        ]
+      }
+    ],
+    "relationships": [],
+    "optionSets": []
+  },
+  "oneToManyRelationship": {
+    "entities": [
+      {
+        "logicalName": "account",
+        "schemaName": "Account",
+        "displayName": "Account",
+        "ownershipType": "userOwned",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "accountid",
+        "attributes": [
+          {
+            "logicalName": "accountid",
+            "schemaName": "AccountId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          }
+        ]
+      },
+      {
+        "logicalName": "contact",
+        "schemaName": "Contact",
+        "displayName": "Contact",
+        "ownershipType": "userOwned",
+        "primaryNameAttribute": "fullname",
+        "primaryIdAttribute": "contactid",
+        "attributes": [
+          {
+            "logicalName": "contactid",
+            "schemaName": "ContactId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          },
+          {
+            "logicalName": "parentaccountid",
+            "schemaName": "ParentAccountId",
+            "type": "lookup",
+            "requiredLevel": "none"
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "schemaName": "account_contacts",
+        "relationshipType": "one-to-many",
+        "fromEntityLogicalName": "contact",
+        "toEntityLogicalName": "account"
+      }
+    ],
+    "optionSets": []
+  },
+  "manyToManyRelationship": {
+    "entities": [
+      {
+        "logicalName": "systemuser",
+        "schemaName": "SystemUser",
+        "displayName": "System User",
+        "ownershipType": "userOwned",
+        "primaryNameAttribute": "fullname",
+        "primaryIdAttribute": "systemuserid",
+        "attributes": [
+          {
+            "logicalName": "systemuserid",
+            "schemaName": "SystemUserId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          }
+        ]
+      },
+      {
+        "logicalName": "team",
+        "schemaName": "Team",
+        "displayName": "Team",
+        "ownershipType": "organizationOwned",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "teamid",
+        "attributes": [
+          {
+            "logicalName": "teamid",
+            "schemaName": "TeamId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "schemaName": "systemuser_teams",
+        "relationshipType": "many-to-many",
+        "fromEntityLogicalName": "systemuser",
+        "toEntityLogicalName": "team"
+      }
+    ],
+    "optionSets": []
+  },
+  "choiceColumns": {
+    "entities": [
+      {
+        "logicalName": "incident",
+        "schemaName": "Incident",
+        "displayName": "Case",
+        "ownershipType": "userOwned",
+        "primaryNameAttribute": "title",
+        "primaryIdAttribute": "incidentid",
+        "attributes": [
+          {
+            "logicalName": "incidentid",
+            "schemaName": "IncidentId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          },
+          {
+            "logicalName": "prioritycode",
+            "schemaName": "PriorityCode",
+            "type": "picklist",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "statecode",
+            "schemaName": "StateCode",
+            "type": "state",
+            "requiredLevel": "none"
+          }
+        ]
+      }
+    ],
+    "relationships": [],
+    "optionSets": [
+      {
+        "logicalName": "incident_prioritycode",
+        "isGlobal": false,
+        "options": [
+          {
+            "value": 1,
+            "label": "High"
+          },
+          {
+            "value": 2,
+            "label": "Normal"
+          }
+        ]
+      }
+    ]
+  },
+  "unsupportedColumns": {
+    "entities": [
+      {
+        "logicalName": "document",
+        "schemaName": "Document",
+        "displayName": "Document",
+        "ownershipType": "virtual",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "documentid",
+        "attributes": [
+          {
+            "logicalName": "documentid",
+            "schemaName": "DocumentId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          },
+          {
+            "logicalName": "calculatedtotal",
+            "schemaName": "CalculatedTotal",
+            "type": "unknown",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "rollupamount",
+            "schemaName": "RollupAmount",
+            "type": "unknown",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "imagecontent",
+            "schemaName": "ImageContent",
+            "type": "unknown",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "fileupload",
+            "schemaName": "FileUpload",
+            "type": "unknown",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "partylistfield",
+            "schemaName": "PartyListField",
+            "type": "unknown",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "activitypartyref",
+            "schemaName": "ActivityPartyRef",
+            "type": "unknown",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "customercase",
+            "schemaName": "CustomerCase",
+            "type": "customer",
+            "requiredLevel": "none"
+          }
+        ]
+      }
+    ],
+    "relationships": [],
+    "optionSets": []
+  },
+  "unresolvedRelationship": {
+    "entities": [
+      {
+        "logicalName": "invoice",
+        "schemaName": "Invoice",
+        "displayName": "Invoice",
+        "ownershipType": "organizationOwned",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "invoiceid",
+        "attributes": [
+          {
+            "logicalName": "invoiceid",
+            "schemaName": "InvoiceId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          },
+          {
+            "logicalName": "paymentid",
+            "schemaName": "PaymentId",
+            "type": "lookup",
+            "requiredLevel": "none"
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "schemaName": "invoice_payment",
+        "relationshipType": "one-to-many",
+        "fromEntityLogicalName": "invoice",
+        "toEntityLogicalName": "payment"
+      }
+    ],
+    "optionSets": []
+  },
+  "duplicateSqlNames": {
+    "entities": [
+      {
+        "logicalName": "order-item",
+        "schemaName": "OrderItem",
+        "displayName": "Order Item",
+        "ownershipType": "organizationOwned",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "order-itemid",
+        "attributes": [
+          {
+            "logicalName": "order-itemid",
+            "schemaName": "OrderItemId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          },
+          {
+            "logicalName": "line-item",
+            "schemaName": "LineItem",
+            "type": "string",
+            "requiredLevel": "none"
+          },
+          {
+            "logicalName": "line_item",
+            "schemaName": "Line_Item",
+            "type": "string",
+            "requiredLevel": "none"
+          }
+        ]
+      },
+      {
+        "logicalName": "order_item",
+        "schemaName": "Order_Item",
+        "displayName": "Order Item Duplicate",
+        "ownershipType": "organizationOwned",
+        "primaryNameAttribute": "name",
+        "primaryIdAttribute": "order_itemid",
+        "attributes": [
+          {
+            "logicalName": "order_itemid",
+            "schemaName": "Order_ItemId",
+            "type": "uniqueidentifier",
+            "requiredLevel": "systemRequired"
+          }
+        ]
+      }
+    ],
+    "relationships": [],
+    "optionSets": []
+  }
+}

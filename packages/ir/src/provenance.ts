@@ -11,6 +11,7 @@ export const sourceTypeSchema = z.enum([
   "environment-variable",
   "connection-reference",
   "parser",
+  "generator",
   "cli",
   "unknown"
 ]);

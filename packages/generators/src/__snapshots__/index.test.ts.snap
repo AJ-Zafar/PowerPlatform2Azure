@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateDataverseSqlArtifacts > matches the SQL schema snapshot for the relationship fixture 1`] = `
+"-- Power Exit Dataverse -> Azure SQL DDL
+
+-- Generated deterministically from validated PowerPlatformIR dataverse section.
+
+-- Dataverse entity "account" -> SQL table "account"
+CREATE TABLE [dbo].[account] (
+  [accountid] UNIQUEIDENTIFIER NOT NULL,
+  CONSTRAINT [pk_account] PRIMARY KEY ([accountid])
+);
+
+-- Dataverse entity "contact" -> SQL table "contact"
+CREATE TABLE [dbo].[contact] (
+  [contactid] UNIQUEIDENTIFIER NOT NULL,
+  [parentaccountid] UNIQUEIDENTIFIER NULL,
+  CONSTRAINT [pk_contact] PRIMARY KEY ([contactid])
+);
+
+-- Dataverse relationship "account_contacts"
+ALTER TABLE [dbo].[contact] ADD CONSTRAINT [fk_contact_account_parentaccountid] FOREIGN KEY ([parentaccountid]) REFERENCES [dbo].[account]([accountid]);"
+`;

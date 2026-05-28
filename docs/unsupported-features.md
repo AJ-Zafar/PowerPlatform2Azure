@@ -50,6 +50,38 @@ Detailed entries are added as parser milestones are implemented.
    - Trigger: runAfter, connection reference, Dataverse entity, or expression reference cannot be resolved to known artifacts.
    - Handling: unresolved dependency edge + warning; parse continues.
 
+10. `dataverse.entity.virtual-table`
+    - Trigger: entity ownership/shape indicates virtual table semantics.
+    - Handling: SQL generator emits unsupported feature + warning; DDL can still be emitted as a starter.
+
+11. `dataverse.column.calculated`
+    - Trigger: Dataverse column appears to be calculated.
+    - Handling: SQL generator emits unsupported feature + warning; manual computed-column/view strategy required.
+
+12. `dataverse.column.rollup`
+    - Trigger: Dataverse column appears to be rollup/aggregate-driven.
+    - Handling: SQL generator emits unsupported feature + warning; manual aggregation strategy required.
+
+13. `dataverse.column.file`
+    - Trigger: Dataverse file-style column detected.
+    - Handling: SQL generator emits unsupported feature + warning; external blob/object storage design required.
+
+14. `dataverse.column.image`
+    - Trigger: Dataverse image-style column detected.
+    - Handling: SQL generator emits unsupported feature + warning; external asset handling required.
+
+15. `dataverse.column.activityparty`
+    - Trigger: partylist/activityparty-style column detected.
+    - Handling: SQL generator emits unsupported feature + warning; manual polymorphic association modeling required.
+
+16. `dataverse.polymorphic-lookup.customer`
+    - Trigger: customer/polymorphic lookup semantics detected.
+    - Handling: SQL generator emits unsupported feature + warning; manual relationship decomposition required.
+
+17. `dataverse.column.unknown`
+    - Trigger: unknown Dataverse column type remains after parsing.
+    - Handling: SQL generator emits unsupported feature + warning; fallback SQL type is explicit and review-required.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
@@ -58,6 +90,7 @@ Detailed entries are added as parser milestones are implemented.
 - Flow readiness metadata is preparatory and not a full migration assessment score.
 - Assessment scores are deterministic heuristics and should be treated as migration planning guidance, not guaranteed conversion success.
 - Assessment recommendations/waves do not execute remediation; they identify prioritized next actions with current evidence.
+- SQL DDL generation is deterministic but intentionally conservative; unsupported records indicate required manual schema/application design.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
 - Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
 - Canvas readiness scoring is preparatory metadata and not a full migration assessment score.

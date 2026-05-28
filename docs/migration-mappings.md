@@ -24,7 +24,7 @@ This document tracks deterministic mappings between Power Platform constructs an
 - `connectionReferences`
 - `security.roles`
 
-These sections are now parse-populated and validated, and are consumed by the first deterministic assessment engine for readiness/risk planning.
+These sections are now parse-populated and validated, and are consumed by the first deterministic assessment engine for readiness/risk planning and SQL generation.
 
 ## Dependency graph and summary prerequisites
 
@@ -72,11 +72,53 @@ Canvas IR notes for future React generation:
 - Power Fx is stored as raw expressions with lightweight function/reference classification only.
 - Unknown controls/properties are preserved and flagged to avoid silent migration fidelity loss.
 
-Planned mapping sections:
+## Implemented generator mapping: Dataverse -> Azure SQL DDL (Milestone 8)
 
-1. Dataverse table metadata -> Azure SQL DDL
-2. Dataverse options/choices -> lookup and enum mapping strategy
-3. Canvas screens and controls -> React screen skeleton primitives
-4. Cloud flow triggers/actions -> migration advisory mappings (future Azure Functions/Logic Apps targeting)
+CLI:
 
-Mappings are introduced incrementally once parser and IR milestones are complete.
+```bash
+power-exit generate sql <ir-json> --out <output-folder>
+```
+
+Generated artifacts:
+
+- `schema.sql`
+- `generation-report.md`
+
+Deterministic mapping currently implemented:
+
+1. Entities -> `CREATE TABLE` in stable logical-name order.
+2. Primary id attributes -> `PRIMARY KEY`.
+3. Attribute type mapping:
+   - `string` -> `NVARCHAR(n)` (default `255`)
+   - `memo` -> `NVARCHAR(MAX)`
+   - `integer` -> `INT`
+   - `bigint` -> `BIGINT`
+   - `decimal` -> `DECIMAL(p,s)` (default `18,2`)
+   - `float` -> `FLOAT`
+   - `money` -> `DECIMAL(19,4)`
+   - `boolean` -> `BIT`
+   - `datetime` -> `DATETIME2`
+   - `date` -> `DATE`
+   - `uniqueidentifier` -> `UNIQUEIDENTIFIER`
+   - `lookup` / `owner` / `customer` -> `UNIQUEIDENTIFIER` candidate FK columns
+   - `picklist` / `state` / `status` -> `INT` (+ option-set comments where discoverable)
+4. Relationships:
+   - one-to-many / many-to-one -> FK statements when lookup mapping is resolvable
+   - many-to-many -> deterministic join table with composite PK + FK constraints
+5. SQL identifier collision handling:
+   - deterministic suffixing (`_2`, `_3`, ...)
+   - explicit generation warnings
+6. Name mapping traceability:
+   - logical-to-SQL mappings emitted in `generation-report.md`.
+
+Unsupported mapping behavior:
+
+- Calculated, rollup, file/image, partylist/activityparty, and polymorphic/customer-heavy constructs produce explicit unsupported feature records and warnings.
+- Virtual-table entities are flagged as unsupported for direct DDL fidelity.
+- Unknown attribute types fall back to explicit warning + unsupported records (no silent fallback).
+
+Remaining planned mapping sections:
+
+1. React screen skeleton generation from Canvas IR.
+2. Flow migration advisory mappings for future Azure Functions / Logic Apps generation.

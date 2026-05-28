@@ -1,2 +1,27 @@
-export const GENERATORS_BOOTSTRAP_MESSAGE =
-  "Generator implementations are introduced in milestone 8.";
+export {
+  createGenerationResultSchema,
+  createGenerator,
+  generationUnsupportedFeatureSchema,
+  generatedArtifactSchema,
+  generationWarningSchema,
+  generatorCapabilitySchema,
+  generatorContextSchema,
+  unknownGenerationResultSchema,
+  validateGenerationResult,
+  type GeneratedArtifact,
+  type GenerationResult,
+  type GenerationUnsupportedFeature,
+  type GenerationWarning,
+  type Generator,
+  type GeneratorCapability,
+  type GeneratorContext
+} from "./contracts";
+export {
+  createGeneratorRegistry,
+  type GeneratorRegistry
+} from "./registry";
+export {
+  generateDataverseSqlArtifacts,
+  generateDataverseSqlFromPowerPlatformIR,
+  type DataverseSqlGenerationOutput
+} from "./sql";
