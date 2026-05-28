@@ -25,3 +25,8 @@ export {
   generateDataverseSqlFromPowerPlatformIR,
   type DataverseSqlGenerationOutput
 } from "./sql";
+export {
+  generateCanvasReactArtifacts,
+  generateCanvasReactFromPowerPlatformIR,
+  type CanvasReactGenerationOutput
+} from "./react";

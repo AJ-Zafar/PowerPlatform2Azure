@@ -66,6 +66,7 @@ power-exit analyse <solution-folder> --out <output-folder>
 power-exit analyse <solution-folder> --out <output-folder> --report
 power-exit report <ir-json> --out <output-folder>
 power-exit generate sql <ir-json> --out <output-folder>
+power-exit generate react <ir-json> --out <output-folder>
 ```
 
 Current behavior in this sprint:
@@ -96,6 +97,13 @@ Current behavior in this sprint:
 2. Run the deterministic Dataverse-to-Azure SQL generator from `@power-exit/generators`.
 3. Write `schema.sql` and `generation-report.md`.
 4. Print structured summary counts (tables, columns, relationships, warnings, unsupported features).
+
+`generate react` command behavior:
+
+1. Read and validate an existing `ir.json`.
+2. Run deterministic Canvas-to-React skeleton generation from `@power-exit/generators`.
+3. Write Next.js-style generated routes/components plus `migration-notes.md` and `generation-report.md`.
+4. Print structured summary counts (apps, screens, controls, formulas preserved, unsupported controls, warnings).
 
 ## Generator framework (Milestone 8)
 
@@ -135,6 +143,30 @@ Current SQL generator limitations:
 - Calculated, rollup, file/image, activity party/partylist, and polymorphic/customer-heavy behaviors are surfaced as unsupported features requiring manual migration design.
 - Virtual table entities are flagged as unsupported for direct DDL parity.
 - Generated SQL is a deterministic migration starting point, not a guaranteed production schema.
+
+## React screen skeleton generation (Milestone 8)
+
+Current React generator scope:
+
+- Canvas apps -> Next.js app-router skeleton folders (`app/page.tsx`, screen routes, generated components).
+- Screens -> deterministic component files under `components/generated`.
+- Controls -> role-based base JSX mapping (containers, text, button, input, select, date input, gallery, form, data card, image, icon).
+- Unsupported roles (`html`, `customComponent`, `unknown`) -> visible TODO placeholders (never silently dropped).
+- Normalized Canvas layout metadata -> class-name hints for absolute/stack/grid/gallery/form/unknown modes.
+- Formulas -> preserved as TODO comments/handlers only (no semantic Power Fx translation).
+- Migration metadata -> `migration-notes.md` + `generation-report.md`.
+
+Current React generator limitations:
+
+- Generated React output is intentionally scaffold-level, not production-ready UI.
+- No AI API / external model dependency is used in generation.
+- No full Power Fx-to-TypeScript translation is performed in this pass.
+- Generated handlers and placeholders require manual migration work.
+
+Future optional enhancement path (not enabled in MVP):
+
+- Add opt-in prompt-driven UI polishing (for example via v0/LLM workflows) after deterministic scaffolds are generated and reviewed.
+- Keep deterministic skeleton generation as the primary baseline so prompt-driven steps are reviewable and non-blocking.
 
 ## Assessment model (Milestone 7)
 

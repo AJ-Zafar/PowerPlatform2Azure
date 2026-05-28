@@ -118,7 +118,63 @@ Unsupported mapping behavior:
 - Virtual-table entities are flagged as unsupported for direct DDL fidelity.
 - Unknown attribute types fall back to explicit warning + unsupported records (no silent fallback).
 
-Remaining planned mapping sections:
+## Implemented generator mapping: Canvas IR -> React/Next.js skeletons (Milestone 8)
 
-1. React screen skeleton generation from Canvas IR.
-2. Flow migration advisory mappings for future Azure Functions / Logic Apps generation.
+CLI:
+
+```bash
+power-exit generate react <ir-json> --out <output-folder>
+```
+
+Generated artifacts:
+
+- `<app-slug>/app/page.tsx` (first screen route)
+- `<app-slug>/app/<screen-slug>/page.tsx` (additional routes)
+- `<app-slug>/components/generated/<screen>.tsx` (screen components)
+- `migration-notes.md`
+- `generation-report.md`
+
+Deterministic mapping currently implemented:
+
+1. App/screen/control ordering is stable and deterministic.
+2. Control-role to JSX skeleton mapping:
+   - `pageContainer` -> `main`
+   - `sectionContainer` -> `section`
+   - `card` -> `div`
+   - `text`/`heading` -> `p`/`h2`
+   - `button` -> `button`
+   - `input` -> `input type="text"`
+   - `select` -> `select`
+   - `dateInput` -> `input type="date"`
+   - `gallery` -> list placeholder container
+   - `form` -> `form`
+   - `dataCard` -> wrapper + field placeholder
+   - `image` -> `img` placeholder
+   - `icon` -> `span` placeholder
+3. Unsupported controls (`html`, `customComponent`, `unknown`) are preserved with visible TODO placeholders.
+4. Layout hints from normalized metadata are emitted as class names:
+   - `layout-absolute`
+   - `layout-vertical-stack`
+   - `layout-horizontal-stack`
+   - `layout-grid`
+   - `layout-gallery-template`
+   - `layout-form-layout`
+   - `layout-unknown`
+5. Raw Power Fx formulas are preserved as comments/TODO handler stubs (no semantic translation).
+
+Current limitations:
+
+- Output is migration scaffolding, not production-ready UI.
+- No AI/v0/LLM prompt-driven enhancement path is applied in this pass.
+- Formula/event behavior requires manual TypeScript conversion.
+- Styling and responsive behavior are heuristic hints only, not pixel parity.
+
+Future optional enhancement path:
+
+1. Keep deterministic skeleton generation as the required first step.
+2. Optionally run prompt-driven UI refinement (v0/LLM-assisted) as a separate reviewable stage.
+3. Preserve traceability back to generated baseline files so human reviewers can diff and approve changes.
+
+Remaining planned mapping section:
+
+1. Flow migration advisory mappings for future Azure Functions / Logic Apps generation.

@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateCanvasReactArtifacts > matches screen component snapshot output 1`] = `
+"import React from "react";
+
+export function HomeScreen(): JSX.Element {
+function handleSubmitButtonOnSelect() {
+  // TODO: Convert Power Fx (control:SubmitButton.OnSelect)
+  // Navigate('Details Screen')
+}
+
+  // Power Fx formulas requiring manual conversion:
+  // control:SubmitButton.OnSelect: Navigate('Details Screen')
+
+  return (
+    <div className="canvas-screen-skeleton" data-app-name="Simple App" data-screen-name="Home Screen">
+    {/* Canvas layout: mode=verticalStack, responsive=stretch, readiness=high */}
+    <main className="layout-vertical-stack flex flex-col gap-2 responsive-stretch canvas-role-pagecontainer" data-control-name="MainContainer">
+      {/* Canvas layout: mode=unknown, responsive=fixed, readiness=high */}
+      <button className="layout-unknown responsive-fixed canvas-role-button" data-control-name="SubmitButton" onClick={handleSubmitButtonOnSelect}>SubmitButton</button>
+      {/* Canvas layout: mode=unknown, responsive=fixed, readiness=high */}
+      <h2 className="layout-unknown responsive-fixed canvas-role-heading" data-control-name="WelcomeHeading">WelcomeHeading</h2>
+    </main>
+    </div>
+  );
+}
+"
+`;

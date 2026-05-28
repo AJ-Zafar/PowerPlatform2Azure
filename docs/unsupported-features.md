@@ -82,6 +82,22 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: unknown Dataverse column type remains after parsing.
     - Handling: SQL generator emits unsupported feature + warning; fallback SQL type is explicit and review-required.
 
+18. `canvas.control-role.html`
+    - Trigger: Canvas control role `html` is encountered during React generation.
+    - Handling: generator emits unsupported feature + warning and renders a visible TODO placeholder.
+
+19. `canvas.control-role.customComponent`
+    - Trigger: Canvas custom component role is encountered during React generation.
+    - Handling: generator emits unsupported feature + warning and renders a visible TODO placeholder.
+
+20. `canvas.control-role.unknown`
+    - Trigger: Canvas unknown control role is encountered during React generation.
+    - Handling: generator emits unsupported feature + warning and renders a visible TODO placeholder.
+
+21. `canvas.formula.manual-conversion-required`
+    - Trigger: Canvas Power Fx formulas are preserved in generated React output.
+    - Handling: formulas are emitted as TODO comments/handler stubs; no automatic TypeScript translation is attempted.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
@@ -91,6 +107,8 @@ Detailed entries are added as parser milestones are implemented.
 - Assessment scores are deterministic heuristics and should be treated as migration planning guidance, not guaranteed conversion success.
 - Assessment recommendations/waves do not execute remediation; they identify prioritized next actions with current evidence.
 - SQL DDL generation is deterministic but intentionally conservative; unsupported records indicate required manual schema/application design.
+- React skeleton generation is deterministic and conservative; unsupported controls are placeholders and require manual conversion.
+- React generator does not use AI/external model APIs and does not perform semantic Power Fx translation in this pass.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
 - Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
 - Canvas readiness scoring is preparatory metadata and not a full migration assessment score.

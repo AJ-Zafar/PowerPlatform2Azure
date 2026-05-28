@@ -1,0 +1,302 @@
+{
+  "simpleScreen": {
+    "apps": [
+      {
+        "appName": "Simple App",
+        "appId": "simple-app",
+        "screens": [
+          {
+            "screenName": "Home Screen",
+            "migrationReadiness": "high",
+            "layoutMode": "verticalStack",
+            "controls": [
+              {
+                "controlName": "MainContainer",
+                "controlType": "container",
+                "role": "pageContainer",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "stretch"
+              },
+              {
+                "controlName": "WelcomeHeading",
+                "controlType": "label",
+                "role": "heading",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "MainContainer"
+              },
+              {
+                "controlName": "SubmitButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "MainContainer",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Navigate('Details Screen')"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "multipleScreens": {
+    "apps": [
+      {
+        "appName": "Routing App",
+        "appId": "routing-app",
+        "screens": [
+          {
+            "screenName": "Dashboard",
+            "migrationReadiness": "medium",
+            "layoutMode": "verticalStack",
+            "controls": [
+              {
+                "controlName": "DashboardRoot",
+                "controlType": "container",
+                "role": "pageContainer",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "stretch"
+              }
+            ]
+          },
+          {
+            "screenName": "Settings Screen",
+            "migrationReadiness": "low",
+            "layoutMode": "horizontalStack",
+            "controls": [
+              {
+                "controlName": "SettingsRoot",
+                "controlType": "container",
+                "role": "sectionContainer",
+                "layoutMode": "horizontalStack",
+                "responsiveHint": "wrap"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "nestedLayout": {
+    "apps": [
+      {
+        "appName": "Nested Layout App",
+        "appId": "nested-layout-app",
+        "screens": [
+          {
+            "screenName": "Nested Screen",
+            "migrationReadiness": "high",
+            "layoutMode": "grid",
+            "controls": [
+              {
+                "controlName": "GridRoot",
+                "controlType": "container",
+                "role": "sectionContainer",
+                "layoutMode": "grid",
+                "responsiveHint": "stretch"
+              },
+              {
+                "controlName": "CardOne",
+                "controlType": "container",
+                "role": "card",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "fillParent",
+                "parent": "GridRoot"
+              },
+              {
+                "controlName": "CardOneText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "CardOne"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "galleryAndForm": {
+    "apps": [
+      {
+        "appName": "Data App",
+        "appId": "data-app",
+        "screens": [
+          {
+            "screenName": "Browse",
+            "migrationReadiness": "medium",
+            "layoutMode": "galleryTemplate",
+            "controls": [
+              {
+                "controlName": "ItemsGallery",
+                "controlType": "gallery",
+                "role": "gallery",
+                "layoutMode": "galleryTemplate",
+                "responsiveHint": "stretch"
+              }
+            ]
+          },
+          {
+            "screenName": "Edit",
+            "migrationReadiness": "medium",
+            "layoutMode": "formLayout",
+            "controls": [
+              {
+                "controlName": "EditForm",
+                "controlType": "form",
+                "role": "form",
+                "layoutMode": "formLayout",
+                "responsiveHint": "stretch"
+              },
+              {
+                "controlName": "NameCard",
+                "controlType": "dataCard",
+                "role": "dataCard",
+                "layoutMode": "formLayout",
+                "responsiveHint": "stretch",
+                "parent": "EditForm"
+              },
+              {
+                "controlName": "DateField",
+                "controlType": "input",
+                "role": "dateInput",
+                "layoutMode": "unknown",
+                "responsiveHint": "fixed",
+                "parent": "NameCard"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "formulas": {
+    "apps": [
+      {
+        "appName": "Formula App",
+        "appId": "formula-app",
+        "formulas": [
+          {
+            "propertyName": "OnStart",
+            "rawExpression": "Set(varAppStart, true)"
+          }
+        ],
+        "screens": [
+          {
+            "screenName": "Formula Screen",
+            "migrationReadiness": "medium",
+            "layoutMode": "absolute",
+            "formulas": [
+              {
+                "propertyName": "OnVisible",
+                "rawExpression": "UpdateContext({screenReady: true})"
+              }
+            ],
+            "controls": [
+              {
+                "controlName": "SaveButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Patch(Accounts, Defaults(Accounts), { Name: \"A\" })"
+                  }
+                ]
+              },
+              {
+                "controlName": "NameInput",
+                "controlType": "text",
+                "role": "input",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnChange",
+                    "rawExpression": "Set(varName, Self.Text)"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "unsupportedControls": {
+    "apps": [
+      {
+        "appName": "Unsupported Controls App",
+        "appId": "unsupported-controls-app",
+        "screens": [
+          {
+            "screenName": "Unsupported Screen",
+            "migrationReadiness": "blocked",
+            "layoutMode": "unknown",
+            "controls": [
+              {
+                "controlName": "HtmlTextControl",
+                "controlType": "html",
+                "role": "html",
+                "layoutMode": "unknown",
+                "responsiveHint": "unknown",
+                "migrationReadiness": "blocked"
+              },
+              {
+                "controlName": "CustomWidget",
+                "controlType": "component",
+                "role": "customComponent",
+                "layoutMode": "unknown",
+                "responsiveHint": "unknown",
+                "migrationReadiness": "blocked"
+              },
+              {
+                "controlName": "MysteryControl",
+                "controlType": "mystery",
+                "role": "unknown",
+                "layoutMode": "unknown",
+                "responsiveHint": "unknown",
+                "migrationReadiness": "low"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "blockedAndLowReadiness": {
+    "apps": [
+      {
+        "appName": "Readiness App",
+        "appId": "readiness-app",
+        "migrationReadiness": "low",
+        "screens": [
+          {
+            "screenName": "Blocked Screen",
+            "migrationReadiness": "blocked",
+            "layoutMode": "verticalStack",
+            "controls": [
+              {
+                "controlName": "BlockedControl",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "verticalStack",
+                "responsiveHint": "stretch",
+                "migrationReadiness": "blocked"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

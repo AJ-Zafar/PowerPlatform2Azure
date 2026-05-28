@@ -322,3 +322,77 @@ describe("power-exit generate sql command", () => {
     await rm(tempRoot, { recursive: true, force: true });
   });
 });
+
+describe("power-exit generate react command", () => {
+  it("validates IR input and writes Next.js skeleton files", async () => {
+    const tempRoot = await createTempDirectory();
+    const analyseOutput = path.join(tempRoot, "analyse-out");
+    const generateOutput = path.join(tempRoot, "generate-react-out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/canvas-heavy"
+    );
+    const analyseStdOut: string[] = [];
+    const analyseStdErr: string[] = [];
+
+    const analyseExitCode = await runCli(
+      ["analyse", inputFolder, "--out", analyseOutput],
+      analyseStdOut.push.bind(analyseStdOut),
+      analyseStdErr.push.bind(analyseStdErr)
+    );
+
+    expect(analyseExitCode).toBe(0);
+    expect(analyseStdErr).toEqual([]);
+
+    const generateStdOut: string[] = [];
+    const generateStdErr: string[] = [];
+    const generateExitCode = await runCli(
+      [
+        "generate",
+        "react",
+        path.join(analyseOutput, "ir.json"),
+        "--out",
+        generateOutput
+      ],
+      generateStdOut.push.bind(generateStdOut),
+      generateStdErr.push.bind(generateStdErr)
+    );
+
+    expect(generateExitCode).toBe(0);
+    expect(await readFile(path.join(generateOutput, "generation-report.md"), "utf-8")).toContain(
+      "# Power Exit React Generation Report"
+    );
+    expect(await readFile(path.join(generateOutput, "migration-notes.md"), "utf-8")).toContain(
+      "manual conversion"
+    );
+    expect(generateStdOut[0]).toContain('"command":"generate-react"');
+    expect(generateStdOut[0]).toContain('"appsGenerated"');
+    expect(generateStdOut[0]).toContain('"screensGenerated"');
+    expect(generateStdOut[0]).toContain('"controlsGenerated"');
+    expect(generateStdOut[0]).toContain('"formulasPreserved"');
+    expect(generateStdOut[0]).toContain('"unsupportedControls"');
+    expect(generateStdOut[0]).toContain('"warnings"');
+    expect(generateStdErr).toEqual([]);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("prints a structured error when generate react input IR is missing", async () => {
+    const tempRoot = await createTempDirectory();
+    const output = path.join(tempRoot, "out");
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    const exitCode = await runCli(
+      ["generate", "react", path.join(tempRoot, "missing-ir.json"), "--out", output],
+      stdOut.push.bind(stdOut),
+      stdErr.push.bind(stdErr)
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdOut).toEqual([]);
+    expect(stdErr[0]).toContain('"code":"INPUT_FILE_NOT_FOUND"');
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+});

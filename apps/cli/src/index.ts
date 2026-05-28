@@ -7,7 +7,10 @@ import {
   assessPowerPlatformIR,
   generateAssessmentReportMarkdown
 } from "@power-exit/assessment";
-import { generateDataverseSqlFromPowerPlatformIR } from "@power-exit/generators";
+import {
+  generateCanvasReactFromPowerPlatformIR,
+  generateDataverseSqlFromPowerPlatformIR
+} from "@power-exit/generators";
 import { analyseSolutionFolder } from "@power-exit/parsers";
 
 type WriteFn = (line: string) => void;
@@ -40,6 +43,11 @@ interface ReportArgs {
 }
 
 interface GenerateSqlArgs {
+  irFilePath: string;
+  outputFolder: string;
+}
+
+interface GenerateReactArgs {
   irFilePath: string;
   outputFolder: string;
 }
@@ -128,6 +136,42 @@ const parseGenerateSqlArgs = (args: string[]): GenerateSqlArgs => {
     throw new CliError(
       "INVALID_ARGUMENTS",
       "Usage: power-exit generate sql <ir-json> --out <output-folder>"
+    );
+  }
+
+  const [irFilePath, ...flags] = args;
+  let outputFolder: string | undefined;
+
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+
+    if (flag === "--out") {
+      outputFolder = flags[index + 1];
+      index += 1;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  if (!outputFolder) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Missing required --out <output-folder> argument."
+    );
+  }
+
+  return {
+    irFilePath: path.resolve(irFilePath),
+    outputFolder: path.resolve(outputFolder)
+  };
+};
+
+const parseGenerateReactArgs = (args: string[]): GenerateReactArgs => {
+  if (args.length < 3) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit generate react <ir-json> --out <output-folder>"
     );
   }
 
@@ -394,6 +438,60 @@ const executeGenerateSql = async (args: string[], stdout: WriteFn): Promise<void
   );
 };
 
+const executeGenerateReact = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const parsedArgs = parseGenerateReactArgs(args);
+
+  await ensureInputFile(parsedArgs.irFilePath);
+  await ensureOutputFolder(parsedArgs.outputFolder);
+  let irPayload: unknown;
+
+  try {
+    irPayload = JSON.parse(await readFile(parsedArgs.irFilePath, "utf-8")) as unknown;
+  } catch {
+    throw new CliError("INVALID_IR_JSON", "IR input is not valid JSON.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  let validatedIr;
+  try {
+    validatedIr = validatePowerPlatformIR(irPayload);
+  } catch {
+    throw new CliError("IR_VALIDATION_FAILURE", "Input IR failed schema validation.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  const generation = await generateCanvasReactFromPowerPlatformIR(validatedIr, {
+    invocationProvenance: {
+      sourcePath: parsedArgs.irFilePath,
+      sourceType: "cli"
+    },
+    outputFolder: parsedArgs.outputFolder
+  });
+
+  for (const artifact of generation.artifacts) {
+    const outputPath = path.join(parsedArgs.outputFolder, artifact.filePath);
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${artifact.content}\n`, "utf-8");
+  }
+
+  stdout(
+    JSON.stringify({
+      command: "generate-react",
+      status: "success",
+      irFilePath: parsedArgs.irFilePath,
+      outputFolder: parsedArgs.outputFolder,
+      appsGenerated: generation.output.appsGenerated,
+      screensGenerated: generation.output.screensGenerated,
+      controlsGenerated: generation.output.controlsGenerated,
+      formulasPreserved: generation.output.formulasPreserved,
+      unsupportedControls: generation.output.unsupportedControls,
+      warnings: generation.output.warnings
+    })
+  );
+};
+
 const executeGenerate = async (args: string[], stdout: WriteFn): Promise<void> => {
   const [subcommand, ...subcommandArgs] = args;
 
@@ -402,9 +500,14 @@ const executeGenerate = async (args: string[], stdout: WriteFn): Promise<void> =
     return;
   }
 
+  if (subcommand === "react") {
+    await executeGenerateReact(subcommandArgs, stdout);
+    return;
+  }
+
   throw new CliError(
     "INVALID_COMMAND",
-    "Supported generate commands are: sql."
+    "Supported generate commands are: sql, react."
   );
 };
 
