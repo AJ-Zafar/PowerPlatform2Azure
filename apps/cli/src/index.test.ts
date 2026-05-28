@@ -370,6 +370,10 @@ describe("power-exit generate react command", () => {
     expect(generateStdOut[0]).toContain('"screensGenerated"');
     expect(generateStdOut[0]).toContain('"controlsGenerated"');
     expect(generateStdOut[0]).toContain('"formulasPreserved"');
+    expect(generateStdOut[0]).toContain('"formulasClassified"');
+    expect(generateStdOut[0]).toContain('"stubsGenerated"');
+    expect(generateStdOut[0]).toContain('"unsupportedFormulas"');
+    expect(generateStdOut[0]).toContain('"manualConversionHotspots"');
     expect(generateStdOut[0]).toContain('"unsupportedControls"');
     expect(generateStdOut[0]).toContain('"warnings"');
     expect(generateStdErr).toEqual([]);

@@ -24,6 +24,10 @@ const reactGenerationOutputSchema = z
     screensGenerated: z.number().int().nonnegative(),
     controlsGenerated: z.number().int().nonnegative(),
     formulasPreserved: z.number().int().nonnegative(),
+    formulasClassified: z.number().int().nonnegative(),
+    stubsGenerated: z.number().int().nonnegative(),
+    unsupportedFormulas: z.number().int().nonnegative(),
+    manualConversionHotspots: z.number().int().nonnegative(),
     unsupportedControls: z.number().int().nonnegative(),
     warnings: z.number().int().nonnegative()
   })
@@ -711,16 +715,350 @@ ${body}
 ${indent}}}`;
 };
 
-const collectFormulaRecords = (screen: CanvasScreen): Array<{
+type FormulaBucket =
+  | "stateManagement"
+  | "dataOperations"
+  | "navigation"
+  | "displayLogic"
+  | "transformation"
+  | "unknownComplex";
+
+type ServiceModule = "dataService" | "navigationService" | "stateService" | "queryHelpers";
+
+interface FormulaRecord {
   ownerLabel: string;
   functionName: string;
   formula: CanvasFormula;
-}> => {
-  const records: Array<{
-    ownerLabel: string;
-    functionName: string;
-    formula: CanvasFormula;
-  }> = [];
+}
+
+interface FormulaAnalysis {
+  functions: string[];
+  bucket: FormulaBucket;
+  services: ServiceModule[];
+  stubLines: string[];
+  warningCodes: string[];
+  warningMessages: string[];
+  unsupportedFunctions: string[];
+  hotspotReasons: string[];
+  azureApiHints: string[];
+}
+
+interface ScreenComponentResult {
+  componentName: string;
+  content: string;
+  formulasClassified: number;
+  stubsGenerated: number;
+  unsupportedFormulas: number;
+  manualConversionHotspots: number;
+  bucketCounts: Record<FormulaBucket, number>;
+  azureApiHints: string[];
+  formulaHotspotNotes: string[];
+}
+
+const knownFunctionClassifications: Record<
+  string,
+  {
+    bucket: FormulaBucket;
+    services: ServiceModule[];
+    stubLines: string[];
+    azureApiHints: string[];
+  }
+> = {
+  set: {
+    bucket: "stateManagement",
+    services: ["stateService"],
+    stubLines: ['stateService.setState("TODO_STATE_KEY", undefined);'],
+    azureApiHints: []
+  },
+  updatecontext: {
+    bucket: "stateManagement",
+    services: ["stateService"],
+    stubLines: ["stateService.updateContext({});"],
+    azureApiHints: []
+  },
+  clear: {
+    bucket: "stateManagement",
+    services: ["stateService"],
+    stubLines: ['stateService.clearCollection("TODO_COLLECTION");'],
+    azureApiHints: []
+  },
+  collect: {
+    bucket: "stateManagement",
+    services: ["stateService"],
+    stubLines: ['stateService.collect("TODO_COLLECTION", []);'],
+    azureApiHints: []
+  },
+  clearcollect: {
+    bucket: "stateManagement",
+    services: ["stateService"],
+    stubLines: ['stateService.clearCollect("TODO_COLLECTION", []);'],
+    azureApiHints: []
+  },
+  patch: {
+    bucket: "dataOperations",
+    services: ["dataService"],
+    stubLines: ['await dataService.patchRecord("TODO_ENTITY", {});'],
+    azureApiHints: ["Azure Functions API for create/update operations"]
+  },
+  submitform: {
+    bucket: "dataOperations",
+    services: ["dataService"],
+    stubLines: ['await dataService.submitForm("TODO_FORM", {});'],
+    azureApiHints: ["Azure Functions API for form submit workflows"]
+  },
+  remove: {
+    bucket: "dataOperations",
+    services: ["dataService"],
+    stubLines: ['await dataService.removeRecord("TODO_ENTITY", "TODO_ID");'],
+    azureApiHints: ["Azure Functions API for delete operations"]
+  },
+  removeif: {
+    bucket: "dataOperations",
+    services: ["dataService"],
+    stubLines: ['await dataService.removeIf("TODO_ENTITY", "TODO_FILTER");'],
+    azureApiHints: ["Azure Functions API for conditional deletes"]
+  },
+  lookup: {
+    bucket: "dataOperations",
+    services: ["queryHelpers"],
+    stubLines: ["queryHelpers.lookupByPredicate([], () => true);"],
+    azureApiHints: ["Azure query endpoint for lookup access patterns"]
+  },
+  filter: {
+    bucket: "dataOperations",
+    services: ["queryHelpers"],
+    stubLines: ["queryHelpers.filterRecords([], () => true);"],
+    azureApiHints: ["Azure query endpoint for filtered reads"]
+  },
+  search: {
+    bucket: "dataOperations",
+    services: ["queryHelpers"],
+    stubLines: ['queryHelpers.searchRecords([], "TODO_QUERY");'],
+    azureApiHints: ["Azure search/query API for text search"]
+  },
+  sort: {
+    bucket: "dataOperations",
+    services: ["queryHelpers"],
+    stubLines: ['queryHelpers.sortRecords([], "TODO_FIELD");'],
+    azureApiHints: ["Azure query endpoint with server/client sorting"]
+  },
+  sortbycolumns: {
+    bucket: "dataOperations",
+    services: ["queryHelpers"],
+    stubLines: ['queryHelpers.sortByColumns([], ["TODO_FIELD"]);'],
+    azureApiHints: ["Azure query endpoint with multi-column sorting"]
+  },
+  navigate: {
+    bucket: "navigation",
+    services: ["navigationService"],
+    stubLines: ['navigationService.navigate(router, "/TODO_ROUTE");'],
+    azureApiHints: []
+  },
+  back: {
+    bucket: "navigation",
+    services: ["navigationService"],
+    stubLines: ["navigationService.back(router);"],
+    azureApiHints: []
+  },
+  launch: {
+    bucket: "navigation",
+    services: ["navigationService"],
+    stubLines: ['navigationService.launch("https://todo.example");'],
+    azureApiHints: []
+  },
+  if: {
+    bucket: "displayLogic",
+    services: [],
+    stubLines: ["// TODO: Convert conditional display logic (If) into derived UI state."],
+    azureApiHints: []
+  },
+  switch: {
+    bucket: "displayLogic",
+    services: [],
+    stubLines: ["// TODO: Convert branching display logic (Switch) into derived UI state."],
+    azureApiHints: []
+  },
+  visible: {
+    bucket: "displayLogic",
+    services: [],
+    stubLines: ["// TODO: Convert Visible expressions into conditional rendering."],
+    azureApiHints: []
+  },
+  displaymode: {
+    bucket: "displayLogic",
+    services: [],
+    stubLines: ["// TODO: Convert DisplayMode expressions into disabled/readOnly state."],
+    azureApiHints: []
+  },
+  text: {
+    bucket: "transformation",
+    services: ["queryHelpers"],
+    stubLines: ["queryHelpers.toText(undefined);"],
+    azureApiHints: []
+  },
+  value: {
+    bucket: "transformation",
+    services: ["queryHelpers"],
+    stubLines: ["queryHelpers.toValue(undefined);"],
+    azureApiHints: []
+  },
+  concatenate: {
+    bucket: "transformation",
+    services: ["queryHelpers"],
+    stubLines: ['queryHelpers.concatenate(["TODO_LEFT", "TODO_RIGHT"]);'],
+    azureApiHints: []
+  },
+  datevalue: {
+    bucket: "transformation",
+    services: ["queryHelpers"],
+    stubLines: ['queryHelpers.dateValue("TODO_DATE");'],
+    azureApiHints: []
+  },
+  dateadd: {
+    bucket: "transformation",
+    services: ["queryHelpers"],
+    stubLines: ["queryHelpers.dateAdd(new Date(), 1, \"days\");"],
+    azureApiHints: []
+  },
+  countrows: {
+    bucket: "transformation",
+    services: ["queryHelpers"],
+    stubLines: ["queryHelpers.countRows([]);"],
+    azureApiHints: []
+  }
+};
+
+const formulaBucketPriority: FormulaBucket[] = [
+  "dataOperations",
+  "stateManagement",
+  "navigation",
+  "displayLogic",
+  "transformation",
+  "unknownComplex"
+];
+
+const extractFormulaFunctions = (expression: string): string[] => {
+  const matches = expression.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g);
+  const ordered = Array.from(matches, (match) => match[1].toLowerCase());
+  return sortByStableKey(Array.from(new Set(ordered)), (entry) => entry);
+};
+
+const countFunctionInvocations = (expression: string, functionName: string): number =>
+  (expression.match(new RegExp(`\\b${functionName}\\s*\\(`, "gi")) ?? []).length;
+
+const hasMultiSourceCollect = (expression: string): boolean => {
+  const collectMatches = expression.matchAll(/\b(?:Collect|ClearCollect)\s*\(([^)]*)\)/gi);
+  for (const match of collectMatches) {
+    const args = match[1]
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+    if (args.length > 2) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const analyzeFormulaExpression = (expression: string): FormulaAnalysis => {
+  const functions = extractFormulaFunctions(expression);
+  const buckets = new Set<FormulaBucket>();
+  const services = new Set<ServiceModule>();
+  const stubLines = new Set<string>();
+  const warningCodes = new Set<string>();
+  const warningMessages = new Set<string>();
+  const unsupportedFunctions: string[] = [];
+  const hotspotReasons = new Set<string>();
+  const azureApiHints = new Set<string>();
+
+  functions.forEach((functionName) => {
+    const classification = knownFunctionClassifications[functionName];
+    if (!classification) {
+      unsupportedFunctions.push(functionName);
+      return;
+    }
+
+    buckets.add(classification.bucket);
+    classification.services.forEach((service) => services.add(service));
+    classification.stubLines.forEach((line) => stubLines.add(line));
+    classification.azureApiHints.forEach((hint) => azureApiHints.add(hint));
+  });
+
+  if (unsupportedFunctions.length > 0) {
+    warningCodes.add("REACT_FORMULA_UNSUPPORTED_FUNCTION");
+    warningMessages.add(
+      `Formula uses unsupported functions (${unsupportedFunctions.join(", ")}); manual conversion required.`
+    );
+    hotspotReasons.add(
+      `Unsupported functions detected: ${unsupportedFunctions.join(", ")}`
+    );
+  }
+
+  const nestedLogicComplexity =
+    countFunctionInvocations(expression, "if") + countFunctionInvocations(expression, "switch");
+  if (nestedLogicComplexity > 1) {
+    warningCodes.add("REACT_FORMULA_COMPLEXITY_NESTED_LOGIC");
+    warningMessages.add(
+      "Formula contains nested If/Switch logic and should be split into testable React helpers."
+    );
+    hotspotReasons.add("Nested If/Switch logic");
+  }
+
+  const patchInvocations = countFunctionInvocations(expression, "patch");
+  if (patchInvocations > 1 || (patchInvocations > 0 && expression.includes(";"))) {
+    warningCodes.add("REACT_FORMULA_COMPLEXITY_PATCH_CHAIN");
+    warningMessages.add(
+      "Formula contains chained Patch/data update logic and requires staged async migration."
+    );
+    hotspotReasons.add("Chained Patch/data updates");
+  }
+
+  if (hasMultiSourceCollect(expression)) {
+    warningCodes.add("REACT_FORMULA_COMPLEXITY_MULTI_SOURCE_COLLECT");
+    warningMessages.add(
+      "Formula uses Collect/ClearCollect with multiple sources and needs explicit merge strategy."
+    );
+    hotspotReasons.add("Multi-source Collect usage");
+  }
+
+  if (
+    /\b(?:Set|UpdateContext)\s*\(/i.test(expression) &&
+    /\b(?:var|context|ctx)[A-Za-z0-9_]*/i.test(expression)
+  ) {
+    warningCodes.add("REACT_FORMULA_COMPLEXITY_AMBIGUOUS_STATE");
+    warningMessages.add(
+      "Formula mixes context/state mutation with ambiguous dependencies and needs state ownership design."
+    );
+    hotspotReasons.add("Ambiguous context/state dependencies");
+  }
+
+  let bucket: FormulaBucket = "unknownComplex";
+  for (const candidate of formulaBucketPriority) {
+    if (buckets.has(candidate)) {
+      bucket = candidate;
+      break;
+    }
+  }
+  if (bucket === "unknownComplex" && stubLines.size === 0) {
+    stubLines.add("// TODO: Manual Power Fx migration required; no direct stub mapping available yet.");
+  }
+
+  return {
+    functions,
+    bucket,
+    services: sortByStableKey(Array.from(services), (service) => service),
+    stubLines: sortByStableKey(Array.from(stubLines), (line) => line),
+    warningCodes: sortByStableKey(Array.from(warningCodes), (code) => code),
+    warningMessages: sortByStableKey(Array.from(warningMessages), (message) => message),
+    unsupportedFunctions: sortByStableKey(unsupportedFunctions, (value) => value),
+    hotspotReasons: sortByStableKey(Array.from(hotspotReasons), (reason) => reason),
+    azureApiHints: sortByStableKey(Array.from(azureApiHints), (hint) => hint)
+  };
+};
+
+const collectFormulaRecords = (screen: CanvasScreen): FormulaRecord[] => {
+  const records: FormulaRecord[] = [];
 
   screen.formulas.forEach((formula, index) => {
     const property = formula.propertyName ?? `Formula${index + 1}`;
@@ -911,11 +1249,12 @@ ${childMarkup ? `${childMarkup}\n` : ""}${indent}</div>`;
 
 const createScreenComponent = (
   appName: string,
+  appSlug: string,
   screen: CanvasScreen,
   warnings: GenerationWarning[],
   unsupportedFeatures: GenerationUnsupportedFeature[],
   context: GeneratorContext
-): { componentName: string; content: string } => {
+): ScreenComponentResult => {
   const componentNameBase = toPascalCase(screen.screenName);
   const componentName = componentNameBase.endsWith("Screen")
     ? componentNameBase
@@ -927,12 +1266,21 @@ const createScreenComponent = (
     )
   );
   const formulaRecords = collectFormulaRecords(screen);
-  const formulaHandlers = formulaRecords
-    .map((record) => {
+  const formulaAnalyses = formulaRecords.map((record) => ({
+    record,
+    analysis: analyzeFormulaExpression(record.formula.rawExpression)
+  }));
+  const formulaHandlers = formulaAnalyses
+    .map(({ record, analysis }) => {
       const expression = safeComment(record.formula.rawExpression);
-      return `function ${record.functionName}() {
+      const summary = analysis.functions.length > 0 ? analysis.functions.join(", ") : "unknown";
+      const stubLines = analysis.stubLines.map((line) => `  ${line}`).join("\n");
+      return `async function ${record.functionName}(): Promise<void> {
   // TODO: Convert Power Fx (${record.ownerLabel}${record.formula.propertyName ? `.${record.formula.propertyName}` : ""})
   // ${expression}
+  // Classified bucket: ${analysis.bucket}
+  // Detected functions: ${summary}
+${stubLines}
 }`;
     })
     .join("\n\n");
@@ -940,9 +1288,59 @@ const createScreenComponent = (
     string,
     Map<string, string>
   >();
+  const importedServices = new Set<ServiceModule>();
+  const bucketCounts: Record<FormulaBucket, number> = {
+    stateManagement: 0,
+    dataOperations: 0,
+    navigation: 0,
+    displayLogic: 0,
+    transformation: 0,
+    unknownComplex: 0
+  };
+  const azureApiHints = new Set<string>();
+  const hotspotNotes = new Set<string>();
+  let unsupportedFormulaCount = 0;
 
-  formulaRecords.forEach((record) => {
+  formulaAnalyses.forEach(({ record, analysis }) => {
     if (!record.formula.ownerArtifactId || record.formula.ownerType !== "control") {
+      analysis.services.forEach((service) => importedServices.add(service));
+      bucketCounts[analysis.bucket] += 1;
+      if (analysis.unsupportedFunctions.length > 0) {
+        unsupportedFormulaCount += 1;
+      }
+      analysis.azureApiHints.forEach((hint) => azureApiHints.add(hint));
+      analysis.hotspotReasons.forEach((reason) =>
+        hotspotNotes.add(
+          `${record.ownerLabel}${record.formula.propertyName ? `.${record.formula.propertyName}` : ""}: ${reason}`
+        )
+      );
+      analysis.warningCodes.forEach((warningCode, warningIndex) => {
+        warnings.push(
+          createWarning({
+            code: warningCode,
+            message:
+              analysis.warningMessages[warningIndex] ??
+              `Formula warning detected for ${record.ownerLabel}.`,
+            sourceArtifactIds: [record.formula.artifactId],
+            sourceLocation: record.formula.provenance.sourcePath,
+            provenance: context.invocationProvenance
+          })
+        );
+      });
+      if (analysis.unsupportedFunctions.length > 0) {
+        unsupportedFeatures.push(
+          createUnsupportedFeature({
+            featureType: "canvas.formula.unsupported-function",
+            sourceLocation: record.formula.provenance.sourcePath,
+            reason: `Formula uses unsupported functions: ${analysis.unsupportedFunctions.join(", ")}`,
+            suggestedRemediation:
+              "Extract formula behavior into explicit TypeScript helper functions and integration tests.",
+            severity: "medium",
+            sourceArtifactIds: [record.formula.artifactId],
+            provenance: context.invocationProvenance
+          })
+        );
+      }
       return;
     }
 
@@ -950,6 +1348,44 @@ const createScreenComponent = (
       formulaHandlerMapByControl.get(record.formula.ownerArtifactId) ?? new Map<string, string>();
     controlMap.set((record.formula.propertyName ?? "").toLowerCase(), record.functionName);
     formulaHandlerMapByControl.set(record.formula.ownerArtifactId, controlMap);
+    analysis.services.forEach((service) => importedServices.add(service));
+    bucketCounts[analysis.bucket] += 1;
+    if (analysis.unsupportedFunctions.length > 0) {
+      unsupportedFormulaCount += 1;
+    }
+    analysis.azureApiHints.forEach((hint) => azureApiHints.add(hint));
+    analysis.hotspotReasons.forEach((reason) =>
+      hotspotNotes.add(
+        `${record.ownerLabel}${record.formula.propertyName ? `.${record.formula.propertyName}` : ""}: ${reason}`
+      )
+    );
+    analysis.warningCodes.forEach((warningCode, warningIndex) => {
+      warnings.push(
+        createWarning({
+          code: warningCode,
+          message:
+            analysis.warningMessages[warningIndex] ??
+            `Formula warning detected for ${record.ownerLabel}.`,
+          sourceArtifactIds: [record.formula.artifactId],
+          sourceLocation: record.formula.provenance.sourcePath,
+          provenance: context.invocationProvenance
+        })
+      );
+    });
+    if (analysis.unsupportedFunctions.length > 0) {
+      unsupportedFeatures.push(
+        createUnsupportedFeature({
+          featureType: "canvas.formula.unsupported-function",
+          sourceLocation: record.formula.provenance.sourcePath,
+          reason: `Formula uses unsupported functions: ${analysis.unsupportedFunctions.join(", ")}`,
+          suggestedRemediation:
+            "Extract formula behavior into explicit TypeScript helper functions and integration tests.",
+          severity: "medium",
+          sourceArtifactIds: [record.formula.artifactId],
+          provenance: context.invocationProvenance
+        })
+      );
+    }
   });
 
   const renderedControls = rootControls
@@ -972,12 +1408,30 @@ const createScreenComponent = (
         )}`
     )
     .join("\n");
+  const orderedServiceImports = sortByStableKey(Array.from(importedServices), (service) => service)
+    .map((service) => {
+      const source = `../../lib/generated/services/${service}`;
+      return `import { ${service} } from "${source}";`;
+    })
+    .join("\n");
   const content = `import React from "react";
+${orderedServiceImports ? `${orderedServiceImports}\n` : ""}
 
 export function ${componentName}(): JSX.Element {
+  const router = {
+    push: (path: string): void => {
+      void path;
+    },
+    back: (): void => {
+      // TODO: wire Next.js router back() in migration pass.
+    }
+  };
+
+  // Logic migration stubs
 ${formulaHandlers ? `${formulaHandlers}\n\n` : ""}  // Power Fx formulas requiring manual conversion:
 ${formulaCommentBlock || "  // None."}
 
+  // Layout scaffold
   return (
     <div className="canvas-screen-skeleton" data-app-name="${appName}" data-screen-name="${screen.screenName}">
 ${renderedControls || "      <p>TODO: map screen controls</p>"}
@@ -988,8 +1442,186 @@ ${renderedControls || "      <p>TODO: map screen controls</p>"}
 
   return {
     componentName,
-    content
+    content,
+    formulasClassified: formulaAnalyses.length,
+    stubsGenerated: formulaAnalyses.length,
+    unsupportedFormulas: unsupportedFormulaCount,
+    manualConversionHotspots: hotspotNotes.size,
+    bucketCounts,
+    azureApiHints: sortByStableKey(Array.from(azureApiHints), (hint) => hint),
+    formulaHotspotNotes: sortByStableKey(Array.from(hotspotNotes), (note) => note)
   };
+};
+
+const createServiceScaffoldArtifacts = (
+  appSlug: string,
+  sourceArtifactIds: string[],
+  context: GeneratorContext
+): GeneratedArtifact[] => {
+  const basePath = `${appSlug}/lib/generated/services`;
+  const dataServiceContent = `export const dataService = {
+  async patchRecord(entityName: string, payload: Record<string, unknown>): Promise<void> {
+    // TODO: Implement API integration for Patch()
+    void entityName;
+    void payload;
+  },
+  async submitForm(formName: string, payload: Record<string, unknown>): Promise<void> {
+    // TODO: Implement API integration for SubmitForm()
+    void formName;
+    void payload;
+  },
+  async removeRecord(entityName: string, id: string): Promise<void> {
+    // TODO: Implement API integration for Remove()
+    void entityName;
+    void id;
+  },
+  async removeIf(entityName: string, filterExpression: string): Promise<void> {
+    // TODO: Implement API integration for RemoveIf()
+    void entityName;
+    void filterExpression;
+  }
+};
+`;
+  const navigationServiceContent = `interface RouterLike {
+  push(path: string): void;
+  back(): void;
+}
+
+export const navigationService = {
+  navigate(router: RouterLike, route: string): void {
+    // TODO: Validate route mapping from Canvas Navigate()
+    router.push(route);
+  },
+  back(router: RouterLike): void {
+    // TODO: Map Canvas Back() semantics
+    router.back();
+  },
+  launch(url: string): void {
+    // TODO: Replace with secure navigation/open-in-new-tab policy
+    void url;
+  }
+};
+`;
+  const stateServiceContent = `export const stateService = {
+  setState(stateKey: string, value: unknown): void {
+    // TODO: map Set() to React useState/zustand/reducer pattern
+    void stateKey;
+    void value;
+  },
+  updateContext(partialState: Record<string, unknown>): void {
+    // TODO: map UpdateContext() to local screen-level state
+    void partialState;
+  },
+  clearCollection(collectionName: string): void {
+    // TODO: map Clear() to collection state reset
+    void collectionName;
+  },
+  collect(collectionName: string, items: unknown[]): void {
+    // TODO: map Collect() append behavior
+    void collectionName;
+    void items;
+  },
+  clearCollect(collectionName: string, items: unknown[]): void {
+    // TODO: map ClearCollect() replace behavior
+    void collectionName;
+    void items;
+  }
+};
+`;
+  const queryHelpersContent = `export const queryHelpers = {
+  filterRecords<T>(records: T[], predicate: (record: T) => boolean): T[] {
+    // TODO: verify Filter() predicate translation
+    return records.filter(predicate);
+  },
+  lookupByPredicate<T>(records: T[], predicate: (record: T) => boolean): T | undefined {
+    // TODO: verify Lookup() fallback handling
+    return records.find(predicate);
+  },
+  searchRecords<T>(records: T[], query: string): T[] {
+    // TODO: replace with domain-specific search implementation
+    void query;
+    return records;
+  },
+  sortRecords<T>(records: T[], field: string): T[] {
+    // TODO: implement deterministic Sort() mapping
+    void field;
+    return records;
+  },
+  sortByColumns<T>(records: T[], fields: string[]): T[] {
+    // TODO: implement SortByColumns() mapping
+    void fields;
+    return records;
+  },
+  toText(value: unknown): string {
+    // TODO: validate Text() formatting patterns
+    return String(value ?? "");
+  },
+  toValue(value: unknown): number {
+    // TODO: validate Value() parsing behavior
+    return Number(value ?? 0);
+  },
+  concatenate(values: string[]): string {
+    // TODO: validate Concatenate() null/blank behavior
+    return values.join("");
+  },
+  dateValue(value: string): Date {
+    // TODO: validate DateValue() timezone behavior
+    return new Date(value);
+  },
+  dateAdd(value: Date, delta: number, unit: "days" | "hours" | "minutes"): Date {
+    // TODO: validate DateAdd() unit conversion behavior
+    const copy = new Date(value.getTime());
+    if (unit === "days") {
+      copy.setDate(copy.getDate() + delta);
+    } else if (unit === "hours") {
+      copy.setHours(copy.getHours() + delta);
+    } else {
+      copy.setMinutes(copy.getMinutes() + delta);
+    }
+    return copy;
+  },
+  countRows<T>(rows: T[]): number {
+    // TODO: validate CountRows() delegation for remote collections
+    return rows.length;
+  }
+};
+`;
+
+  return sortByStableKey(
+    [
+      {
+        artifactId: `generated:react:${appSlug}:service-data`,
+        artifactType: "typescript-service",
+        filePath: `${basePath}/dataService.ts`,
+        content: dataServiceContent
+      },
+      {
+        artifactId: `generated:react:${appSlug}:service-navigation`,
+        artifactType: "typescript-service",
+        filePath: `${basePath}/navigationService.ts`,
+        content: navigationServiceContent
+      },
+      {
+        artifactId: `generated:react:${appSlug}:service-state`,
+        artifactType: "typescript-service",
+        filePath: `${basePath}/stateService.ts`,
+        content: stateServiceContent
+      },
+      {
+        artifactId: `generated:react:${appSlug}:service-query-helpers`,
+        artifactType: "typescript-service",
+        filePath: `${basePath}/queryHelpers.ts`,
+        content: queryHelpersContent
+      }
+    ],
+    (artifact) => artifact.filePath
+  ).map((artifact) => ({
+    ...artifact,
+    sourceArtifactIds,
+    warnings: [],
+    provenance: context.invocationProvenance,
+    confidence: 0.85
+  }));
 };
 
 const uniqueArtifactIds = (values: Iterable<string>): string[] =>
@@ -997,7 +1629,10 @@ const uniqueArtifactIds = (values: Iterable<string>): string[] =>
 
 const buildMigrationNotes = (
   appNotes: string[],
-  formulaEntries: Array<{ owner: string; expression: string }>
+  formulaEntries: Array<{ owner: string; expression: string }>,
+  bucketCounts: Record<FormulaBucket, number>,
+  hotspotNotes: string[],
+  azureApiHints: string[]
 ): string => {
   const lines: string[] = [];
   lines.push("# Canvas to React Migration Notes");
@@ -1020,6 +1655,49 @@ const buildMigrationNotes = (
     });
   }
   lines.push("");
+  lines.push("## Formula conversion summary");
+  lines.push("");
+  lines.push(`- stateManagement: ${bucketCounts.stateManagement}`);
+  lines.push(`- dataOperations: ${bucketCounts.dataOperations}`);
+  lines.push(`- navigation: ${bucketCounts.navigation}`);
+  lines.push(`- displayLogic: ${bucketCounts.displayLogic}`);
+  lines.push(`- transformation: ${bucketCounts.transformation}`);
+  lines.push(`- unknownComplex: ${bucketCounts.unknownComplex}`);
+  lines.push("");
+  lines.push("## manual implementation hotspots");
+  lines.push("");
+  if (hotspotNotes.length === 0) {
+    lines.push("- None.");
+  } else {
+    hotspotNotes.forEach((note) => lines.push(`- ${note}`));
+  }
+  lines.push("");
+  lines.push("## likely Azure API requirements");
+  lines.push("");
+  if (azureApiHints.length === 0) {
+    lines.push("- None identified in this pass.");
+  } else {
+    azureApiHints.forEach((hint) => lines.push(`- ${hint}`));
+  }
+  lines.push("");
+  lines.push("## state-management complexity");
+  lines.push("");
+  lines.push(
+    `- state formulas (Set/UpdateContext/Clear/Collect/ClearCollect): ${bucketCounts.stateManagement}`
+  );
+  lines.push(
+    "- confirm ownership boundaries between local component state, shared client state, and server data."
+  );
+  lines.push("");
+  lines.push("## recommended implementation strategy");
+  lines.push("");
+  lines.push(
+    "- migrate handlers in thin vertical slices: classify formula -> service/query helper stub -> integration test -> UI wiring."
+  );
+  lines.push(
+    "- prioritize hotspots first (unsupported functions, nested logic, chained data writes, and ambiguous state dependencies)."
+  );
+  lines.push("");
   lines.push(
     "Each TODO marker in generated components highlights a formula or control that needs manual conversion."
   );
@@ -1041,6 +1719,10 @@ const buildGenerationReport = (
   lines.push(`- Screens generated: ${output.screensGenerated}`);
   lines.push(`- Controls generated: ${output.controlsGenerated}`);
   lines.push(`- Formulas preserved: ${output.formulasPreserved}`);
+  lines.push(`- Formulas classified: ${output.formulasClassified}`);
+  lines.push(`- Stub handlers generated: ${output.stubsGenerated}`);
+  lines.push(`- Unsupported formulas: ${output.unsupportedFormulas}`);
+  lines.push(`- Manual conversion hotspots: ${output.manualConversionHotspots}`);
   lines.push(`- Unsupported controls: ${output.unsupportedControls}`);
   lines.push(`- Warnings: ${output.warnings}`);
   lines.push("");
@@ -1082,9 +1764,23 @@ export const generateCanvasReactArtifacts = async (
   const artifacts: GeneratedArtifact[] = [];
   const appNotes: string[] = [];
   const formulaEntries: Array<{ owner: string; expression: string }> = [];
+  const hotspotNotes = new Set<string>();
+  const azureApiHints = new Set<string>();
+  const aggregateBucketCounts: Record<FormulaBucket, number> = {
+    stateManagement: 0,
+    dataOperations: 0,
+    navigation: 0,
+    displayLogic: 0,
+    transformation: 0,
+    unknownComplex: 0
+  };
   let screensGenerated = 0;
   let controlsGenerated = 0;
   let formulasPreserved = 0;
+  let formulasClassified = 0;
+  let stubsGenerated = 0;
+  let unsupportedFormulas = 0;
+  let manualConversionHotspots = 0;
   let unsupportedControls = 0;
 
   const sortedApps = sortByStableKey(canvasApps, (app) => app.appName.toLowerCase());
@@ -1124,6 +1820,9 @@ export default function RootLayout({
       provenance: context.invocationProvenance,
       confidence: 0.85
     });
+    createServiceScaffoldArtifacts(appSlug, sourceArtifactIds, context).forEach((artifact) => {
+      artifacts.push(artifact);
+    });
 
     appScreens.forEach((screen, index) => {
       screensGenerated += 1;
@@ -1139,11 +1838,21 @@ export default function RootLayout({
       const routeSlug = toRouteSlug(screen.screenName);
       const component = createScreenComponent(
         app.appName,
+        appSlug,
         screen,
         warnings,
         unsupportedFeatures,
         context
       );
+      formulasClassified += component.formulasClassified;
+      stubsGenerated += component.stubsGenerated;
+      unsupportedFormulas += component.unsupportedFormulas;
+      manualConversionHotspots += component.manualConversionHotspots;
+      component.azureApiHints.forEach((hint) => azureApiHints.add(hint));
+      component.formulaHotspotNotes.forEach((note) => hotspotNotes.add(note));
+      (Object.keys(component.bucketCounts) as FormulaBucket[]).forEach((bucket) => {
+        aggregateBucketCounts[bucket] += component.bucketCounts[bucket];
+      });
 
       const componentArtifactPath = `${appSlug}/components/generated/${screenSlug}.tsx`;
       artifacts.push({
@@ -1217,6 +1926,46 @@ export default function Page(): JSX.Element {
     });
 
     app.formulas.forEach((formula) => {
+      const analysis = analyzeFormulaExpression(formula.rawExpression);
+      formulasClassified += 1;
+      aggregateBucketCounts[analysis.bucket] += 1;
+      if (analysis.unsupportedFunctions.length > 0) {
+        unsupportedFormulas += 1;
+      }
+      if (analysis.hotspotReasons.length > 0) {
+        manualConversionHotspots += 1;
+      }
+      analysis.azureApiHints.forEach((hint) => azureApiHints.add(hint));
+      analysis.hotspotReasons.forEach((reason) =>
+        hotspotNotes.add(`app:${app.appName}.${formula.propertyName ?? "Formula"}: ${reason}`)
+      );
+      analysis.warningCodes.forEach((warningCode, warningIndex) => {
+        warnings.push(
+          createWarning({
+            code: warningCode,
+            message:
+              analysis.warningMessages[warningIndex] ??
+              `Formula warning detected for app:${app.appName}.`,
+            sourceArtifactIds: [formula.artifactId],
+            sourceLocation: formula.provenance.sourcePath,
+            provenance: context.invocationProvenance
+          })
+        );
+      });
+      if (analysis.unsupportedFunctions.length > 0) {
+        unsupportedFeatures.push(
+          createUnsupportedFeature({
+            featureType: "canvas.formula.unsupported-function",
+            sourceLocation: formula.provenance.sourcePath,
+            reason: `Formula uses unsupported functions: ${analysis.unsupportedFunctions.join(", ")}`,
+            suggestedRemediation:
+              "Extract app-level startup/initialization logic into typed service modules.",
+            severity: "medium",
+            sourceArtifactIds: [formula.artifactId],
+            provenance: context.invocationProvenance
+          })
+        );
+      }
       formulaEntries.push({
         owner: `app:${app.appName}`,
         expression: formula.rawExpression
@@ -1230,13 +1979,20 @@ export default function Page(): JSX.Element {
     screensGenerated,
     controlsGenerated,
     formulasPreserved,
+    formulasClassified,
+    stubsGenerated,
+    unsupportedFormulas,
+    manualConversionHotspots,
     unsupportedControls,
     warnings: warnings.length
   };
   const generationReport = buildGenerationReport(output, warnings, unsupportedFeatures);
   const migrationNotes = buildMigrationNotes(
     sortByStableKey(appNotes, (note) => note),
-    sortByStableKey(formulaEntries, (entry) => `${entry.owner}:${entry.expression}`)
+    sortByStableKey(formulaEntries, (entry) => `${entry.owner}:${entry.expression}`),
+    aggregateBucketCounts,
+    sortByStableKey(Array.from(hotspotNotes), (note) => note),
+    sortByStableKey(Array.from(azureApiHints), (hint) => hint)
   );
   const sourceArtifactIds = uniqueArtifactIds([
     ...sortedApps.map((app) => app.artifactId),

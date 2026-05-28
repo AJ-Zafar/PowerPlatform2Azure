@@ -486,6 +486,10 @@ const executeGenerateReact = async (args: string[], stdout: WriteFn): Promise<vo
       screensGenerated: generation.output.screensGenerated,
       controlsGenerated: generation.output.controlsGenerated,
       formulasPreserved: generation.output.formulasPreserved,
+      formulasClassified: generation.output.formulasClassified,
+      stubsGenerated: generation.output.stubsGenerated,
+      unsupportedFormulas: generation.output.unsupportedFormulas,
+      manualConversionHotspots: generation.output.manualConversionHotspots,
       unsupportedControls: generation.output.unsupportedControls,
       warnings: generation.output.warnings
     })

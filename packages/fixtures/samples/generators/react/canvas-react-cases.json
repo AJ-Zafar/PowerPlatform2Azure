@@ -232,6 +232,113 @@
       }
     ]
   },
+  "formulaRefinement": {
+    "apps": [
+      {
+        "appName": "Formula Refinement App",
+        "appId": "formula-refinement-app",
+        "formulas": [
+          {
+            "propertyName": "OnStart",
+            "rawExpression": "Set(varBoot, true); ClearCollect(colUsers, Users)"
+          }
+        ],
+        "screens": [
+          {
+            "screenName": "Refine Screen",
+            "migrationReadiness": "medium",
+            "layoutMode": "absolute",
+            "formulas": [
+              {
+                "propertyName": "OnVisible",
+                "rawExpression": "If(Switch(varMode, \"A\", true, false), UpdateContext({ready: true}), UpdateContext({ready: false}))"
+              }
+            ],
+            "controls": [
+              {
+                "controlName": "PatchButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Patch(Accounts, Defaults(Accounts), { Name: \"A\" }); SubmitForm(EditForm1)"
+                  }
+                ]
+              },
+              {
+                "controlName": "NavButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Navigate(\"Details\"); Launch(\"https://example.com\")"
+                  }
+                ]
+              },
+              {
+                "controlName": "CollectionButton",
+                "controlType": "button",
+                "role": "button",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnSelect",
+                    "rawExpression": "Collect(colMerged, SourceA, SourceB)"
+                  }
+                ]
+              },
+              {
+                "controlName": "FilterInput",
+                "controlType": "text",
+                "role": "input",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "OnChange",
+                    "rawExpression": "Filter(Accounts, StartsWith(Name, Self.Text)); SortByColumns(Accounts, \"name\")"
+                  }
+                ]
+              },
+              {
+                "controlName": "TransformText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "Text",
+                    "rawExpression": "Concatenate(Text(DateAdd(Today(), 1)), \"-\", Value(\"42\"), \"-\", CountRows(colUsers))"
+                  }
+                ]
+              },
+              {
+                "controlName": "UnknownLogicText",
+                "controlType": "label",
+                "role": "text",
+                "layoutMode": "absolute",
+                "responsiveHint": "fixed",
+                "formulas": [
+                  {
+                    "propertyName": "Text",
+                    "rawExpression": "With({x:1}, Power(x,2))"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "unsupportedControls": {
     "apps": [
       {

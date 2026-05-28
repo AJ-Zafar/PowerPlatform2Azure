@@ -465,6 +465,108 @@ describe("generateCanvasReactArtifacts", () => {
     ).toBe(true);
   });
 
+  it("generates shared service scaffolds for react migration stubs", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const canvasApps = buildCanvasApps(fixtures.formulaRefinement);
+    const result = await generateCanvasReactArtifacts(canvasApps);
+
+    expect(
+      result.artifacts.some(
+        (artifact) =>
+          artifact.filePath ===
+          "formula-refinement-app/lib/generated/services/dataService.ts"
+      )
+    ).toBe(true);
+    expect(
+      result.artifacts.some(
+        (artifact) =>
+          artifact.filePath ===
+          "formula-refinement-app/lib/generated/services/navigationService.ts"
+      )
+    ).toBe(true);
+    expect(
+      result.artifacts.some(
+        (artifact) =>
+          artifact.filePath ===
+          "formula-refinement-app/lib/generated/services/stateService.ts"
+      )
+    ).toBe(true);
+    expect(
+      result.artifacts.some(
+        (artifact) =>
+          artifact.filePath ===
+          "formula-refinement-app/lib/generated/services/queryHelpers.ts"
+      )
+    ).toBe(true);
+  });
+
+  it("classifies formulas and emits typed handler stubs", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const canvasApps = buildCanvasApps(fixtures.formulaRefinement);
+    const result = await generateCanvasReactArtifacts(canvasApps);
+    const screen = getArtifactContent(
+      result,
+      "formula-refinement-app/components/generated/refine-screen.tsx"
+    );
+
+    expect(result.output.formulasClassified).toBeGreaterThan(0);
+    expect(result.output.stubsGenerated).toBeGreaterThan(0);
+    expect(screen).toContain("dataService");
+    expect(screen).toContain("navigationService");
+    expect(screen).toContain("stateService");
+    expect(screen).toContain("queryHelpers");
+    expect(screen).toContain("async function handlePatchButtonOnSelect");
+    expect(screen).toContain("navigationService.navigate(router");
+    expect(screen).toContain("stateService.updateContext");
+  });
+
+  it("adds complexity and unsupported-function warnings for difficult formulas", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const canvasApps = buildCanvasApps(fixtures.formulaRefinement);
+    const result = await generateCanvasReactArtifacts(canvasApps);
+
+    expect(
+      result.warnings.some((warning) => warning.code === "REACT_FORMULA_COMPLEXITY_NESTED_LOGIC")
+    ).toBe(true);
+    expect(
+      result.warnings.some((warning) => warning.code === "REACT_FORMULA_COMPLEXITY_PATCH_CHAIN")
+    ).toBe(true);
+    expect(
+      result.warnings.some((warning) => warning.code === "REACT_FORMULA_COMPLEXITY_MULTI_SOURCE_COLLECT")
+    ).toBe(true);
+    expect(
+      result.warnings.some((warning) => warning.code === "REACT_FORMULA_UNSUPPORTED_FUNCTION")
+    ).toBe(true);
+    expect(result.output.unsupportedFormulas).toBeGreaterThan(0);
+    expect(result.output.manualConversionHotspots).toBeGreaterThan(0);
+  });
+
+  it("upgrades migration notes with formula and implementation hotspot guidance", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const canvasApps = buildCanvasApps(fixtures.formulaRefinement);
+    const result = await generateCanvasReactArtifacts(canvasApps);
+    const notes = getArtifactContent(result, "migration-notes.md");
+
+    expect(notes).toContain("Formula conversion summary");
+    expect(notes).toContain("manual implementation hotspots");
+    expect(notes).toContain("likely Azure API requirements");
+    expect(notes).toContain("state-management complexity");
+    expect(notes).toContain("recommended implementation strategy");
+  });
+
+  it("matches generated data service scaffold snapshot", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const canvasApps = buildCanvasApps(fixtures.formulaRefinement);
+    const result = await generateCanvasReactArtifacts(canvasApps);
+
+    expect(
+      getArtifactContent(
+        result,
+        "formula-refinement-app/lib/generated/services/dataService.ts"
+      )
+    ).toMatchSnapshot();
+  });
+
   it("matches screen component snapshot output", async () => {
     const fixtures = await loadFixtureCatalog();
     const canvasApps = buildCanvasApps(fixtures.simpleScreen);
