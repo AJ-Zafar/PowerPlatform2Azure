@@ -11,17 +11,20 @@ import {
 
 import {
   createGenerationResultSchema,
+  sqlGenerationPlanDetailsSchema,
   type GenerationResult,
   type GenerationUnsupportedFeature,
   type GenerationWarning,
-  type GeneratorContext
+  type GeneratorContext,
+  type SqlGenerationPlanDetails
 } from "./contracts";
 
 const dataverseSqlGenerationOutputSchema = z
   .object({
     tablesGenerated: z.number().int().nonnegative(),
     columnsGenerated: z.number().int().nonnegative(),
-    relationshipsGenerated: z.number().int().nonnegative()
+    relationshipsGenerated: z.number().int().nonnegative(),
+    sqlPlan: sqlGenerationPlanDetailsSchema
   })
   .strict();
 
@@ -107,7 +110,8 @@ const addNameCollisionWarning = (
   context: GeneratorContext,
   sourceArtifactIds: string[],
   preferredName: string,
-  resolvedName: string
+  resolvedName: string,
+  namingCollisions: string[]
 ): void => {
   warnings.push(
     createGenerationWarning({
@@ -118,6 +122,7 @@ const addNameCollisionWarning = (
       provenance: context.invocationProvenance
     })
   );
+  namingCollisions.push(`${preferredName} -> ${resolvedName}`);
 };
 
 const unsupportedFeatureByAttribute = (
@@ -392,6 +397,15 @@ export const generateDataverseSqlArtifacts = async (
   const schemaSections: string[] = [];
   let columnCount = 0;
   let relationshipCount = 0;
+  const sqlPlan: SqlGenerationPlanDetails = {
+    tablesToCreate: [],
+    columnsToCreate: [],
+    foreignKeysToCreate: [],
+    joinTablesToCreate: [],
+    unsupportedColumns: [],
+    unresolvedRelationships: [],
+    namingCollisions: []
+  };
 
   for (const entity of sortedEntities) {
     if (entity.ownershipType.toLowerCase().includes("virtual")) {
@@ -416,9 +430,11 @@ export const generateDataverseSqlArtifacts = async (
         context,
         [entity.artifactId],
         preferredTableName,
-        resolvedName
+        resolvedName,
+        sqlPlan.namingCollisions
       );
     });
+    sqlPlan.tablesToCreate.push(tableName);
 
     mappings.push({
       logicalName: entity.logicalName,
@@ -455,7 +471,8 @@ export const generateDataverseSqlArtifacts = async (
           context,
           [entity.artifactId, attribute.artifactId],
           preferredColumnName,
-          resolvedName
+          resolvedName,
+          sqlPlan.namingCollisions
         );
       });
       const isPrimary = sanitizeSqlIdentifier(attribute.logicalName) === sanitizeSqlIdentifier(entity.primaryIdAttribute);
@@ -484,6 +501,7 @@ export const generateDataverseSqlArtifacts = async (
             provenance: attribute.provenance
           })
         );
+        sqlPlan.unsupportedColumns.push(`${entity.logicalName}.${attribute.logicalName}`);
       }
 
       if (["picklist", "state", "status"].includes(attribute.type)) {
@@ -511,6 +529,10 @@ export const generateDataverseSqlArtifacts = async (
         kind: "column"
       });
       columnNameByAttributeId.set(attribute.artifactId, columnName);
+      sqlPlan.columnsToCreate.push({
+        table: tableName,
+        column: columnName
+      });
       columnCount += 1;
 
       if (isPrimary) {
@@ -533,6 +555,10 @@ export const generateDataverseSqlArtifacts = async (
         kind: "column"
       });
       columnCount += 1;
+      sqlPlan.columnsToCreate.push({
+        table: tableName,
+        column: resolvedPrimaryKeyColumn
+      });
       warnings.push(
         createGenerationWarning({
           code: "SQL_PRIMARY_KEY_SYNTHESIZED",
@@ -576,6 +602,7 @@ export const generateDataverseSqlArtifacts = async (
           provenance: relationship.provenance
         })
       );
+      sqlPlan.unresolvedRelationships.push(relationship.schemaName);
       continue;
     }
 
@@ -589,10 +616,13 @@ export const generateDataverseSqlArtifacts = async (
             context,
             [relationship.artifactId],
             preferredName,
-            resolvedName
+            resolvedName,
+            sqlPlan.namingCollisions
           );
         }
       );
+      sqlPlan.joinTablesToCreate.push(joinTableName);
+      sqlPlan.tablesToCreate.push(joinTableName);
       const leftColumn = sanitizeSqlIdentifier(source.entity.primaryIdAttribute);
       const rightColumn = sanitizeSqlIdentifier(target.entity.primaryIdAttribute);
       const pkConstraintName = `pk_${joinTableName}`;
@@ -619,6 +649,17 @@ export const generateDataverseSqlArtifacts = async (
           `ALTER TABLE [dbo].[${joinTableName}] ADD CONSTRAINT [${fkRightName}] FOREIGN KEY ([${rightColumn}]) REFERENCES [dbo].[${target.tableName}]([${target.primaryKeyColumnName}]);`
         ].join("\n")
       );
+      sqlPlan.columnsToCreate.push(
+        {
+          table: joinTableName,
+          column: leftColumn
+        },
+        {
+          table: joinTableName,
+          column: rightColumn
+        }
+      );
+      sqlPlan.foreignKeysToCreate.push(fkLeftName, fkRightName);
       relationshipCount += 1;
       continue;
     }
@@ -635,6 +676,7 @@ export const generateDataverseSqlArtifacts = async (
           provenance: relationship.provenance
         })
       );
+      sqlPlan.unresolvedRelationships.push(relationship.schemaName);
       continue;
     }
 
@@ -650,6 +692,7 @@ export const generateDataverseSqlArtifacts = async (
           provenance: relationship.provenance
         })
       );
+      sqlPlan.unresolvedRelationships.push(relationship.schemaName);
       continue;
     }
 
@@ -689,6 +732,7 @@ export const generateDataverseSqlArtifacts = async (
         `ALTER TABLE [dbo].[${source.tableName}] ADD CONSTRAINT [${constraintName}] FOREIGN KEY ([${sourceColumnName}]) REFERENCES [dbo].[${target.tableName}]([${target.primaryKeyColumnName}]);`
       ].join("\n")
     );
+    sqlPlan.foreignKeysToCreate.push(constraintName);
     relationshipCount += 1;
   }
 
@@ -699,9 +743,25 @@ export const generateDataverseSqlArtifacts = async (
     ...relationshipStatements
   ].join("\n\n");
   const output: DataverseSqlGenerationOutput = {
-    tablesGenerated: schemaSections.length + relationshipStatements.filter((item) => item.includes("CREATE TABLE")).length,
+    tablesGenerated:
+      schemaSections.length + relationshipStatements.filter((item) => item.includes("CREATE TABLE")).length,
     columnsGenerated: columnCount,
-    relationshipsGenerated: relationshipCount
+    relationshipsGenerated: relationshipCount,
+    sqlPlan: {
+      tablesToCreate: sortByStableKey(Array.from(new Set(sqlPlan.tablesToCreate)), (item) => item),
+      columnsToCreate: sortByStableKey(
+        sqlPlan.columnsToCreate,
+        (item) => `${item.table}.${item.column}`
+      ),
+      foreignKeysToCreate: sortByStableKey(Array.from(new Set(sqlPlan.foreignKeysToCreate)), (item) => item),
+      joinTablesToCreate: sortByStableKey(Array.from(new Set(sqlPlan.joinTablesToCreate)), (item) => item),
+      unsupportedColumns: sortByStableKey(Array.from(new Set(sqlPlan.unsupportedColumns)), (item) => item),
+      unresolvedRelationships: sortByStableKey(
+        Array.from(new Set(sqlPlan.unresolvedRelationships)),
+        (item) => item
+      ),
+      namingCollisions: sortByStableKey(Array.from(new Set(sqlPlan.namingCollisions)), (item) => item)
+    }
   };
   const reportContent = buildGenerationReportMarkdown(output, warnings, unsupportedFeatures, mappings);
   const sourceArtifactIds = uniqueSortedArtifactIds([

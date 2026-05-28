@@ -14,6 +14,10 @@
 10. No AI API, model API, or external service dependency is used for generator output in this pass.
 11. Lightweight summary counts in IR remain parser telemetry; assessment outputs consume these signals but remain heuristic.
 12. Canvas migration-readiness in this pass is heuristic metadata for UI migration preparation, not final conversion logic.
+13. Generator commands are plan-first: every generation run produces deterministic `generation-plan.json` and `generation-plan.md`.
+14. Default generation mode is overwrite-safe: conflicting existing files are skipped unless `--force` is explicitly set.
+15. `--dry-run` is a non-emitting mode for generated artifacts; only plan files are written for review.
+16. `--clean` only removes files carrying the Power Exit generated-file marker and must not delete user-owned files.
 
 ## Repository assumptions
 
@@ -60,6 +64,8 @@ Where:
 - Generator outputs are deterministic and generated only from validated IR, never from raw source files.
 - SQL generation emits explicit warnings/unsupported features when mapping confidence is insufficient.
 - React skeleton generation preserves formulas as comments/TODO handlers and surfaces unsupported controls as visible placeholders.
+- React generation now emits deterministic formula hotspot planning metadata for manual migration handoff.
+- SQL generation now emits deterministic SQL plan metadata (tables/columns/FKs/join tables/unresolved/collisions) for review.
 - Unknown layouts, unresolved dependencies, and malformed artifacts reduce confidence and increase risk by design.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.
 - Unresolved references are represented both as warnings and as unresolved dependency edges.

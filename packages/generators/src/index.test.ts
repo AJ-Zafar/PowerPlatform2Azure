@@ -302,6 +302,17 @@ describe("generateDataverseSqlArtifacts", () => {
     expect(result.warnings.some((warning) => warning.code === "SQL_RELATIONSHIP_UNRESOLVED")).toBe(true);
   });
 
+  it("exposes SQL plan details for review workflows", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const dataverse = toDataverseSection("manyToManyRelationship", fixtures.manyToManyRelationship);
+    const result = await generateDataverseSqlArtifacts(dataverse);
+
+    expect(result.output.sqlPlan.tablesToCreate.length).toBeGreaterThan(0);
+    expect(result.output.sqlPlan.columnsToCreate.length).toBeGreaterThan(0);
+    expect(result.output.sqlPlan.joinTablesToCreate.length).toBeGreaterThan(0);
+    expect(result.output.sqlPlan.foreignKeysToCreate.length).toBeGreaterThan(0);
+  });
+
   it("handles SQL identifier collisions deterministically", async () => {
     const fixtures = await loadFixtureCatalog();
     const dataverse = toDataverseSection("duplicateSqlNames", fixtures.duplicateSqlNames);

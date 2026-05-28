@@ -549,9 +549,12 @@ describe("generateCanvasReactArtifacts", () => {
 
     expect(notes).toContain("Formula conversion summary");
     expect(notes).toContain("manual implementation hotspots");
+    expect(notes).toContain("Formula hotspot plan");
+    expect(notes).toContain("generated stub");
     expect(notes).toContain("likely Azure API requirements");
     expect(notes).toContain("state-management complexity");
     expect(notes).toContain("recommended implementation strategy");
+    expect(result.output.formulaHotspots.length).toBeGreaterThan(0);
   });
 
   it("matches generated data service scaffold snapshot", async () => {

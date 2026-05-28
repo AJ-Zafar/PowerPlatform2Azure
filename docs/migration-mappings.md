@@ -77,13 +77,15 @@ Canvas IR notes for future React generation:
 CLI:
 
 ```bash
-power-exit generate sql <ir-json> --out <output-folder>
+power-exit generate sql <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 ```
 
 Generated artifacts:
 
 - `schema.sql`
 - `generation-report.md`
+- `generation-plan.json`
+- `generation-plan.md`
 
 Deterministic mapping currently implemented:
 
@@ -111,6 +113,22 @@ Deterministic mapping currently implemented:
    - explicit generation warnings
 6. Name mapping traceability:
    - logical-to-SQL mappings emitted in `generation-report.md`.
+7. SQL plan details emitted in generation plan:
+   - tables to create
+   - columns to create
+   - FKs to create
+   - join tables to create
+   - unsupported columns
+   - unresolved relationships
+   - naming collisions
+
+Overwrite safety behavior:
+
+- Default mode skips conflicting existing files and records skip warnings/review items.
+- `--force` allows planned overwrite actions.
+- `--dry-run` writes only plan files (`generation-plan.json`, `generation-plan.md`), not generated SQL/report artifacts.
+- `--dry-run --clean` performs planning as if marker-tagged files were cleaned, without mutating the filesystem.
+- `--clean` removes only marker-tagged generated files and leaves unmarked files untouched.
 
 Unsupported mapping behavior:
 
@@ -123,7 +141,7 @@ Unsupported mapping behavior:
 CLI:
 
 ```bash
-power-exit generate react <ir-json> --out <output-folder>
+power-exit generate react <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 ```
 
 Generated artifacts:
@@ -133,6 +151,8 @@ Generated artifacts:
 - `<app-slug>/components/generated/<screen>.tsx` (screen components)
 - `migration-notes.md`
 - `generation-report.md`
+- `generation-plan.json`
+- `generation-plan.md`
 
 Deterministic mapping currently implemented:
 
@@ -161,6 +181,25 @@ Deterministic mapping currently implemented:
    - `layout-form-layout`
    - `layout-unknown`
 5. Raw Power Fx formulas are preserved as comments/TODO handler stubs (no semantic translation).
+6. Formula hotspot planning records are emitted for each classified formula:
+   - screen
+   - control
+   - property
+   - formula bucket
+   - original Power Fx
+   - generated stub name
+   - likely manual implementation area
+   - severity
+   - recommendation
+7. Formula hotspot plan is written into `generation-plan.json`, `generation-plan.md`, and `migration-notes.md`.
+
+Overwrite safety behavior:
+
+- Default mode skips conflicting existing files and records skip warnings/review items.
+- `--force` allows planned overwrite actions.
+- `--dry-run` writes only plan files (`generation-plan.json`, `generation-plan.md`), not generated React/report artifacts.
+- `--dry-run --clean` performs planning as if marker-tagged files were cleaned, without mutating the filesystem.
+- `--clean` removes only marker-tagged generated files and leaves unmarked files untouched.
 
 Current limitations:
 

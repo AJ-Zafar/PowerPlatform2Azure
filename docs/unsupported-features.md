@@ -98,6 +98,14 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: Canvas Power Fx formulas are preserved in generated React output.
     - Handling: formulas are emitted as TODO comments/handler stubs; no automatic TypeScript translation is attempted.
 
+22. `generation.file-conflict-skipped`
+    - Trigger: output file already exists and differs from planned generated content while `--force` is not set.
+    - Handling: generation plan marks file action as `skip`, emits a warning/manual review item, and does not overwrite the file.
+
+23. `generation.clean-unmarked-file-preserved`
+    - Trigger: `--clean` is used and a file does not contain the Power Exit generated-file marker.
+    - Handling: file is preserved and may still conflict during generation; review `generation-plan.json` skipped files.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
@@ -109,6 +117,8 @@ Detailed entries are added as parser milestones are implemented.
 - SQL DDL generation is deterministic but intentionally conservative; unsupported records indicate required manual schema/application design.
 - React skeleton generation is deterministic and conservative; unsupported controls are placeholders and require manual conversion.
 - React generator does not use AI/external model APIs and does not perform semantic Power Fx translation in this pass.
+- Dry-run mode is planning-only and intentionally does not emit generated SQL/React artifacts.
+- Safe-write mode can leave skipped files that require manual conflict resolution or explicit `--force`.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
 - Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
 - Canvas readiness scoring is preparatory metadata and not a full migration assessment score.

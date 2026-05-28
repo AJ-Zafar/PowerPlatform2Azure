@@ -11,7 +11,9 @@ import {
 
 import {
   createGenerationResultSchema,
+  generationFormulaHotspotSchema,
   type GenerationResult,
+  type GenerationFormulaHotspot,
   type GenerationUnsupportedFeature,
   type GenerationWarning,
   type GeneratedArtifact,
@@ -28,6 +30,7 @@ const reactGenerationOutputSchema = z
     stubsGenerated: z.number().int().nonnegative(),
     unsupportedFormulas: z.number().int().nonnegative(),
     manualConversionHotspots: z.number().int().nonnegative(),
+    formulaHotspots: z.array(generationFormulaHotspotSchema),
     unsupportedControls: z.number().int().nonnegative(),
     warnings: z.number().int().nonnegative()
   })
@@ -753,6 +756,7 @@ interface ScreenComponentResult {
   bucketCounts: Record<FormulaBucket, number>;
   azureApiHints: string[];
   formulaHotspotNotes: string[];
+  formulaHotspots: GenerationFormulaHotspot[];
 }
 
 const knownFunctionClassifications: Record<
@@ -936,6 +940,47 @@ const formulaBucketPriority: FormulaBucket[] = [
   "transformation",
   "unknownComplex"
 ];
+
+const manualImplementationAreaByBucket: Record<FormulaBucket, string> = {
+  stateManagement: "stateService + React state/reducer wiring",
+  dataOperations: "dataService + queryHelpers integration",
+  navigation: "navigationService + Next.js route wiring",
+  displayLogic: "component conditional rendering and derived UI state",
+  transformation: "queryHelpers value/format conversion helpers",
+  unknownComplex: "manual Power Fx translation layer"
+};
+
+const recommendationByBucket: Record<FormulaBucket, string> = {
+  stateManagement: "Define explicit state ownership and map Set/UpdateContext mutations to typed state APIs.",
+  dataOperations:
+    "Replace data formulas with explicit async service calls and contract-tested API adapters.",
+  navigation: "Map navigation formulas to route helpers and verify path/state handoff behavior.",
+  displayLogic:
+    "Extract conditional UI logic into testable selectors before wiring component rendering branches.",
+  transformation:
+    "Move conversion and formatting logic into reusable helper functions with unit tests.",
+  unknownComplex:
+    "Treat this formula as manual migration work and split logic into smaller typed units."
+};
+
+const hotspotSeverity = (analysis: FormulaAnalysis): GenerationFormulaHotspot["severity"] => {
+  if (
+    analysis.unsupportedFunctions.length > 0 ||
+    analysis.warningCodes.some((code) => code.startsWith("REACT_FORMULA_COMPLEXITY"))
+  ) {
+    return "high";
+  }
+
+  if (analysis.bucket === "dataOperations" || analysis.bucket === "stateManagement") {
+    return "medium";
+  }
+
+  if (analysis.bucket === "unknownComplex") {
+    return "high";
+  }
+
+  return "low";
+};
 
 const extractFormulaFunctions = (expression: string): string[] => {
   const matches = expression.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g);
@@ -1299,9 +1344,27 @@ ${stubLines}
   };
   const azureApiHints = new Set<string>();
   const hotspotNotes = new Set<string>();
+  const formulaHotspots: GenerationFormulaHotspot[] = [];
   let unsupportedFormulaCount = 0;
 
   formulaAnalyses.forEach(({ record, analysis }) => {
+    const controlName =
+      record.formula.ownerType === "control"
+        ? record.ownerLabel.replace(/^control:/, "")
+        : null;
+    const propertyName = record.formula.propertyName ?? "UnknownProperty";
+    formulaHotspots.push({
+      screen: screen.screenName,
+      control: controlName,
+      property: propertyName,
+      formulaBucket: analysis.bucket,
+      originalPowerFx: record.formula.rawExpression,
+      generatedStubName: record.functionName,
+      likelyManualImplementationArea: manualImplementationAreaByBucket[analysis.bucket],
+      severity: hotspotSeverity(analysis),
+      recommendation: recommendationByBucket[analysis.bucket]
+    });
+
     if (!record.formula.ownerArtifactId || record.formula.ownerType !== "control") {
       analysis.services.forEach((service) => importedServices.add(service));
       bucketCounts[analysis.bucket] += 1;
@@ -1449,7 +1512,12 @@ ${renderedControls || "      <p>TODO: map screen controls</p>"}
     manualConversionHotspots: hotspotNotes.size,
     bucketCounts,
     azureApiHints: sortByStableKey(Array.from(azureApiHints), (hint) => hint),
-    formulaHotspotNotes: sortByStableKey(Array.from(hotspotNotes), (note) => note)
+    formulaHotspotNotes: sortByStableKey(Array.from(hotspotNotes), (note) => note),
+    formulaHotspots: sortByStableKey(
+      formulaHotspots,
+      (hotspot) =>
+        `${hotspot.screen}:${hotspot.control ?? "(screen)"}:${hotspot.property}:${hotspot.generatedStubName}`
+    )
   };
 };
 
@@ -1632,7 +1700,8 @@ const buildMigrationNotes = (
   formulaEntries: Array<{ owner: string; expression: string }>,
   bucketCounts: Record<FormulaBucket, number>,
   hotspotNotes: string[],
-  azureApiHints: string[]
+  azureApiHints: string[],
+  formulaHotspots: GenerationFormulaHotspot[]
 ): string => {
   const lines: string[] = [];
   lines.push("# Canvas to React Migration Notes");
@@ -1670,6 +1739,24 @@ const buildMigrationNotes = (
     lines.push("- None.");
   } else {
     hotspotNotes.forEach((note) => lines.push(`- ${note}`));
+  }
+  lines.push("");
+  lines.push("## Formula hotspot plan");
+  lines.push("");
+  if (formulaHotspots.length === 0) {
+    lines.push("- None.");
+  } else {
+    formulaHotspots.forEach((hotspot) => {
+      lines.push(
+        `- [${hotspot.severity}] screen=${hotspot.screen} control=${hotspot.control ?? "(screen)"} property=${
+          hotspot.property
+        } bucket=${hotspot.formulaBucket}`
+      );
+      lines.push(`  - original Power Fx: \`${safeComment(hotspot.originalPowerFx)}\``);
+      lines.push(`  - generated stub: \`${hotspot.generatedStubName}\``);
+      lines.push(`  - likely manual area: ${hotspot.likelyManualImplementationArea}`);
+      lines.push(`  - recommendation: ${hotspot.recommendation}`);
+    });
   }
   lines.push("");
   lines.push("## likely Azure API requirements");
@@ -1766,6 +1853,7 @@ export const generateCanvasReactArtifacts = async (
   const formulaEntries: Array<{ owner: string; expression: string }> = [];
   const hotspotNotes = new Set<string>();
   const azureApiHints = new Set<string>();
+  const formulaHotspots: GenerationFormulaHotspot[] = [];
   const aggregateBucketCounts: Record<FormulaBucket, number> = {
     stateManagement: 0,
     dataOperations: 0,
@@ -1850,6 +1938,7 @@ export default function RootLayout({
       manualConversionHotspots += component.manualConversionHotspots;
       component.azureApiHints.forEach((hint) => azureApiHints.add(hint));
       component.formulaHotspotNotes.forEach((note) => hotspotNotes.add(note));
+      component.formulaHotspots.forEach((hotspot) => formulaHotspots.push(hotspot));
       (Object.keys(component.bucketCounts) as FormulaBucket[]).forEach((bucket) => {
         aggregateBucketCounts[bucket] += component.bucketCounts[bucket];
       });
@@ -1939,6 +2028,19 @@ export default function Page(): JSX.Element {
       analysis.hotspotReasons.forEach((reason) =>
         hotspotNotes.add(`app:${app.appName}.${formula.propertyName ?? "Formula"}: ${reason}`)
       );
+      formulaHotspots.push({
+        screen: `app:${app.appName}`,
+        control: null,
+        property: formula.propertyName ?? "Formula",
+        formulaBucket: analysis.bucket,
+        originalPowerFx: formula.rawExpression,
+        generatedStubName: `handle${toPascalCase(app.appName)}${toPascalCase(
+          formula.propertyName ?? "Formula"
+        )}`,
+        likelyManualImplementationArea: manualImplementationAreaByBucket[analysis.bucket],
+        severity: hotspotSeverity(analysis),
+        recommendation: recommendationByBucket[analysis.bucket]
+      });
       analysis.warningCodes.forEach((warningCode, warningIndex) => {
         warnings.push(
           createWarning({
@@ -1983,6 +2085,11 @@ export default function Page(): JSX.Element {
     stubsGenerated,
     unsupportedFormulas,
     manualConversionHotspots,
+    formulaHotspots: sortByStableKey(
+      formulaHotspots,
+      (hotspot) =>
+        `${hotspot.screen}:${hotspot.control ?? "(screen)"}:${hotspot.property}:${hotspot.generatedStubName}`
+    ),
     unsupportedControls,
     warnings: warnings.length
   };
@@ -1992,7 +2099,8 @@ export default function Page(): JSX.Element {
     sortByStableKey(formulaEntries, (entry) => `${entry.owner}:${entry.expression}`),
     aggregateBucketCounts,
     sortByStableKey(Array.from(hotspotNotes), (note) => note),
-    sortByStableKey(Array.from(azureApiHints), (hint) => hint)
+    sortByStableKey(Array.from(azureApiHints), (hint) => hint),
+    output.formulaHotspots
   );
   const sourceArtifactIds = uniqueArtifactIds([
     ...sortedApps.map((app) => app.artifactId),

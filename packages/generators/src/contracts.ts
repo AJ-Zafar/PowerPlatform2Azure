@@ -75,6 +75,142 @@ export const generatedArtifactSchema = z
 
 export type GeneratedArtifact = z.infer<typeof generatedArtifactSchema>;
 
+export const generationPlanActionSchema = z.enum([
+  "create",
+  "overwrite",
+  "skip",
+  "unchanged"
+]);
+
+export type GenerationPlanAction = z.infer<typeof generationPlanActionSchema>;
+
+export const generationPlanFileWarningSchema = z
+  .object({
+    code: z.string().min(1),
+    message: z.string().min(1)
+  })
+  .strict();
+
+export type GenerationPlanFileWarning = z.infer<typeof generationPlanFileWarningSchema>;
+
+export const generationPlannedFileSchema = z
+  .object({
+    path: z.string().min(1),
+    artifactType: z.string().min(1),
+    sourceArtifactIds: z.array(artifactIdSchema),
+    action: generationPlanActionSchema,
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+    confidence: confidenceScoreSchema,
+    warnings: z.array(generationPlanFileWarningSchema)
+  })
+  .strict();
+
+export type GenerationPlannedFile = z.infer<typeof generationPlannedFileSchema>;
+
+export const generationSkippedFileSchema = z
+  .object({
+    path: z.string().min(1),
+    reason: z.string().min(1),
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/)
+  })
+  .strict();
+
+export type GenerationSkippedFile = z.infer<typeof generationSkippedFileSchema>;
+
+export const generationOverwrittenFileSchema = z
+  .object({
+    path: z.string().min(1),
+    previousContentHash: z.string().regex(/^[a-f0-9]{64}$/),
+    nextContentHash: z.string().regex(/^[a-f0-9]{64}$/)
+  })
+  .strict();
+
+export type GenerationOverwrittenFile = z.infer<typeof generationOverwrittenFileSchema>;
+
+export const generationFormulaHotspotSchema = z
+  .object({
+    screen: z.string().min(1),
+    control: z.string().min(1).nullable(),
+    property: z.string().min(1),
+    formulaBucket: z.string().min(1),
+    originalPowerFx: z.string().min(1),
+    generatedStubName: z.string().min(1),
+    likelyManualImplementationArea: z.string().min(1),
+    severity: unsupportedFeatureSeveritySchema,
+    recommendation: z.string().min(1)
+  })
+  .strict();
+
+export type GenerationFormulaHotspot = z.infer<typeof generationFormulaHotspotSchema>;
+
+export const generationManualReviewItemSchema = z
+  .object({
+    id: z.string().min(1),
+    category: z.string().min(1),
+    severity: unsupportedFeatureSeveritySchema,
+    message: z.string().min(1),
+    relatedPaths: z.array(z.string().min(1)),
+    sourceArtifactIds: z.array(artifactIdSchema)
+  })
+  .strict();
+
+export type GenerationManualReviewItem = z.infer<typeof generationManualReviewItemSchema>;
+
+export const sqlGenerationPlanDetailsSchema = z
+  .object({
+    tablesToCreate: z.array(z.string().min(1)),
+    columnsToCreate: z.array(
+      z
+        .object({
+          table: z.string().min(1),
+          column: z.string().min(1)
+        })
+        .strict()
+    ),
+    foreignKeysToCreate: z.array(z.string().min(1)),
+    joinTablesToCreate: z.array(z.string().min(1)),
+    unsupportedColumns: z.array(z.string().min(1)),
+    unresolvedRelationships: z.array(z.string().min(1)),
+    namingCollisions: z.array(z.string().min(1))
+  })
+  .strict();
+
+export type SqlGenerationPlanDetails = z.infer<typeof sqlGenerationPlanDetailsSchema>;
+
+export const generationPlanSummarySchema = z
+  .object({
+    totalPlannedFiles: z.number().int().nonnegative(),
+    totalPlannedDirectories: z.number().int().nonnegative(),
+    creates: z.number().int().nonnegative(),
+    overwrites: z.number().int().nonnegative(),
+    skips: z.number().int().nonnegative(),
+    unchanged: z.number().int().nonnegative(),
+    warnings: z.number().int().nonnegative(),
+    unsupportedFeatures: z.number().int().nonnegative(),
+    formulaHotspots: z.number().int().nonnegative(),
+    manualReviewItems: z.number().int().nonnegative()
+  })
+  .strict();
+
+export type GenerationPlanSummary = z.infer<typeof generationPlanSummarySchema>;
+
+export const generationPlanSchema = z
+  .object({
+    plannedFiles: z.array(generationPlannedFileSchema),
+    plannedDirectories: z.array(z.string().min(1)),
+    skippedFiles: z.array(generationSkippedFileSchema),
+    overwrittenFiles: z.array(generationOverwrittenFileSchema),
+    warnings: z.array(generationWarningSchema),
+    unsupportedFeatures: z.array(generationUnsupportedFeatureSchema),
+    formulaHotspots: z.array(generationFormulaHotspotSchema),
+    manualReviewItems: z.array(generationManualReviewItemSchema),
+    summary: generationPlanSummarySchema,
+    sqlPlan: sqlGenerationPlanDetailsSchema.nullable()
+  })
+  .strict();
+
+export type GenerationPlan = z.infer<typeof generationPlanSchema>;
+
 export const createGenerationResultSchema = <TOutput extends z.ZodType>(outputSchema: TOutput) =>
   z
     .object({

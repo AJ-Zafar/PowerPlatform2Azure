@@ -1,20 +1,40 @@
 export {
   createGenerationResultSchema,
   createGenerator,
+  generationFormulaHotspotSchema,
+  generationManualReviewItemSchema,
+  generationOverwrittenFileSchema,
+  generationPlanActionSchema,
+  generationPlanFileWarningSchema,
+  generationPlanSchema,
+  generationPlanSummarySchema,
+  generationPlannedFileSchema,
+  generationSkippedFileSchema,
   generationUnsupportedFeatureSchema,
   generatedArtifactSchema,
   generationWarningSchema,
   generatorCapabilitySchema,
   generatorContextSchema,
+  sqlGenerationPlanDetailsSchema,
   unknownGenerationResultSchema,
   validateGenerationResult,
   type GeneratedArtifact,
+  type GenerationFormulaHotspot,
+  type GenerationManualReviewItem,
+  type GenerationOverwrittenFile,
+  type GenerationPlan,
+  type GenerationPlanAction,
+  type GenerationPlanFileWarning,
+  type GenerationPlanSummary,
+  type GenerationPlannedFile,
   type GenerationResult,
+  type GenerationSkippedFile,
   type GenerationUnsupportedFeature,
   type GenerationWarning,
   type Generator,
   type GeneratorCapability,
-  type GeneratorContext
+  type GeneratorContext,
+  type SqlGenerationPlanDetails
 } from "./contracts";
 export {
   createGeneratorRegistry,
@@ -30,3 +50,15 @@ export {
   generateCanvasReactFromPowerPlatformIR,
   type CanvasReactGenerationOutput
 } from "./react";
+export {
+  GENERATED_FILE_MARKER_TEXT,
+  computeContentHash,
+  hasGeneratedFileMarker,
+  planGeneration,
+  renderGenerationPlanMarkdown,
+  serializeGenerationPlan,
+  type ExistingFileState,
+  type PlannedArtifactWrite,
+  type PlanGenerationInput,
+  type PlanGenerationResult
+} from "./planning";

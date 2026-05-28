@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rmdir, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { serializeDeterministicIR, validatePowerPlatformIR } from "@power-exit/ir";
@@ -9,7 +9,13 @@ import {
 } from "@power-exit/assessment";
 import {
   generateCanvasReactFromPowerPlatformIR,
-  generateDataverseSqlFromPowerPlatformIR
+  generateDataverseSqlFromPowerPlatformIR,
+  hasGeneratedFileMarker,
+  planGeneration,
+  renderGenerationPlanMarkdown,
+  serializeGenerationPlan,
+  type ExistingFileState,
+  type GenerationManualReviewItem
 } from "@power-exit/generators";
 import { analyseSolutionFolder } from "@power-exit/parsers";
 
@@ -45,11 +51,17 @@ interface ReportArgs {
 interface GenerateSqlArgs {
   irFilePath: string;
   outputFolder: string;
+  dryRun: boolean;
+  force: boolean;
+  clean: boolean;
 }
 
 interface GenerateReactArgs {
   irFilePath: string;
   outputFolder: string;
+  dryRun: boolean;
+  force: boolean;
+  clean: boolean;
 }
 
 const parseAnalyseArgs = (args: string[]): AnalyseArgs => {
@@ -135,12 +147,15 @@ const parseGenerateSqlArgs = (args: string[]): GenerateSqlArgs => {
   if (args.length < 3) {
     throw new CliError(
       "INVALID_ARGUMENTS",
-      "Usage: power-exit generate sql <ir-json> --out <output-folder>"
+      "Usage: power-exit generate sql <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]"
     );
   }
 
   const [irFilePath, ...flags] = args;
   let outputFolder: string | undefined;
+  let dryRun = false;
+  let force = false;
+  let clean = false;
 
   for (let index = 0; index < flags.length; index += 1) {
     const flag = flags[index];
@@ -148,6 +163,21 @@ const parseGenerateSqlArgs = (args: string[]): GenerateSqlArgs => {
     if (flag === "--out") {
       outputFolder = flags[index + 1];
       index += 1;
+      continue;
+    }
+
+    if (flag === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+
+    if (flag === "--force") {
+      force = true;
+      continue;
+    }
+
+    if (flag === "--clean") {
+      clean = true;
       continue;
     }
 
@@ -163,7 +193,10 @@ const parseGenerateSqlArgs = (args: string[]): GenerateSqlArgs => {
 
   return {
     irFilePath: path.resolve(irFilePath),
-    outputFolder: path.resolve(outputFolder)
+    outputFolder: path.resolve(outputFolder),
+    dryRun,
+    force,
+    clean
   };
 };
 
@@ -171,12 +204,15 @@ const parseGenerateReactArgs = (args: string[]): GenerateReactArgs => {
   if (args.length < 3) {
     throw new CliError(
       "INVALID_ARGUMENTS",
-      "Usage: power-exit generate react <ir-json> --out <output-folder>"
+      "Usage: power-exit generate react <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]"
     );
   }
 
   const [irFilePath, ...flags] = args;
   let outputFolder: string | undefined;
+  let dryRun = false;
+  let force = false;
+  let clean = false;
 
   for (let index = 0; index < flags.length; index += 1) {
     const flag = flags[index];
@@ -184,6 +220,21 @@ const parseGenerateReactArgs = (args: string[]): GenerateReactArgs => {
     if (flag === "--out") {
       outputFolder = flags[index + 1];
       index += 1;
+      continue;
+    }
+
+    if (flag === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+
+    if (flag === "--force") {
+      force = true;
+      continue;
+    }
+
+    if (flag === "--clean") {
+      clean = true;
       continue;
     }
 
@@ -199,7 +250,10 @@ const parseGenerateReactArgs = (args: string[]): GenerateReactArgs => {
 
   return {
     irFilePath: path.resolve(irFilePath),
-    outputFolder: path.resolve(outputFolder)
+    outputFolder: path.resolve(outputFolder),
+    dryRun,
+    force,
+    clean
   };
 };
 
@@ -262,6 +316,150 @@ const ensureOutputFolder = async (outputFolder: string): Promise<void> => {
       outputFolder
     });
   }
+};
+
+const cleanGeneratedFiles = async (targetFolder: string): Promise<void> => {
+  let entries;
+  try {
+    entries = await readdir(targetFolder, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const entryPath = path.join(targetFolder, entry.name);
+    if (entry.isDirectory()) {
+      await cleanGeneratedFiles(entryPath);
+      try {
+        await rmdir(entryPath);
+      } catch {
+        // Keep non-empty directories.
+      }
+      continue;
+    }
+
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    try {
+      const content = await readFile(entryPath, "utf-8");
+      if (hasGeneratedFileMarker(content)) {
+        await unlink(entryPath);
+      }
+    } catch {
+      // Non-text files and read/delete errors are intentionally ignored in clean mode.
+    }
+  }
+};
+
+const loadExistingFiles = async (
+  outputFolder: string,
+  artifactPaths: string[]
+): Promise<ExistingFileState[]> => {
+  const existingFiles: ExistingFileState[] = [];
+
+  for (const artifactPath of artifactPaths) {
+    const absolutePath = path.join(outputFolder, artifactPath);
+    try {
+      const metadata = await stat(absolutePath);
+      if (!metadata.isFile()) {
+        continue;
+      }
+      existingFiles.push({
+        path: artifactPath,
+        content: await readFile(absolutePath, "utf-8")
+      });
+    } catch {
+      // Missing files are expected and excluded from existing snapshot.
+    }
+  }
+
+  return existingFiles;
+};
+
+const writePlannedArtifacts = async (
+  outputFolder: string,
+  writes: Array<{ path: string; content: string }>
+): Promise<void> => {
+  for (const writeEntry of writes) {
+    const outputPath = path.join(outputFolder, writeEntry.path);
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, writeEntry.content, "utf-8");
+  }
+};
+
+const writeGenerationPlanFiles = async (
+  outputFolder: string,
+  jsonContent: string,
+  markdownContent: string
+): Promise<void> => {
+  await writeFile(path.join(outputFolder, "generation-plan.json"), jsonContent, "utf-8");
+  await writeFile(path.join(outputFolder, "generation-plan.md"), markdownContent, "utf-8");
+};
+
+const warningSeverityToReviewSeverity = (
+  warningCode: string
+): GenerationManualReviewItem["severity"] =>
+  warningCode.includes("UNSUPPORTED") || warningCode.includes("COMPLEXITY")
+    ? "medium"
+    : "low";
+
+const buildManualReviewItems = (input: {
+  warnings: Array<{ code: string; message: string; sourceArtifactIds: string[] }>;
+  unsupportedFeatures: Array<{
+    featureType: string;
+    reason: string;
+    severity: GenerationManualReviewItem["severity"];
+    sourceArtifactIds: string[];
+  }>;
+  formulaHotspots?: Array<{
+    generatedStubName: string;
+    recommendation: string;
+    severity: GenerationManualReviewItem["severity"];
+    screen: string;
+    control: string | null;
+    property: string;
+  }>;
+}): GenerationManualReviewItem[] => {
+  const reviewItems: GenerationManualReviewItem[] = [];
+
+  input.warnings.forEach((warning) => {
+    reviewItems.push({
+      id: `review:warning:${warning.code}:${warning.message}`,
+      category: "warning",
+      severity: warningSeverityToReviewSeverity(warning.code),
+      message: warning.message,
+      relatedPaths: [],
+      sourceArtifactIds: warning.sourceArtifactIds
+    });
+  });
+
+  input.unsupportedFeatures.forEach((feature) => {
+    reviewItems.push({
+      id: `review:unsupported:${feature.featureType}:${feature.reason}`,
+      category: "unsupported-feature",
+      severity: feature.severity,
+      message: feature.reason,
+      relatedPaths: [],
+      sourceArtifactIds: feature.sourceArtifactIds
+    });
+  });
+
+  (input.formulaHotspots ?? []).forEach((hotspot) => {
+    reviewItems.push({
+      id: `review:formula-hotspot:${hotspot.generatedStubName}`,
+      category: "formula-hotspot",
+      severity: hotspot.severity,
+      message: hotspot.recommendation,
+      relatedPaths: [
+        `${hotspot.screen}:${hotspot.control ?? "(screen)"}:${hotspot.property}`
+      ],
+      sourceArtifactIds: []
+    });
+  });
+
+  return reviewItems;
 };
 
 const executeAnalyse = async (
@@ -417,10 +615,40 @@ const executeGenerateSql = async (args: string[], stdout: WriteFn): Promise<void
     outputFolder: parsedArgs.outputFolder
   });
 
-  for (const artifact of generation.artifacts) {
-    const outputPath = path.join(parsedArgs.outputFolder, artifact.filePath);
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${artifact.content}\n`, "utf-8");
+  const artifactPaths = generation.artifacts.map((artifact) => artifact.filePath);
+  let existingFiles = await loadExistingFiles(
+    parsedArgs.outputFolder,
+    artifactPaths
+  );
+  if (parsedArgs.clean) {
+    if (parsedArgs.dryRun) {
+      existingFiles = existingFiles.filter((entry) => !hasGeneratedFileMarker(entry.content));
+    } else {
+      await cleanGeneratedFiles(parsedArgs.outputFolder);
+      existingFiles = await loadExistingFiles(parsedArgs.outputFolder, artifactPaths);
+    }
+  }
+  const manualReviewItems = buildManualReviewItems({
+    warnings: generation.warnings,
+    unsupportedFeatures: generation.unsupportedFeatures
+  });
+  const planned = planGeneration({
+    artifacts: generation.artifacts,
+    existingFiles,
+    force: parsedArgs.force,
+    warnings: generation.warnings,
+    unsupportedFeatures: generation.unsupportedFeatures,
+    manualReviewItems,
+    sqlPlan: generation.output.sqlPlan
+  });
+  await writeGenerationPlanFiles(
+    parsedArgs.outputFolder,
+    serializeGenerationPlan(planned.plan),
+    renderGenerationPlanMarkdown(planned.plan)
+  );
+
+  if (!parsedArgs.dryRun) {
+    await writePlannedArtifacts(parsedArgs.outputFolder, planned.writes);
   }
 
   stdout(
@@ -432,8 +660,14 @@ const executeGenerateSql = async (args: string[], stdout: WriteFn): Promise<void
       tablesGenerated: generation.output.tablesGenerated,
       columnsGenerated: generation.output.columnsGenerated,
       relationshipsGenerated: generation.output.relationshipsGenerated,
-      warnings: generation.warnings.length,
-      unsupportedFeatures: generation.unsupportedFeatures.length
+      warnings: planned.plan.summary.warnings,
+      unsupportedFeatures: planned.plan.summary.unsupportedFeatures,
+      dryRun: parsedArgs.dryRun,
+      force: parsedArgs.force,
+      clean: parsedArgs.clean,
+      skippedFiles: planned.plan.skippedFiles.length,
+      overwrittenFiles: planned.plan.overwrittenFiles.length,
+      planSummary: planned.plan.summary
     })
   );
 };
@@ -470,10 +704,41 @@ const executeGenerateReact = async (args: string[], stdout: WriteFn): Promise<vo
     outputFolder: parsedArgs.outputFolder
   });
 
-  for (const artifact of generation.artifacts) {
-    const outputPath = path.join(parsedArgs.outputFolder, artifact.filePath);
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${artifact.content}\n`, "utf-8");
+  const artifactPaths = generation.artifacts.map((artifact) => artifact.filePath);
+  let existingFiles = await loadExistingFiles(
+    parsedArgs.outputFolder,
+    artifactPaths
+  );
+  if (parsedArgs.clean) {
+    if (parsedArgs.dryRun) {
+      existingFiles = existingFiles.filter((entry) => !hasGeneratedFileMarker(entry.content));
+    } else {
+      await cleanGeneratedFiles(parsedArgs.outputFolder);
+      existingFiles = await loadExistingFiles(parsedArgs.outputFolder, artifactPaths);
+    }
+  }
+  const manualReviewItems = buildManualReviewItems({
+    warnings: generation.warnings,
+    unsupportedFeatures: generation.unsupportedFeatures,
+    formulaHotspots: generation.output.formulaHotspots
+  });
+  const planned = planGeneration({
+    artifacts: generation.artifacts,
+    existingFiles,
+    force: parsedArgs.force,
+    warnings: generation.warnings,
+    unsupportedFeatures: generation.unsupportedFeatures,
+    formulaHotspots: generation.output.formulaHotspots,
+    manualReviewItems
+  });
+  await writeGenerationPlanFiles(
+    parsedArgs.outputFolder,
+    serializeGenerationPlan(planned.plan),
+    renderGenerationPlanMarkdown(planned.plan)
+  );
+
+  if (!parsedArgs.dryRun) {
+    await writePlannedArtifacts(parsedArgs.outputFolder, planned.writes);
   }
 
   stdout(
@@ -491,7 +756,13 @@ const executeGenerateReact = async (args: string[], stdout: WriteFn): Promise<vo
       unsupportedFormulas: generation.output.unsupportedFormulas,
       manualConversionHotspots: generation.output.manualConversionHotspots,
       unsupportedControls: generation.output.unsupportedControls,
-      warnings: generation.output.warnings
+      warnings: planned.plan.summary.warnings,
+      dryRun: parsedArgs.dryRun,
+      force: parsedArgs.force,
+      clean: parsedArgs.clean,
+      skippedFiles: planned.plan.skippedFiles.length,
+      overwrittenFiles: planned.plan.overwrittenFiles.length,
+      planSummary: planned.plan.summary
     })
   );
 };
