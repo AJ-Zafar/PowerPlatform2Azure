@@ -375,3 +375,36 @@ Remaining planned mapping section:
 
 1. Azure Functions scaffold hardening into deployable service adapters (post-MVP).
 2. Infra scaffold extension for production-grade networking policy templates and environment promotion automation.
+
+## Implemented CLI orchestration mapping: `migrate` end-to-end workflow
+
+CLI:
+
+```bash
+power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean]
+```
+
+Deterministic orchestration currently implemented:
+
+1. Analyse solution -> validate IR -> write `ir.json`.
+2. Generate assessment markdown -> write `assessment-report.md`.
+3. Generate SQL artifacts under `sql/`.
+4. Generate React artifacts under `react/`.
+5. Generate Functions artifacts under `functions/`.
+6. Generate Infra artifacts under `infra/`.
+7. Build master `migration-plan.md` with summary/readiness/risk/complexity/hotspots/unsupported/security/waves/next tasks.
+8. Build master `generation-plan.json` + `generation-plan.md` covering all planned files/actions/hashes/manual review items and plan detail blocks (`sqlPlan`, `functionsPlan`, `infraPlan`, formula hotspots).
+
+Dry-run behavior:
+
+- `migrate --dry-run` still performs full analysis + generation planning.
+- Non-report scaffold artifacts are not emitted.
+- Master reports/plans are emitted for review (`ir.json`, `assessment-report.md`, `migration-plan.md`, `generation-plan.json`, `generation-plan.md`).
+
+Determinism validation harness:
+
+- Multi-run tests execute `migrate` repeatedly against the same fixture and compare:
+  - file lists
+  - file content hashes
+  - report/plan content equivalence
+- Any ordering drift/hash drift fails tests.

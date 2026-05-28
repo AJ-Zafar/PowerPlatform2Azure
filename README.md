@@ -69,6 +69,7 @@ power-exit generate sql <ir-json> --out <output-folder> [--dry-run] [--force] [-
 power-exit generate react <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 power-exit generate functions <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 power-exit generate infra <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
+power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean]
 ```
 
 Current behavior in this sprint:
@@ -133,6 +134,16 @@ Current behavior in this sprint:
 6. Default safe-write mode skips conflicting existing files (unless `--force`).
 7. Write scaffold files (or only plan files when `--dry-run`).
 8. Print structured summary counts (resources/modules/parameter files, warnings, unsupported features, plan summary).
+
+`migrate` command behavior:
+
+1. Analyse solution and validate deterministic IR.
+2. Write `ir.json` and `assessment-report.md`.
+3. Run SQL, React, Functions, and Infra generators from the same validated IR.
+4. Compose a master `generation-plan.json` + `generation-plan.md` spanning all generated outputs.
+5. Write a master `migration-plan.md` with executive summary, readiness/risk/complexity, hotspots, unsupported features, security notes, migration waves, and next tasks.
+6. Apply safe-write semantics across all generated artifacts (`--dry-run`, `--force`, `--clean`).
+7. Emit structured migrate summary metrics in CLI output.
 
 `--clean` behavior:
 
@@ -287,6 +298,25 @@ Security-first defaults:
 - Sensitive values are represented as placeholder references only; no live credentials/secrets are emitted.
 - Networking/private endpoints, Entra ID auth, SQL firewall, RBAC, monitoring/alerting, backup/retention, and environment promotion are explicit TODOs in generated infra artifacts.
 - Deployment readiness is scaffold-only and requires manual configuration + security review.
+
+## End-to-end quickstart
+
+Use this deterministic sequence for a full migration packaging run:
+
+1. `power-exit analyse <solution-folder> --out <output-folder>`
+2. `power-exit report <output-folder>/ir.json --out <output-folder>`
+3. `power-exit generate sql <output-folder>/ir.json --out <output-folder>`
+4. `power-exit generate react <output-folder>/ir.json --out <output-folder>`
+5. `power-exit generate functions <output-folder>/ir.json --out <output-folder>`
+6. `power-exit generate infra <output-folder>/ir.json --out <output-folder>`
+7. `power-exit migrate <solution-folder> --out <output-folder>`
+
+Sample command block:
+
+```bash
+power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/migrate-e2e
+power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/migrate-e2e-dry --dry-run
+```
 
 ## Azure SQL DDL generation (first generator)
 

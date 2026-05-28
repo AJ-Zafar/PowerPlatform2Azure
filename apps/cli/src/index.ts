@@ -5,7 +5,8 @@ import path from "node:path";
 import { serializeDeterministicIR, validatePowerPlatformIR } from "@power-exit/ir";
 import {
   assessPowerPlatformIR,
-  generateAssessmentReportMarkdown
+  generateAssessmentReportMarkdown,
+  type MigrationAssessment
 } from "@power-exit/assessment";
 import {
   generateAzureInfraFromPowerPlatformIR,
@@ -16,6 +17,11 @@ import {
   planGeneration,
   renderGenerationPlanMarkdown,
   serializeGenerationPlan,
+  type FunctionsGenerationPlanDetails,
+  type GeneratedArtifact,
+  type GenerationUnsupportedFeature,
+  type GenerationWarning,
+  type InfraGenerationPlanDetails,
   type ExistingFileState,
   type GenerationManualReviewItem
 } from "@power-exit/generators";
@@ -76,6 +82,14 @@ interface GenerateFunctionsArgs {
 
 interface GenerateInfraArgs {
   irFilePath: string;
+  outputFolder: string;
+  dryRun: boolean;
+  force: boolean;
+  clean: boolean;
+}
+
+interface MigrateArgs {
+  solutionFolder: string;
   outputFolder: string;
   dryRun: boolean;
   force: boolean;
@@ -382,6 +396,63 @@ const parseGenerateInfraArgs = (args: string[]): GenerateInfraArgs => {
 
   return {
     irFilePath: path.resolve(irFilePath),
+    outputFolder: path.resolve(outputFolder),
+    dryRun,
+    force,
+    clean
+  };
+};
+
+const parseMigrateArgs = (args: string[]): MigrateArgs => {
+  if (args.length < 3) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean]"
+    );
+  }
+
+  const [solutionFolder, ...flags] = args;
+  let outputFolder: string | undefined;
+  let dryRun = false;
+  let force = false;
+  let clean = false;
+
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+
+    if (flag === "--out") {
+      outputFolder = flags[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (flag === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+
+    if (flag === "--force") {
+      force = true;
+      continue;
+    }
+
+    if (flag === "--clean") {
+      clean = true;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  if (!outputFolder) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Missing required --out <output-folder> argument."
+    );
+  }
+
+  return {
+    solutionFolder: path.resolve(solutionFolder),
     outputFolder: path.resolve(outputFolder),
     dryRun,
     force,
@@ -704,6 +775,151 @@ const buildManualReviewItems = (input: {
   }
 
   return reviewItems;
+};
+
+const withOutputPrefix = (
+  artifacts: GeneratedArtifact[],
+  prefix: string
+): GeneratedArtifact[] =>
+  artifacts.map((artifact) => ({
+    ...artifact,
+    artifactId: `${artifact.artifactId}:${prefix}`,
+    filePath: `${prefix}/${artifact.filePath}`.replace(/\/+/g, "/")
+  }));
+
+const withPrefixedFunctionsPlan = (
+  functionsPlan: FunctionsGenerationPlanDetails,
+  prefix: string
+): FunctionsGenerationPlanDetails => ({
+  ...functionsPlan,
+  plannedAdapterFiles: functionsPlan.plannedAdapterFiles.map((adapterFile) => ({
+    ...adapterFile,
+    filePath: `${prefix}/${adapterFile.filePath}`.replace(/\/+/g, "/")
+  })),
+  connectorAdapterMappings: functionsPlan.connectorAdapterMappings.map((mapping) => ({
+    ...mapping,
+    adapterFilePath: `${prefix}/${mapping.adapterFilePath}`.replace(/\/+/g, "/")
+  }))
+});
+
+const withPrefixedInfraPlan = (
+  infraPlan: InfraGenerationPlanDetails,
+  prefix: string
+): InfraGenerationPlanDetails => ({
+  ...infraPlan,
+  environmentParameterFiles: infraPlan.environmentParameterFiles.map((filePath) =>
+    filePath.startsWith(`${prefix}/`) ? filePath : `${prefix}/${filePath}`.replace(/\/+/g, "/")
+  ),
+  plannedModules: infraPlan.plannedModules.map((modulePath) =>
+    modulePath.startsWith(`${prefix}/`)
+      ? modulePath
+      : `${prefix}/${modulePath}`.replace(/\/+/g, "/")
+  ),
+  contentHashes: infraPlan.contentHashes.map((entry) => ({
+    ...entry,
+    path: entry.path.startsWith(`${prefix}/`)
+      ? entry.path
+      : `${prefix}/${entry.path}`.replace(/\/+/g, "/")
+  }))
+});
+
+const isReportLikeArtifactType = (artifactType: string): boolean =>
+  ["ir-json", "markdown-report", "markdown-readme", "markdown-notes"].includes(artifactType);
+
+const renderMasterMigrationPlanMarkdown = (input: {
+  solutionFolder: string;
+  ir: ReturnType<typeof validatePowerPlatformIR>;
+  assessment: MigrationAssessment;
+  planSummary: {
+    totalPlannedFiles: number;
+    creates: number;
+    overwrites: number;
+    skips: number;
+    unchanged: number;
+    warnings: number;
+    unsupportedFeatures: number;
+    manualReviewItems: number;
+  };
+  generatedOutputs: Array<{ label: string; value: string }>;
+  manualReviewItems: GenerationManualReviewItem[];
+}): string => {
+  const lines: string[] = [];
+  lines.push("# Power Exit Master Migration Plan");
+  lines.push("");
+  lines.push("## Executive summary");
+  lines.push("");
+  lines.push(
+    `- Overall readiness: ${input.assessment.overallReadiness} (risk ${input.assessment.overallRiskScore}, complexity ${input.assessment.overallComplexityScore}, confidence ${input.assessment.overallConfidence.toFixed(2)}).`
+  );
+  lines.push(`- Planned generated files: ${input.planSummary.totalPlannedFiles}.`);
+  lines.push(
+    `- Plan actions: create=${input.planSummary.creates}, overwrite=${input.planSummary.overwrites}, skip=${input.planSummary.skips}, unchanged=${input.planSummary.unchanged}.`
+  );
+  lines.push("");
+  lines.push("## Solution metadata");
+  lines.push("");
+  lines.push(`- Solution name: ${input.ir.solution.name}`);
+  lines.push(`- Solution unique name: ${input.ir.solution.uniqueName}`);
+  lines.push(`- Solution version: ${input.ir.solution.version}`);
+  lines.push(`- Solution folder: ${input.solutionFolder}`);
+  lines.push(`- Publisher: ${input.ir.solution.publisher.displayName}`);
+  lines.push("");
+  lines.push("## Readiness/risk/complexity summary");
+  lines.push("");
+  lines.push(`- Overall readiness: ${input.assessment.overallReadiness}`);
+  lines.push(`- Overall risk score: ${input.assessment.overallRiskScore}`);
+  lines.push(`- Overall complexity score: ${input.assessment.overallComplexityScore}`);
+  lines.push(`- Overall confidence: ${input.assessment.overallConfidence.toFixed(2)}`);
+  lines.push("");
+  lines.push("## Generated outputs");
+  lines.push("");
+  input.generatedOutputs.forEach((entry) => lines.push(`- ${entry.label}: ${entry.value}`));
+  lines.push("");
+  lines.push("## Manual review hotspots");
+  lines.push("");
+  if (input.manualReviewItems.length === 0) {
+    lines.push("- None.");
+  } else {
+    input.manualReviewItems
+      .slice(0, 25)
+      .forEach((item) => lines.push(`- [${item.severity}] ${item.category}: ${item.message}`));
+  }
+  lines.push("");
+  lines.push("## Unsupported features");
+  lines.push("");
+  if (input.ir.unsupportedFeatures.length === 0) {
+    lines.push("- None.");
+  } else {
+    input.ir.unsupportedFeatures
+      .slice(0, 30)
+      .forEach((feature) =>
+        lines.push(`- [${feature.severity}] ${feature.featureType}: ${feature.reason}`)
+      );
+  }
+  lines.push("");
+  lines.push("## Security considerations");
+  lines.push("");
+  lines.push("- Enforce least-privilege RBAC for generated managed identities.");
+  lines.push("- Move sensitive settings to Key Vault references and avoid embedded secrets.");
+  lines.push("- Configure private endpoints/network segmentation before production rollout.");
+  lines.push("- Validate Entra ID auth and SQL firewall/network policies.");
+  lines.push("");
+  lines.push("## Recommended migration waves");
+  lines.push("");
+  input.assessment.migrationWaves.forEach((wave) =>
+    lines.push(`- ${wave.waveId}: ${wave.title} — ${wave.description}`)
+  );
+  lines.push("");
+  lines.push("## Next engineering tasks");
+  lines.push("");
+  lines.push(
+    "- Resolve skipped/conflicting files and re-run migrate with --force only when overwrite intent is explicit."
+  );
+  lines.push("- Address high/critical manual review hotspots before implementation sprints.");
+  lines.push("- Convert scaffolded React/Functions/Infra TODOs into production-ready implementations.");
+  lines.push("- Re-run deterministic validation harness after each major migration conversion pass.");
+
+  return `${lines.join("\n")}\n`;
 };
 
 const executeAnalyse = async (
@@ -1214,6 +1430,212 @@ const executeGenerate = async (args: string[], stdout: WriteFn): Promise<void> =
   );
 };
 
+const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const parsedArgs = parseMigrateArgs(args);
+
+  await ensureInputFolder(parsedArgs.solutionFolder);
+  await ensureOutputFolder(parsedArgs.outputFolder);
+
+  const analysis = await analyseSolutionFolder(parsedArgs.solutionFolder);
+  const validatedIr = validatePowerPlatformIR(analysis.ir);
+  const assessment = assessPowerPlatformIR(validatedIr);
+  const serializedIr = `${serializeDeterministicIR(validatedIr)}\n`;
+  const assessmentReport = `${generateAssessmentReportMarkdown(validatedIr, assessment)}\n`;
+
+  const generatorContext = {
+    invocationProvenance: {
+      sourcePath: parsedArgs.solutionFolder,
+      sourceType: "cli" as const
+    },
+    outputFolder: parsedArgs.outputFolder
+  };
+  const sqlGeneration = await generateDataverseSqlFromPowerPlatformIR(validatedIr, generatorContext);
+  const reactGeneration = await generateCanvasReactFromPowerPlatformIR(validatedIr, generatorContext);
+  const functionsGeneration = await generateAzureFunctionsFromPowerPlatformIR(validatedIr, generatorContext);
+  const infraGeneration = await generateAzureInfraFromPowerPlatformIR(validatedIr, generatorContext);
+
+  const sqlArtifacts = withOutputPrefix(sqlGeneration.artifacts, "sql");
+  const reactArtifacts = withOutputPrefix(reactGeneration.artifacts, "react");
+  const functionsArtifacts = withOutputPrefix(functionsGeneration.artifacts, "functions");
+  const infraArtifacts = infraGeneration.artifacts;
+
+  const combinedWarnings: GenerationWarning[] = [
+    ...sqlGeneration.warnings,
+    ...reactGeneration.warnings,
+    ...functionsGeneration.warnings,
+    ...infraGeneration.warnings
+  ];
+  const combinedUnsupported: GenerationUnsupportedFeature[] = [
+    ...sqlGeneration.unsupportedFeatures,
+    ...reactGeneration.unsupportedFeatures,
+    ...functionsGeneration.unsupportedFeatures,
+    ...infraGeneration.unsupportedFeatures
+  ];
+  const combinedFunctionsPlan = withPrefixedFunctionsPlan(
+    functionsGeneration.output.functionsPlan,
+    "functions"
+  );
+  const combinedInfraPlan = withPrefixedInfraPlan(infraGeneration.output.infraPlan, "infra");
+  const manualReviewItems = buildManualReviewItems({
+    warnings: combinedWarnings,
+    unsupportedFeatures: combinedUnsupported,
+    formulaHotspots: reactGeneration.output.formulaHotspots,
+    functionsPlan: combinedFunctionsPlan,
+    infraPlan: combinedInfraPlan
+  });
+
+  if (validatedIr.analysisSummary.unresolvedDependencies > 0) {
+    manualReviewItems.push({
+      id: "review:migrate-unresolved-dependencies",
+      category: "unresolved-dependencies",
+      severity: "high",
+      message: `Detected ${validatedIr.analysisSummary.unresolvedDependencies} unresolved dependencies in analysis output.`,
+      relatedPaths: ["ir.json"],
+      sourceArtifactIds: [validatedIr.solution.artifactId]
+    });
+  }
+
+  const generatedOutputSummary = [
+    { label: "IR file", value: "`ir.json`" },
+    { label: "Assessment report", value: "`assessment-report.md`" },
+    {
+      label: "SQL outputs",
+      value: `${sqlGeneration.output.tablesGenerated} tables, ${sqlGeneration.output.columnsGenerated} columns`
+    },
+    {
+      label: "React outputs",
+      value: `${reactGeneration.output.appsGenerated} apps, ${reactGeneration.output.screensGenerated} screens`
+    },
+    {
+      label: "Functions outputs",
+      value: `${functionsGeneration.output.functionsGenerated} functions (${functionsGeneration.output.flowFunctionsGenerated} flow + ${functionsGeneration.output.canvasApiFunctionsGenerated} canvas API)`
+    },
+    {
+      label: "Infra outputs",
+      value: `${infraGeneration.output.resourcesPlanned} resources across ${infraGeneration.output.modulesPlanned} modules`
+    }
+  ];
+
+  const baseArtifacts: GeneratedArtifact[] = [
+    {
+      artifactId: "generated:migrate:ir-json",
+      artifactType: "ir-json",
+      filePath: "ir.json",
+      content: serializedIr,
+      sourceArtifactIds: [validatedIr.solution.artifactId],
+      warnings: [],
+      provenance: generatorContext.invocationProvenance,
+      confidence: validatedIr.confidence
+    },
+    {
+      artifactId: "generated:migrate:assessment-report",
+      artifactType: "markdown-report",
+      filePath: "assessment-report.md",
+      content: assessmentReport,
+      sourceArtifactIds: [validatedIr.solution.artifactId],
+      warnings: [],
+      provenance: generatorContext.invocationProvenance,
+      confidence: assessment.overallConfidence
+    },
+    ...sqlArtifacts,
+    ...reactArtifacts,
+    ...functionsArtifacts,
+    ...infraArtifacts
+  ];
+  const seedPlan = planGeneration({
+    artifacts: baseArtifacts,
+    existingFiles: [],
+    force: parsedArgs.force,
+    warnings: combinedWarnings,
+    unsupportedFeatures: combinedUnsupported,
+    formulaHotspots: reactGeneration.output.formulaHotspots,
+    manualReviewItems,
+    sqlPlan: sqlGeneration.output.sqlPlan,
+    functionsPlan: combinedFunctionsPlan,
+    infraPlan: combinedInfraPlan
+  }).plan;
+  const migrationPlanContent = renderMasterMigrationPlanMarkdown({
+    solutionFolder: parsedArgs.solutionFolder,
+    ir: validatedIr,
+    assessment,
+    planSummary: seedPlan.summary,
+    generatedOutputs: generatedOutputSummary,
+    manualReviewItems
+  });
+  const migrationPlanArtifact: GeneratedArtifact = {
+    artifactId: "generated:migrate:migration-plan",
+    artifactType: "markdown-report",
+    filePath: "migration-plan.md",
+    content: migrationPlanContent,
+    sourceArtifactIds: [validatedIr.solution.artifactId],
+    warnings: [],
+    provenance: generatorContext.invocationProvenance,
+    confidence: assessment.overallConfidence
+  };
+  const allArtifacts = [...baseArtifacts, migrationPlanArtifact];
+  const artifactPaths = allArtifacts.map((artifact) => artifact.filePath);
+  let existingFiles = await loadExistingFiles(parsedArgs.outputFolder, artifactPaths);
+  if (parsedArgs.clean) {
+    if (parsedArgs.dryRun) {
+      existingFiles = existingFiles.filter((entry) => !hasGeneratedFileMarker(entry.content));
+    } else {
+      await cleanGeneratedFiles(parsedArgs.outputFolder);
+      existingFiles = await loadExistingFiles(parsedArgs.outputFolder, artifactPaths);
+    }
+  }
+
+  const planned = planGeneration({
+    artifacts: allArtifacts,
+    existingFiles,
+    force: parsedArgs.force,
+    warnings: combinedWarnings,
+    unsupportedFeatures: combinedUnsupported,
+    formulaHotspots: reactGeneration.output.formulaHotspots,
+    manualReviewItems,
+    sqlPlan: sqlGeneration.output.sqlPlan,
+    functionsPlan: combinedFunctionsPlan,
+    infraPlan: combinedInfraPlan
+  });
+
+  await writeGenerationPlanFiles(
+    parsedArgs.outputFolder,
+    serializeGenerationPlan(planned.plan),
+    renderGenerationPlanMarkdown(planned.plan)
+  );
+
+  const artifactByPath = new Map(allArtifacts.map((artifact) => [artifact.filePath, artifact]));
+  const writesToApply = parsedArgs.dryRun
+    ? planned.writes.filter((writeEntry) =>
+        isReportLikeArtifactType(artifactByPath.get(writeEntry.path)?.artifactType ?? "")
+      )
+    : planned.writes;
+  await writePlannedArtifacts(parsedArgs.outputFolder, writesToApply);
+
+  stdout(
+    JSON.stringify({
+      command: "migrate",
+      status: "success",
+      solutionFolder: parsedArgs.solutionFolder,
+      outputFolder: parsedArgs.outputFolder,
+      overallReadiness: assessment.overallReadiness,
+      overallRiskScore: assessment.overallRiskScore,
+      overallComplexityScore: assessment.overallComplexityScore,
+      tablesGenerated: sqlGeneration.output.tablesGenerated,
+      reactAppsGenerated: reactGeneration.output.appsGenerated,
+      functionsGenerated: functionsGeneration.output.functionsGenerated,
+      infraResourcesPlanned: infraGeneration.output.resourcesPlanned,
+      warnings: planned.plan.summary.warnings,
+      unsupportedFeatures: planned.plan.summary.unsupportedFeatures,
+      dryRun: parsedArgs.dryRun,
+      force: parsedArgs.force,
+      clean: parsedArgs.clean,
+      skippedFiles: planned.plan.skippedFiles.length,
+      overwrittenFiles: planned.plan.overwrittenFiles.length,
+      planSummary: planned.plan.summary
+    })
+  );
+};
+
 const formatError = (error: unknown): string => {
   if (error instanceof CliError) {
     return JSON.stringify({
@@ -1253,6 +1675,11 @@ export const runCli = async (
       return 0;
     }
 
+    if (command === "migrate") {
+      await executeMigrate(commandArgs, stdout);
+      return 0;
+    }
+
     if (!command) {
       throw new CliError(
         "INVALID_COMMAND",
@@ -1262,7 +1689,7 @@ export const runCli = async (
 
     throw new CliError(
       "INVALID_COMMAND",
-      "Supported commands are: analyse, report, generate."
+      "Supported commands are: analyse, report, generate, migrate."
     );
   } catch (error) {
     stderr(formatError(error));

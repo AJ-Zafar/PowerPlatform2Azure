@@ -1,0 +1,12 @@
+<ConnectionReferences>
+  <ConnectionReference>
+    <LogicalName>contoso_sharepoint</LogicalName>
+    <ConnectorType>shared_sharepointonline</ConnectorType>
+    <ConnectionMetadata>SharePoint production connection</ConnectionMetadata>
+  </ConnectionReference>
+  <ConnectionReference>
+    <LogicalName>contoso_outlook</LogicalName>
+    <ConnectorType>shared_office365</ConnectorType>
+    <ConnectionMetadata>Outlook mailbox connection</ConnectionMetadata>
+  </ConnectionReference>
+</ConnectionReferences>

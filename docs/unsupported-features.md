@@ -142,6 +142,14 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: infra scaffold generation always requires human hardening for networking, identity, RBAC, monitoring, backup, and promotion policy.
     - Handling: generator emits explicit security manual review items in `infraPlan` and migration notes.
 
+33. `migrate.dry-run.scaffold-not-emitted`
+    - Trigger: `power-exit migrate` is executed with `--dry-run`.
+    - Handling: migrate performs full planning/assessment but emits report/plan outputs only; non-report scaffold artifacts are intentionally not written.
+
+34. `migrate.master-plan.requires-human-review`
+    - Trigger: combined generation plan includes skipped files, unresolved dependencies, unsupported features, or high-severity review items.
+    - Handling: migrate emits master `generation-plan.*` and `migration-plan.md` to drive manual approval/remediation workflow.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
@@ -156,6 +164,7 @@ Detailed entries are added as parser milestones are implemented.
 - Dry-run mode is planning-only and intentionally does not emit generated SQL/React artifacts.
 - Dry-run mode is planning-only and intentionally does not emit generated Functions scaffold artifacts.
 - Dry-run mode is planning-only and intentionally does not emit generated infra/Bicep scaffold artifacts.
+- Migrate dry-run intentionally emits only report/plan artifacts and never claims deployment-ready outputs.
 - Safe-write mode can leave skipped files that require manual conflict resolution or explicit `--force`.
 - Azure Functions output is scaffold-only: trigger/action handlers, service adapters, and auth/validation flows are placeholders.
 - Azure infra output is scaffold-only: resources are placeholders with no deployment execution, no live credentials, and explicit manual hardening TODOs.

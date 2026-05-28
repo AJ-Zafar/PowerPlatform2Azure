@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -115,6 +116,35 @@ const readGenerationPlan = async (outputFolder: string): Promise<GenerationPlanP
   JSON.parse(
     await readFile(path.join(outputFolder, "generation-plan.json"), "utf-8")
   ) as GenerationPlanPayload;
+
+const collectFileHashes = async (
+  rootFolder: string,
+  currentFolder = rootFolder
+): Promise<Array<{ path: string; hash: string }>> => {
+  const entries = await readdir(currentFolder, { withFileTypes: true });
+  const files: Array<{ path: string; hash: string }> = [];
+
+  for (const entry of entries) {
+    const absolutePath = path.join(currentFolder, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectFileHashes(rootFolder, absolutePath)));
+      continue;
+    }
+
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    const relativePath = path.relative(rootFolder, absolutePath).replaceAll(path.sep, "/");
+    const content = await readFile(absolutePath, "utf-8");
+    files.push({
+      path: relativePath,
+      hash: createHash("sha256").update(content, "utf-8").digest("hex")
+    });
+  }
+
+  return files.sort((left, right) => left.path.localeCompare(right.path));
+};
 
 describe("power-exit analyse command", () => {
   it("produces deterministic ir.json for a valid input folder", async () => {
@@ -1344,6 +1374,218 @@ describe("power-exit generate infra command", () => {
     expect(
       await readFile(path.join(generateOutput, "infra/modules/app-service.bicep"), "utf-8")
     ).toContain("resource appServicePlan");
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+});
+
+describe("power-exit migrate command", () => {
+  it("runs end-to-end migrate workflow and writes generated folder structure", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "migrate-out");
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/migrate-e2e"
+    );
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    expect(
+      await runCli(
+        ["migrate", fixturePath, "--out", outputFolder],
+        stdOut.push.bind(stdOut),
+        stdErr.push.bind(stdErr)
+      )
+    ).toBe(0);
+
+    expect(await fileExists(path.join(outputFolder, "ir.json"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "assessment-report.md"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "migration-plan.md"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "generation-plan.json"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "generation-plan.md"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "sql/schema.sql"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "functions/host.json"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "infra/main.bicep"))).toBe(true);
+    expect(stdOut[0]).toContain('"command":"migrate"');
+    expect(stdOut[0]).toContain('"planSummary"');
+    expect(stdErr).toEqual([]);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("supports --dry-run and creates only plans and reports", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "migrate-out");
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/migrate-e2e"
+    );
+
+    expect(
+      await runCli(
+        ["migrate", fixturePath, "--out", outputFolder, "--dry-run"],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+
+    expect(await fileExists(path.join(outputFolder, "ir.json"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "assessment-report.md"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "migration-plan.md"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "generation-plan.json"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "generation-plan.md"))).toBe(true);
+    expect(await fileExists(path.join(outputFolder, "sql/schema.sql"))).toBe(false);
+    expect(await fileExists(path.join(outputFolder, "functions/host.json"))).toBe(false);
+    expect(await fileExists(path.join(outputFolder, "infra/main.bicep"))).toBe(false);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("skips conflicting files by default and overwrites with --force", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "migrate-out");
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/migrate-e2e"
+    );
+    const userOwnedSchema = "-- user-owned schema\nSELECT 42;\n";
+
+    await mkdir(path.join(outputFolder, "sql"), { recursive: true });
+    await writeFile(path.join(outputFolder, "sql/schema.sql"), userOwnedSchema, "utf-8");
+
+    expect(
+      await runCli(
+        ["migrate", fixturePath, "--out", outputFolder],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    expect(await readFile(path.join(outputFolder, "sql/schema.sql"), "utf-8")).toBe(userOwnedSchema);
+    const skippedPlan = await readGenerationPlan(outputFolder);
+    expect(skippedPlan.skippedFiles.some((entry) => entry.path === "sql/schema.sql")).toBe(true);
+
+    expect(
+      await runCli(
+        ["migrate", fixturePath, "--out", outputFolder, "--force"],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    expect(await readFile(path.join(outputFolder, "sql/schema.sql"), "utf-8")).toContain("CREATE TABLE");
+    const forcedPlan = await readGenerationPlan(outputFolder);
+    expect(forcedPlan.overwrittenFiles.some((entry) => entry.path === "sql/schema.sql")).toBe(true);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("supports --clean for marker-tagged files while preserving user-owned files", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "migrate-out");
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/migrate-e2e"
+    );
+    const markerLines =
+      "<!-- Generated by Power Exit. -->\n<!-- Do not edit directly unless you intend to own the generated file. -->\n";
+    const userOwnedIr = "{\n  \"owned\": true\n}\n";
+
+    await mkdir(path.join(outputFolder, "functions"), { recursive: true });
+    await writeFile(path.join(outputFolder, "ir.json"), userOwnedIr, "utf-8");
+    await writeFile(
+      path.join(outputFolder, "functions/migration-notes.md"),
+      `${markerLines}\nlegacy generated notes`,
+      "utf-8"
+    );
+
+    expect(
+      await runCli(
+        ["migrate", fixturePath, "--out", outputFolder, "--clean"],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+
+    expect(await readFile(path.join(outputFolder, "ir.json"), "utf-8")).toBe(userOwnedIr);
+    expect(await readFile(path.join(outputFolder, "functions/migration-notes.md"), "utf-8")).toContain(
+      "migration"
+    );
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("produces deterministic multi-run outputs for migrate command", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputA = path.join(tempRoot, "run-a");
+    const outputB = path.join(tempRoot, "run-b");
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/migrate-e2e"
+    );
+
+    expect(await runCli(["migrate", fixturePath, "--out", outputA], () => undefined, () => undefined)).toBe(0);
+    expect(await runCli(["migrate", fixturePath, "--out", outputB], () => undefined, () => undefined)).toBe(0);
+
+    const hashesA = await collectFileHashes(outputA);
+    const hashesB = await collectFileHashes(outputB);
+    expect(hashesA).toEqual(hashesB);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("writes master migration plan with expected sections and unsupported feature flow", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "migrate-out");
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/migrate-e2e"
+    );
+
+    expect(await runCli(["migrate", fixturePath, "--out", outputFolder], () => undefined, () => undefined)).toBe(0);
+
+    const migrationPlan = await readFile(path.join(outputFolder, "migration-plan.md"), "utf-8");
+    const assessmentReport = await readFile(path.join(outputFolder, "assessment-report.md"), "utf-8");
+    const ir = JSON.parse(await readFile(path.join(outputFolder, "ir.json"), "utf-8")) as {
+      unsupportedFeatures: unknown[];
+    };
+
+    expect(migrationPlan).toContain("## Executive summary");
+    expect(migrationPlan).toContain("## Solution metadata");
+    expect(migrationPlan).toContain("## Readiness/risk/complexity summary");
+    expect(migrationPlan).toContain("## Generated outputs");
+    expect(migrationPlan).toContain("## Manual review hotspots");
+    expect(migrationPlan).toContain("## Unsupported features");
+    expect(migrationPlan).toContain("## Security considerations");
+    expect(migrationPlan).toContain("## Recommended migration waves");
+    expect(migrationPlan).toContain("## Next engineering tasks");
+    expect(assessmentReport).toContain("## Unsupported features");
+    expect(ir.unsupportedFeatures.length).toBeGreaterThan(0);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("writes master generation plan with combined generator details", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "migrate-out");
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/migrate-e2e"
+    );
+
+    expect(await runCli(["migrate", fixturePath, "--out", outputFolder], () => undefined, () => undefined)).toBe(0);
+
+    const plan = await readGenerationPlan(outputFolder);
+    const planMarkdown = await readFile(path.join(outputFolder, "generation-plan.md"), "utf-8");
+
+    expect(plan.plannedFiles.length).toBeGreaterThan(0);
+    expect(plan.plannedFiles.every((file) => /^[a-f0-9]{64}$/.test(file.contentHash))).toBe(true);
+    expect(plan.sqlPlan).not.toBeNull();
+    expect(plan.functionsPlan).not.toBeNull();
+    expect(plan.infraPlan).not.toBeNull();
+    expect((plan.functionsPlan?.deploymentReadiness.scaffoldOnly ?? false)).toBe(true);
+    expect((plan.infraPlan?.deploymentReadiness.scaffoldOnly ?? false)).toBe(true);
+    expect(planMarkdown).toContain("## SQL plan");
+    expect(planMarkdown).toContain("## Functions plan");
+    expect(planMarkdown).toContain("## Infra plan");
 
     await rm(tempRoot, { recursive: true, force: true });
   });

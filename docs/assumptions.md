@@ -25,6 +25,9 @@
 21. Azure infra generation is scaffold-only and deterministic; it does not deploy resources and does not emit credential/secret values.
 22. Infra generation defaults to managed identity + Key Vault reference patterns and emits explicit TODOs for private networking, Entra ID auth, RBAC, monitoring, and backup/retention hardening.
 23. Infra generation plan metadata (`infraPlan`) is included for review workflows and captures resources/modules/parameter files/security review items/unresolved config/content hashes/deployment readiness.
+24. `power-exit migrate` orchestrates analyse, assessment report, and all generators from one validated IR in a single deterministic pipeline.
+25. Master migrate output includes `migration-plan.md` and combined `generation-plan.json`/`generation-plan.md` for human-in-the-loop review.
+26. `migrate --dry-run` is report/plan-focused and does not emit non-report scaffold code artifacts.
 
 ## Repository assumptions
 
@@ -74,6 +77,7 @@ Where:
 - React generation now emits deterministic formula hotspot planning metadata for manual migration handoff.
 - SQL generation now emits deterministic SQL plan metadata (tables/columns/FKs/join tables/unresolved/collisions) for review.
 - Azure Functions generation emits deterministic functions planning metadata (planned functions, adapter files, connector mappings, trigger strategy, handler signatures, unsupported actions, unresolved dependencies, unresolved adapter requirements, deployment readiness, manual hotspots).
+- End-to-end migrate flow emits combined deterministic planning metadata across SQL/React/Functions/Infra in one master generation plan.
 - Flow expressions and canvas formulas are preserved as comments/TODO context, not executed or translated semantically end-to-end.
 - Unknown layouts, unresolved dependencies, and malformed artifacts reduce confidence and increase risk by design.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.
