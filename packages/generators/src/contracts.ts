@@ -222,12 +222,100 @@ export const functionsUnresolvedDependencySchema = z
 
 export type FunctionsUnresolvedDependency = z.infer<typeof functionsUnresolvedDependencySchema>;
 
+export const functionsPlannedAdapterFileSchema = z
+  .object({
+    adapterName: z.string().min(1),
+    filePath: z.string().min(1),
+    methodCount: z.number().int().nonnegative(),
+    sourceArtifactIds: z.array(artifactIdSchema)
+  })
+  .strict();
+
+export type FunctionsPlannedAdapterFile = z.infer<typeof functionsPlannedAdapterFileSchema>;
+
+export const functionsConnectorAdapterMappingSchema = z
+  .object({
+    connectorKey: z.string().min(1),
+    adapterName: z.string().min(1),
+    adapterFilePath: z.string().min(1),
+    actionNames: z.array(z.string().min(1)),
+    sourceArtifactIds: z.array(artifactIdSchema)
+  })
+  .strict();
+
+export type FunctionsConnectorAdapterMapping = z.infer<typeof functionsConnectorAdapterMappingSchema>;
+
+export const functionsTriggerStrategyModeSchema = z.enum([
+  "http",
+  "timer",
+  "queue-placeholder",
+  "webhook-placeholder",
+  "event-grid-placeholder",
+  "dataverse-event-placeholder",
+  "email-ingestion-placeholder",
+  "http-manual-fallback"
+]);
+
+export type FunctionsTriggerStrategyMode = z.infer<typeof functionsTriggerStrategyModeSchema>;
+
+export const functionsTriggerStrategySchema = z
+  .object({
+    functionName: z.string().min(1),
+    triggerClassification: z.string().min(1),
+    strategy: functionsTriggerStrategyModeSchema,
+    warning: z.string().min(1).optional()
+  })
+  .strict();
+
+export type FunctionsTriggerStrategy = z.infer<typeof functionsTriggerStrategySchema>;
+
+export const functionsHandlerSignatureSchema = z
+  .object({
+    functionName: z.string().min(1),
+    exportedHandler: z.string().min(1),
+    requestType: z.string().min(1),
+    responseType: z.string().min(1),
+    contextType: z.string().min(1)
+  })
+  .strict();
+
+export type FunctionsHandlerSignature = z.infer<typeof functionsHandlerSignatureSchema>;
+
+export const functionsUnresolvedAdapterRequirementSchema = z
+  .object({
+    connectorKey: z.string().min(1),
+    requirement: z.string().min(1),
+    sourceArtifactIds: z.array(artifactIdSchema)
+  })
+  .strict();
+
+export type FunctionsUnresolvedAdapterRequirement = z.infer<
+  typeof functionsUnresolvedAdapterRequirementSchema
+>;
+
+export const functionsDeploymentReadinessSchema = z
+  .object({
+    scaffoldOnly: z.boolean(),
+    needsConfig: z.boolean(),
+    needsManualLogic: z.boolean(),
+    blocked: z.boolean()
+  })
+  .strict();
+
+export type FunctionsDeploymentReadiness = z.infer<typeof functionsDeploymentReadinessSchema>;
+
 export const functionsGenerationPlanDetailsSchema = z
   .object({
     plannedFunctions: z.array(functionsPlannedFunctionSchema),
+    plannedAdapterFiles: z.array(functionsPlannedAdapterFileSchema),
+    connectorAdapterMappings: z.array(functionsConnectorAdapterMappingSchema),
+    triggerStrategy: z.array(functionsTriggerStrategySchema),
+    handlerSignatures: z.array(functionsHandlerSignatureSchema),
     manualReviewHotspots: z.array(functionsManualReviewHotspotSchema),
     unsupportedActions: z.array(functionsUnsupportedActionSchema),
-    unresolvedDependencies: z.array(functionsUnresolvedDependencySchema)
+    unresolvedDependencies: z.array(functionsUnresolvedDependencySchema),
+    unresolvedAdapterRequirements: z.array(functionsUnresolvedAdapterRequirementSchema),
+    deploymentReadiness: functionsDeploymentReadinessSchema
   })
   .strict();
 

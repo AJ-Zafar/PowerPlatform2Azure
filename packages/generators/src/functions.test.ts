@@ -14,7 +14,8 @@ import {
 
 import {
   generateAzureFunctionsArtifacts,
-  generateAzureFunctionsFromPowerPlatformIR
+  generateAzureFunctionsFromPowerPlatformIR,
+  validateFunctionsPackagingScaffold
 } from "./index";
 
 interface FunctionFixtureFlowAction {
@@ -352,7 +353,13 @@ describe("generateAzureFunctionsArtifacts", () => {
       "src/functions/flow-manual-account-update.ts"
     );
     expect(content).toContain("app.http(");
-    expect(content).toContain("Manual Account Update");
+    expect(content).toContain("flowManualAccountUpdateHandler");
+    expect(content).toContain("validation.ensureRequestShape");
+    expect(content).toContain("authContext.fromInvocation");
+    expect(content).toContain("logger.info");
+    expect(content).toContain("try {");
+    expect(content).toContain("catch (error)");
+    expect(content).toContain("Source provenance:");
   });
 
   it("generates timer-triggered function for recurrence flow", async () => {
@@ -367,10 +374,16 @@ describe("generateAzureFunctionsArtifacts", () => {
       "src/functions/flow-nightly-data-sync.ts"
     );
     expect(content).toContain("app.timer(");
+    expect(content).toContain("flowNightlyDataSyncHandler");
     expect(content).toContain("Timer");
+    expect(content).toContain("validation.ensureTimerShape");
+    expect(content).toContain("authContext.fromInvocation");
+    expect(content).toContain("logger.info");
+    expect(content).toContain("try {");
+    expect(content).toContain("catch (error)");
   });
 
-  it("creates placeholder comments for unsupported triggers", async () => {
+  it("creates email trigger ingestion placeholder with safe HTTP fallback", async () => {
     const fixtures = await loadFixtureCatalog();
     const result = await generateAzureFunctionsArtifacts({
       cloudFlows: createCloudFlows(fixtures.unsupportedTrigger),
@@ -381,23 +394,54 @@ describe("generateAzureFunctionsArtifacts", () => {
       result,
       "src/functions/flow-mailbox-intake.ts"
     );
+    expect(content).toContain("Email ingestion placeholder");
+    expect(content).toContain("queueTrigger");
+    expect(content).toContain("webhookTrigger");
+    expect(content).toContain("app.http(");
     expect(content).toContain("TODO: map email trigger into queue/webhook ingestion pipeline.");
   });
 
-  it("preserves action migration TODO mapping comments", async () => {
+  it("creates dataverse/event trigger placeholders with HTTP fallback", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const result = await generateAzureFunctionsArtifacts({
+      cloudFlows: [
+        ...createCloudFlows(fixtures.dataverseTriggerFlow),
+        ...createCloudFlows(fixtures.eventTriggerFlow)
+      ],
+      canvasApps: []
+    });
+
+    const dataverseContent = getArtifactContent(
+      result,
+      "src/functions/flow-dataverse-change-intake.ts"
+    );
+    expect(dataverseContent).toContain("Dataverse/event trigger placeholder");
+    expect(dataverseContent).toContain("eventGridTrigger");
+    expect(dataverseContent).toContain("webhookTrigger");
+    expect(dataverseContent).toContain("app.http(");
+
+    const eventContent = getArtifactContent(
+      result,
+      "src/functions/flow-event-grid-intake.ts"
+    );
+    expect(eventContent).toContain("Event Grid placeholder");
+    expect(eventContent).toContain("eventGridTrigger");
+    expect(eventContent).toContain("app.http(");
+  });
+
+  it("preserves action migration TODO mapping comments across connector adapters", async () => {
     const fixtures = await loadFixtureCatalog();
     const result = await generateAzureFunctionsArtifacts({
       cloudFlows: createCloudFlows(fixtures.manualFlowHttp),
       canvasApps: []
     });
 
-    const content = getArtifactContent(
-      result,
-      "src/functions/flow-manual-account-update.ts"
-    );
-    expect(content).toContain("dataverseService");
-    expect(content).toContain("httpClient");
-    expect(content).toContain("manual workflow TODO");
+    const content = getArtifactContent(result, "src/functions/flow-manual-account-update.ts");
+    expect(content).toContain("dataverseAdapter");
+    expect(content).toContain("httpAdapter");
+    expect(content).toContain("approvalAdapter");
+    expect(content).toContain("customConnectorAdapter");
+    expect(content).toContain("await approvalAdapter.");
     expect(content).toContain("condition TODO");
     expect(content).toContain("scope TODO");
     expect(content).toContain("loop TODO");
@@ -417,7 +461,7 @@ describe("generateAzureFunctionsArtifacts", () => {
       "src/functions/canvas-accounts-api.ts"
     );
     expect(content).toContain("Patch");
-    expect(content).toContain("dataverseService");
+    expect(content).toContain("dataverseAdapter");
   });
 
   it("emits warnings for unresolved canvas formula data sources", async () => {
@@ -442,9 +486,72 @@ describe("generateAzureFunctionsArtifacts", () => {
     });
 
     expect(result.output.functionsPlan.plannedFunctions.length).toBeGreaterThan(0);
+    expect(result.output.functionsPlan.plannedAdapterFiles.length).toBe(6);
+    expect(result.output.functionsPlan.connectorAdapterMappings.length).toBeGreaterThan(0);
+    expect(result.output.functionsPlan.triggerStrategy.length).toBeGreaterThan(0);
+    expect(result.output.functionsPlan.handlerSignatures.length).toBeGreaterThan(0);
+    expect(result.output.functionsPlan.deploymentReadiness.scaffoldOnly).toBe(true);
+    expect(result.output.functionsPlan.deploymentReadiness.needsConfig).toBe(true);
+    expect(result.output.functionsPlan.deploymentReadiness.needsManualLogic).toBe(true);
     expect(result.output.functionsPlan.unsupportedActions.length).toBeGreaterThanOrEqual(0);
     expect(result.output.functionsPlan.unresolvedDependencies.length).toBeGreaterThanOrEqual(0);
+    expect(result.output.functionsPlan.unresolvedAdapterRequirements.length).toBeGreaterThanOrEqual(0);
     expect(result.output.functionsPlan.manualReviewHotspots.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it("generates typed connector adapter interface files", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const result = await generateAzureFunctionsArtifacts({
+      cloudFlows: createCloudFlows(fixtures.manualFlowHttp),
+      canvasApps: []
+    });
+
+    const expectedAdapterFiles = [
+      "src/adapters/connectorAdapter.ts",
+      "src/adapters/dataverseAdapter.ts",
+      "src/adapters/httpAdapter.ts",
+      "src/adapters/emailAdapter.ts",
+      "src/adapters/approvalAdapter.ts",
+      "src/adapters/customConnectorAdapter.ts"
+    ];
+
+    expectedAdapterFiles.forEach((filePath) => {
+      expect(result.artifacts.some((artifact) => artifact.filePath === filePath)).toBe(true);
+    });
+
+    expect(getArtifactContent(result, "src/adapters/dataverseAdapter.ts")).toContain(
+      "DataverseActionRequest"
+    );
+    expect(getArtifactContent(result, "src/adapters/httpAdapter.ts")).toContain("HttpActionRequest");
+    expect(getArtifactContent(result, "src/adapters/emailAdapter.ts")).toContain("EmailActionRequest");
+    expect(getArtifactContent(result, "src/adapters/approvalAdapter.ts")).toContain(
+      "ApprovalActionRequest"
+    );
+    expect(getArtifactContent(result, "src/adapters/customConnectorAdapter.ts")).toContain(
+      "CustomConnectorActionRequest"
+    );
+    expect(getArtifactContent(result, "src/adapters/connectorAdapter.ts")).toContain(
+      "ConnectorOperationRequest"
+    );
+  });
+
+  it("validates scaffold packaging and warns about missing expected files", async () => {
+    const warnings = validateFunctionsPackagingScaffold(
+      ["package.json", "src/functions/example.ts", "src/services/authContext.ts"],
+      {
+        invocationProvenance: {
+          sourcePath: "packages/generators/src/functions.test.ts",
+          sourceType: "generator"
+        }
+      }
+    );
+
+    expect(
+      warnings.some((warning) => warning.code === "FUNCTIONS_PACKAGING_MISSING_FILE")
+    ).toBe(true);
+    expect(
+      warnings.some((warning) => warning.code === "FUNCTIONS_PACKAGING_MISSING_DIRECTORY")
+    ).toBe(true);
   });
 
   it("matches generated flow function snapshot output", async () => {
@@ -456,6 +563,18 @@ describe("generateAzureFunctionsArtifacts", () => {
 
     expect(
       getArtifactContent(result, "src/functions/flow-manual-account-update.ts")
+    ).toMatchSnapshot();
+  });
+
+  it("matches generated adapter snapshot output", async () => {
+    const fixtures = await loadFixtureCatalog();
+    const result = await generateAzureFunctionsArtifacts({
+      cloudFlows: createCloudFlows(fixtures.manualFlowHttp),
+      canvasApps: []
+    });
+
+    expect(
+      getArtifactContent(result, "src/adapters/dataverseAdapter.ts")
     ).toMatchSnapshot();
   });
 });

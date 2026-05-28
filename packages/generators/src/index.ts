@@ -63,6 +63,7 @@ export {
 export {
   generateAzureFunctionsArtifacts,
   generateAzureFunctionsFromPowerPlatformIR,
+  validateFunctionsPackagingScaffold,
   type AzureFunctionsGenerationOutput,
   type AzureFunctionsGeneratorInput
 } from "./functions";

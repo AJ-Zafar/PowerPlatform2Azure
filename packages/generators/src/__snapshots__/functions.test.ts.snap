@@ -1,45 +1,120 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`generateAzureFunctionsArtifacts > matches generated adapter snapshot output 1`] = `
+"import {
+  AdapterInvocationContext,
+  AdapterPrincipalContext,
+  ConnectorAdapter,
+  ConnectorOperationRequest
+} from "./connectorAdapter";
+
+export interface DataverseActionRequest extends ConnectorOperationRequest {
+  entityLogicalName?: string;
+}
+
+export interface DataverseActionResponse {
+  status: "todo" | "manual-required";
+  operation: string;
+  recordId?: string;
+}
+
+export interface DataverseAdapter extends ConnectorAdapter {
+  todoUpdateRecord(request: DataverseActionRequest, principal: AdapterPrincipalContext, invocationContext: AdapterInvocationContext): Promise<DataverseActionResponse>;
+}
+
+export const dataverseAdapter: DataverseAdapter = {
+  adapterName: "dataverseAdapter",
+  async executeTodoOperation(request): Promise<DataverseActionResponse> {
+    void request;
+    // TODO: Manual Dataverse adapter implementation; no live API calls in scaffold mode.
+    return { status: "manual-required", operation: "executeTodoOperation" };
+  },
+  async todoUpdateRecord(
+    request: DataverseActionRequest,
+    principal: AdapterPrincipalContext,
+    invocationContext: AdapterInvocationContext
+  ): Promise<DataverseActionResponse> {
+    void request;
+    void principal;
+    void invocationContext;
+    // TODO: Implement dataverseAdapter operation "UpdateRecord" (OpenApiConnection) for connector "shared_commondataserviceforapps".
+    // Unsupported/manual implementation area: wire retries, auth, and error mapping before production.
+    return { status: "todo", operation: "UpdateRecord" };
+  }
+};
+"
+`;
+
 exports[`generateAzureFunctionsArtifacts > matches generated flow function snapshot output 1`] = `
-"import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+"import { app, HttpRequest, HttpResponseInit, InvocationContext, Timer } from "@azure/functions";
+import { approvalAdapter } from "../adapters/approvalAdapter";
+import { customConnectorAdapter } from "../adapters/customConnectorAdapter";
+import { dataverseAdapter } from "../adapters/dataverseAdapter";
+import { emailAdapter } from "../adapters/emailAdapter";
+import { httpAdapter } from "../adapters/httpAdapter";
 import { authContext } from "../services/authContext";
-import { dataverseService } from "../services/dataverseService";
-import { httpClient } from "../services/httpClient";
+import { validation } from "../services/validation";
 import { logger } from "../utils/logger";
 
-export async function flowManualAccountUpdate(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-  void request;
+interface FlowHttpRequest {
+  body: Record<string, unknown>;
+  query: Record<string, string | undefined>;
+}
+
+export async function flowManualAccountUpdateHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const principal = authContext.fromInvocation(context);
-  logger.info("Executing flow scaffold", { flowName: "Manual Account Update", principal });
-// Trigger expression: @equals(triggerBody()?['approved'], true)
-  // Flow action ApprovalStep (Approval, connector=shared_approvals)
-  // TODO: manual workflow TODO - approval/human interaction requires manual orchestration.
-  // Flow action LoopBlock (Foreach)
-  // TODO: loop TODO - map loop cardinality, batching, and idempotency safeguards.
-  // Flow action ReviewCondition (If)
-  // TODO: condition TODO - map Power Automate condition branches into explicit TypeScript control flow.
-  // Flow action ScopeBlock (Scope)
-  // TODO: scope TODO - model scope boundaries, retries, and error handling explicitly.
-  // Flow action SendWebhook (Http, connector=shared_http)
-  await httpClient.todoHttpAction("Manual Account Update", "SendWebhook", context);
-  // Flow action UnknownStep (MysteryAction)
-  // TODO: unsupported action "MysteryAction" - manual migration implementation required.
-  // Flow action UpdateAccount (OpenApiConnection, connector=shared_commondataserviceforapps)
-  await dataverseService.todoDataverseAction("Manual Account Update", "UpdateAccount", context);
-  return {
-    status: 202,
-    jsonBody: {
-      message: "Flow scaffold executed.",
-      flowName: "Manual Account Update"
-    }
+  const requestContract: FlowHttpRequest = {
+    body: await request.json().catch(() => ({} as Record<string, unknown>)),
+    query: Object.fromEntries(request.query.entries())
   };
+  const inputPayload: Record<string, unknown> = requestContract.body;
+  logger.info("functions.handler.start", { functionName: "flowManualAccountUpdate", flowName: "Manual Account Update" });
+  // Source provenance: fixtures/functions/manual-account-update.json
+  // Trigger provenance: fixtures/functions/manual-account-update.json
+  // Original Flow trigger snippet: @equals(triggerBody()?['approved'], true)
+  // HTTP trigger scaffold generated from Flow trigger metadata.
+  try {
+    validation.ensureRequestShape(requestContract);
+    validation.ensureAuthContext(principal);
+    // TODO: migrated flow logic starts here.
+    // Flow action ApprovalStep (Approval, connector=shared_approvals)
+    await approvalAdapter.todoApproval({ flowName: "Manual Account Update", actionName: "ApprovalStep", operationId: "Approval", payload: inputPayload }, principal, { invocationId: context.invocationId, functionName: context.functionName });
+    // Flow action CustomConnectorStep (OpenApiConnection, connector=shared_contoso-custom)
+    await customConnectorAdapter.todoDoCustomThing({ flowName: "Manual Account Update", actionName: "CustomConnectorStep", operationId: "DoCustomThing", payload: inputPayload }, principal, { invocationId: context.invocationId, functionName: context.functionName });
+    // Flow action LoopBlock (Foreach)
+    // TODO: loop TODO - map loop cardinality, batching, and idempotency safeguards.
+    // Flow action ReviewCondition (If)
+    // TODO: condition TODO - map Power Automate condition branches into explicit TypeScript control flow.
+    // Flow action ScopeBlock (Scope)
+    // TODO: scope TODO - model scope boundaries, retries, and error handling explicitly.
+    // Flow action SendWebhook (Http, connector=shared_http)
+    await httpAdapter.todoHttpRequest({ flowName: "Manual Account Update", actionName: "SendWebhook", operationId: "HttpRequest", payload: inputPayload }, principal, { invocationId: context.invocationId, functionName: context.functionName });
+    // Flow action UnknownStep (MysteryAction)
+    // TODO: unsupported action "MysteryAction" - manual migration implementation required.
+    // Flow action UpdateAccount (OpenApiConnection, connector=shared_commondataserviceforapps)
+    await dataverseAdapter.todoUpdateRecord({ flowName: "Manual Account Update", actionName: "UpdateAccount", operationId: "UpdateRecord", payload: inputPayload }, principal, { invocationId: context.invocationId, functionName: context.functionName });
+    return {
+      status: 202,
+      jsonBody: {
+        message: "Flow scaffold executed.",
+        flowName: "Manual Account Update",
+        triggerStrategy: "http"
+      }
+    };
+  } catch (error) {
+    logger.error("functions.handler.error", { functionName: "flowManualAccountUpdate", error });
+    return {
+      status: 500,
+      jsonBody: { error: "Flow scaffold handler failed.", functionName: "flowManualAccountUpdate" }
+    };
+  }
 }
 
 app.http("flowManualAccountUpdate", {
   route: "flow-manual-account-update",
   methods: ["GET", "POST"],
   authLevel: "function",
-  handler: flowManualAccountUpdate
+  handler: flowManualAccountUpdateHandler
 });
 "
 `;

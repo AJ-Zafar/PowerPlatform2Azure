@@ -118,6 +118,18 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: Canvas formula data-operation hotspot lacks resolvable data source binding.
     - Handling: warning + manual hotspot are emitted and handler is routed to manual-review scaffold grouping.
 
+27. `functions.trigger.placeholder-http-fallback`
+    - Trigger: Flow trigger classification (`dataverse`, `email`, `event`, unknown) cannot be deterministically bound to a production trigger in scaffold mode.
+    - Handling: generator emits queue/webhook/event-grid guidance comments and a safe HTTP/manual fallback handler plus warning/manual review hotspot.
+
+28. `functions.adapter.manual-contract-required`
+    - Trigger: Connector/action mapping needs an adapter method but production request/response contracts are unresolved.
+    - Handling: typed adapter interface + TODO method are generated with no live calls/credentials; unresolved adapter requirements are added to `functionsPlan`.
+
+29. `functions.packaging.missing-scaffold-entry`
+    - Trigger: Expected scaffold files/directories (`package.json`, `host.json`, `tsconfig.json`, `local.settings.example.json`, `src/functions`, `src/services`, `src/adapters`, `src/utils`) are missing.
+    - Handling: packaging validation emits warnings so deployment cannot be treated as ready.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.

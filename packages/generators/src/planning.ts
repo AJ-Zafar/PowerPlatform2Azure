@@ -387,6 +387,48 @@ export const renderGenerationPlanMarkdown = (plan: GenerationPlan): string => {
       });
     }
     lines.push("");
+    lines.push("### Planned adapter files");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.plannedAdapterFiles.map(
+          (adapterFile) =>
+            `\`${adapterFile.filePath}\` (${adapterFile.adapterName}, methods=${adapterFile.methodCount})`
+        )
+      )
+    );
+    lines.push("");
+    lines.push("### Connector adapter mappings");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.connectorAdapterMappings.map(
+          (mapping) =>
+            `${mapping.connectorKey} -> \`${mapping.adapterFilePath}\` (${mapping.actionNames.join(", ") || "no actions"})`
+        )
+      )
+    );
+    lines.push("");
+    lines.push("### Trigger strategy");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.triggerStrategy.map(
+          (trigger) =>
+            `${trigger.functionName}: ${trigger.triggerClassification} -> ${trigger.strategy}${
+              trigger.warning ? ` (warning: ${trigger.warning})` : ""
+            }`
+        )
+      )
+    );
+    lines.push("");
+    lines.push("### Handler signatures");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.handlerSignatures.map(
+          (signature) =>
+            `${signature.functionName}: ${signature.exportedHandler}(${signature.requestType}, ${signature.contextType}) => ${signature.responseType}`
+        )
+      )
+    );
+    lines.push("");
     lines.push("### Unsupported actions");
     lines.push(
       ...markdownList(
@@ -407,6 +449,15 @@ export const renderGenerationPlanMarkdown = (plan: GenerationPlan): string => {
       )
     );
     lines.push("");
+    lines.push("### Unresolved adapter requirements");
+    lines.push(
+      ...markdownList(
+        plan.functionsPlan.unresolvedAdapterRequirements.map(
+          (requirement) => `${requirement.connectorKey}: ${requirement.requirement}`
+        )
+      )
+    );
+    lines.push("");
     lines.push("### Manual review hotspots");
     lines.push(
       ...markdownList(
@@ -415,6 +466,12 @@ export const renderGenerationPlanMarkdown = (plan: GenerationPlan): string => {
         )
       )
     );
+    lines.push("");
+    lines.push("### Deployment readiness");
+    lines.push(`- scaffoldOnly: ${plan.functionsPlan.deploymentReadiness.scaffoldOnly}`);
+    lines.push(`- needsConfig: ${plan.functionsPlan.deploymentReadiness.needsConfig}`);
+    lines.push(`- needsManualLogic: ${plan.functionsPlan.deploymentReadiness.needsManualLogic}`);
+    lines.push(`- blocked: ${plan.functionsPlan.deploymentReadiness.blocked}`);
   }
 
   lines.push("");

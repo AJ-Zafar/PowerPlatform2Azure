@@ -48,6 +48,12 @@
           {
             "actionName": "UnknownStep",
             "actionType": "MysteryAction"
+          },
+          {
+            "actionName": "CustomConnectorStep",
+            "actionType": "OpenApiConnection",
+            "connectorApi": "shared_contoso-custom",
+            "operationId": "DoCustomThing"
           }
         ],
         "expressions": [
@@ -109,6 +115,52 @@
             "actionType": "OpenApiConnection",
             "connectorApi": "shared_commondataserviceforapps",
             "operationId": "CreateRecord"
+          }
+        ],
+        "expressions": [
+          "@triggerBody()?['subject']"
+        ],
+        "dependencyReferences": []
+      }
+    ],
+    "canvasFormulas": []
+  },
+  "dataverseTriggerFlow": {
+    "flows": [
+      {
+        "name": "Dataverse Change Intake",
+        "displayName": "Dataverse Change Intake",
+        "triggerClassification": "dataverse",
+        "triggerType": "WhenARowIsAddedModifiedOrDeleted",
+        "actions": [
+          {
+            "actionName": "SyncDataverseChange",
+            "actionType": "OpenApiConnection",
+            "connectorApi": "shared_commondataserviceforapps",
+            "operationId": "UpdateRecord"
+          }
+        ],
+        "expressions": [
+          "@triggerBody()?['accountid']"
+        ],
+        "dependencyReferences": []
+      }
+    ],
+    "canvasFormulas": []
+  },
+  "eventTriggerFlow": {
+    "flows": [
+      {
+        "name": "Event Grid Intake",
+        "displayName": "Event Grid Intake",
+        "triggerClassification": "event",
+        "triggerType": "EventGrid",
+        "actions": [
+          {
+            "actionName": "RelayEventPayload",
+            "actionType": "Http",
+            "connectorApi": "shared_http",
+            "operationId": "Post"
           }
         ],
         "expressions": [

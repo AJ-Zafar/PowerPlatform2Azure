@@ -491,6 +491,13 @@ const buildManualReviewItems = (input: {
     manualReviewHotspots: Array<{ message: string; severity: GenerationManualReviewItem["severity"] }>;
     unsupportedActions: Array<{ flowName: string; actionName: string; actionType: string }>;
     unresolvedDependencies: Array<{ referenceType: string; referenceName: string }>;
+    unresolvedAdapterRequirements: Array<{ connectorKey: string; requirement: string }>;
+    deploymentReadiness: {
+      scaffoldOnly: boolean;
+      needsConfig: boolean;
+      needsManualLogic: boolean;
+      blocked: boolean;
+    };
   };
 }): GenerationManualReviewItem[] => {
   const reviewItems: GenerationManualReviewItem[] = [];
@@ -562,6 +569,29 @@ const buildManualReviewItems = (input: {
       sourceArtifactIds: []
     });
   });
+
+  input.functionsPlan?.unresolvedAdapterRequirements.forEach((requirement) => {
+    reviewItems.push({
+      id: `review:function-adapter-requirement:${requirement.connectorKey}:${requirement.requirement}`,
+      category: "functions-adapter-requirement",
+      severity: "high",
+      message: `${requirement.connectorKey}: ${requirement.requirement}`,
+      relatedPaths: [],
+      sourceArtifactIds: []
+    });
+  });
+
+  if (input.functionsPlan?.deploymentReadiness.blocked) {
+    reviewItems.push({
+      id: "review:function-deployment-readiness:blocked",
+      category: "functions-deployment-readiness",
+      severity: "high",
+      message:
+        "Functions scaffold is blocked for deployment readiness and requires manual trigger/adapter implementation.",
+      relatedPaths: [],
+      sourceArtifactIds: []
+    });
+  }
 
   return reviewItems;
 };

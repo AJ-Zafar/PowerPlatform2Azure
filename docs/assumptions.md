@@ -9,7 +9,7 @@
 5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, structured Canvas extraction, structured Cloud Flow extraction, and infrastructure metadata extraction.
 6. This sprint includes first-pass deterministic assessment heuristics and report generation from validated IR.
 7. This sprint adds deterministic SQL (`power-exit generate sql`) and React skeleton (`power-exit generate react`) generators from validated IR.
-8. Full Power Fx semantic translation, Azure Functions/Bicep generation, and non-heuristic assessment scoring remain out of scope.
+8. Full Power Fx semantic translation, production-ready Azure Functions logic, Bicep generation, and non-heuristic assessment scoring remain out of scope.
 9. React generation in this pass is scaffold-oriented (route/component skeletons + TODO placeholders), not polished production UI conversion.
 10. No AI API, model API, or external service dependency is used for generator output in this pass.
 11. Lightweight summary counts in IR remain parser telemetry; assessment outputs consume these signals but remain heuristic.
@@ -19,8 +19,9 @@
 15. `--dry-run` is a non-emitting mode for generated artifacts; only plan files are written for review.
 16. `--clean` only removes files carrying the Power Exit generated-file marker and must not delete user-owned files.
 17. Azure Functions generation is scaffold-only and deterministic; it does not implement production business logic.
-18. Azure Functions generation maps flow triggers/actions and canvas data operations into TODO stubs without semantic execution.
-19. No secrets are emitted; generated settings files use placeholders exclusively.
+18. Azure Functions generation maps flow triggers/actions and canvas data operations into typed handler contracts and adapter TODO stubs without semantic execution.
+19. Azure Functions generation emits typed connector adapter boundaries (`src/adapters/*.ts`) and never includes live connector credentials or real API calls.
+20. No secrets are emitted; generated settings files use placeholders exclusively.
 
 ## Repository assumptions
 
@@ -69,7 +70,7 @@ Where:
 - React skeleton generation preserves formulas as comments/TODO handlers and surfaces unsupported controls as visible placeholders.
 - React generation now emits deterministic formula hotspot planning metadata for manual migration handoff.
 - SQL generation now emits deterministic SQL plan metadata (tables/columns/FKs/join tables/unresolved/collisions) for review.
-- Azure Functions generation emits deterministic functions planning metadata (planned functions, trigger types, unsupported actions, unresolved dependencies, manual hotspots).
+- Azure Functions generation emits deterministic functions planning metadata (planned functions, adapter files, connector mappings, trigger strategy, handler signatures, unsupported actions, unresolved dependencies, unresolved adapter requirements, deployment readiness, manual hotspots).
 - Flow expressions and canvas formulas are preserved as comments/TODO context, not executed or translated semantically end-to-end.
 - Unknown layouts, unresolved dependencies, and malformed artifacts reduce confidence and increase risk by design.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.

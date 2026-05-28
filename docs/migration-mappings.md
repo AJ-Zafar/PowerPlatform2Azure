@@ -230,9 +230,12 @@ Generated artifacts:
 - `local.settings.example.json`
 - `README.generated.md`
 - `src/functions/*`
-- `src/services/dataverseService.ts`
-- `src/services/sqlService.ts`
-- `src/services/httpClient.ts`
+- `src/adapters/connectorAdapter.ts`
+- `src/adapters/dataverseAdapter.ts`
+- `src/adapters/httpAdapter.ts`
+- `src/adapters/emailAdapter.ts`
+- `src/adapters/approvalAdapter.ts`
+- `src/adapters/customConnectorAdapter.ts`
 - `src/services/authContext.ts`
 - `src/services/validation.ts`
 - `src/utils/logger.ts`
@@ -246,17 +249,24 @@ Deterministic mapping currently implemented:
 1. Flow trigger mappings:
    - `manual`, `http` -> HTTP function scaffold
    - `recurrence` -> timer function scaffold
-   - `dataverse` -> webhook TODO placeholder scaffold
-   - `email` -> queue/webhook TODO placeholder scaffold
-   - unknown -> TODO placeholder scaffold
+   - `dataverse` -> Dataverse/event placeholder (`eventGridTrigger`/`webhookTrigger` guidance) with safe HTTP/manual fallback
+   - `email` -> email ingestion placeholder (`queueTrigger`/`webhookTrigger` guidance) with safe HTTP/manual fallback
+   - `event` -> Event Grid placeholder with safe HTTP/manual fallback
+   - unknown -> HTTP manual fallback + warning
 2. Flow action mappings:
-   - Dataverse-like actions -> `dataverseService` TODO call
-   - HTTP-like actions -> `httpClient` TODO call
-   - Approval/human actions -> manual workflow TODO comment
+   - Dataverse-like actions -> `dataverseAdapter` TODO methods
+   - HTTP-like actions -> `httpAdapter` TODO methods
+   - Approval/human actions -> `approvalAdapter` TODO methods + manual workflow hotspots
+   - Email-like actions -> `emailAdapter` TODO methods
+   - Custom connectors -> `customConnectorAdapter` TODO methods
    - Condition/scope/loop actions -> structured control-flow TODO comments
-   - Connector actions -> connector service TODO comment
    - Unknown actions -> unsupported action TODO + warning/unsupported feature
-3. Flow expressions are preserved as comments in generated function stubs.
+3. Flow handlers use a standard contract:
+   - deterministic `*Handler` export name
+   - typed request/context placeholders
+   - validation/auth placeholders
+   - consistent logging and try/catch error boundary
+   - source provenance + original Flow snippet comments
 4. Canvas data-operation hotspot mappings:
    - `Patch`, `SubmitForm`, `Remove`, `RemoveIf`
    - `Collect`, `ClearCollect`
@@ -265,11 +275,18 @@ Deterministic mapping currently implemented:
 6. Unresolved formula data source bindings emit warnings and manual review hotspots.
 7. Functions generation plan metadata includes:
    - planned functions
+   - planned adapter files
+   - connector adapter mappings
+   - trigger strategy
+   - handler signatures
    - trigger type
    - source flow/action/formula ids
    - unsupported actions
    - unresolved dependencies
+   - unresolved adapter requirements
+   - deployment readiness flags (`scaffoldOnly`, `needsConfig`, `needsManualLogic`, `blocked`)
    - manual review hotspots
+8. Scaffold packaging validation warns when expected files/directories are missing (`package.json`, `host.json`, `tsconfig.json`, `local.settings.example.json`, `src/functions`, `src/services`, `src/adapters`, `src/utils`).
 
 Overwrite safety behavior:
 
@@ -284,7 +301,8 @@ Current limitations:
 - Scaffold output is intentionally non-production and contains TODO placeholders.
 - No full Power Fx semantic execution is attempted.
 - No Cloud Flow runtime semantic execution is attempted.
-- Connector-specific adapters are placeholders only.
+- Trigger placeholders for Dataverse/email/event/unknown require manual binding implementation.
+- Connector-specific adapters are typed placeholders only and require manual implementation.
 - Secrets and production environment values are not generated.
 
 Remaining planned mapping section:

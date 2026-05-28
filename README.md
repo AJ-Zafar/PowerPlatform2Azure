@@ -114,10 +114,13 @@ Current behavior in this sprint:
 
 1. Read and validate an existing `ir.json`.
 2. Run deterministic Azure Functions scaffold generation from Cloud Flow IR + Canvas formula data-operation hotspots.
-3. Build deterministic `generation-plan.json` + `generation-plan.md` including planned functions, trigger types, source ids, unsupported actions, unresolved dependencies, and manual review hotspots.
-4. Default safe-write mode skips conflicting existing files (unless `--force`).
-5. Write scaffold files (or only plan files when `--dry-run`).
-6. Print structured summary counts (total functions, flow functions, canvas API functions, warnings, unsupported features, plan summary).
+3. Generate typed adapter boundaries under `src/adapters` (`connectorAdapter`, `dataverseAdapter`, `httpAdapter`, `emailAdapter`, `approvalAdapter`, `customConnectorAdapter`) with scaffold-only TODO contracts.
+4. Standardize typed handler contracts (deterministic names, logging, validation/auth placeholders, try/catch boundaries, provenance/snippet comments).
+5. Build deterministic `generation-plan.json` + `generation-plan.md` including planned adapter files, connector mappings, trigger strategy, handler signatures, unresolved adapter requirements, and deployment readiness flags.
+6. Run scaffold packaging checks for required files/directories (`package.json`, `host.json`, `tsconfig.json`, `local.settings.example.json`, `src/functions`, `src/services`, `src/adapters`, `src/utils`) and emit warnings for gaps.
+7. Default safe-write mode skips conflicting existing files (unless `--force`).
+8. Write scaffold files (or only plan files when `--dry-run`).
+9. Print structured summary counts (total functions, flow functions, canvas API functions, warnings, unsupported features, plan summary).
 
 `--clean` behavior:
 
@@ -181,7 +184,7 @@ Recommended review flow before committing generated outputs:
 4. Re-run generation with `--force` only when explicit overwrite intent is confirmed.
 5. Use `--clean` only when you want to clear previously generated (marker-tagged) files safely.
 
-## Azure Functions scaffold generation (Milestone 10 pass)
+## Azure Functions scaffold generation (Milestone 10 hardening pass)
 
 Current scaffold output:
 
@@ -191,9 +194,12 @@ Current scaffold output:
 - `local.settings.example.json`
 - `README.generated.md`
 - `src/functions/*`
-- `src/services/dataverseService.ts`
-- `src/services/sqlService.ts`
-- `src/services/httpClient.ts`
+- `src/adapters/connectorAdapter.ts`
+- `src/adapters/dataverseAdapter.ts`
+- `src/adapters/httpAdapter.ts`
+- `src/adapters/emailAdapter.ts`
+- `src/adapters/approvalAdapter.ts`
+- `src/adapters/customConnectorAdapter.ts`
 - `src/services/authContext.ts`
 - `src/services/validation.ts`
 - `src/utils/logger.ts`
@@ -204,17 +210,19 @@ Flow trigger mapping strategy:
 
 - `manual` / `http` -> HTTP function scaffold
 - `recurrence` -> timer function scaffold
-- `dataverse` -> webhook TODO placeholder
-- `email` -> queue/webhook TODO placeholder
-- unknown -> TODO placeholder
+- `dataverse` -> Dataverse/event placeholder (`eventGridTrigger`/`webhookTrigger` guidance) with safe HTTP manual fallback
+- `email` -> email ingestion placeholder (`queueTrigger`/`webhookTrigger` guidance) with safe HTTP manual fallback
+- `event` -> Event Grid placeholder with safe HTTP manual fallback
+- unknown -> HTTP manual fallback + warning
 
 Flow action mapping strategy:
 
-- Dataverse-like actions -> `dataverseService` TODO calls
-- HTTP-like actions -> `httpClient` TODO calls
-- Approval/human actions -> manual workflow TODO
+- Dataverse-like actions -> `dataverseAdapter` TODO methods
+- HTTP-like actions -> `httpAdapter` TODO methods
+- Approval/human actions -> `approvalAdapter` TODO methods + manual workflow hotspot
+- Email-like actions -> `emailAdapter` TODO methods
+- Custom connectors -> `customConnectorAdapter` TODO methods
 - Condition/scope/loop actions -> structured control-flow TODO comments
-- Connector actions -> connector adapter TODO comments
 - Unknown actions -> unsupported-action TODO + warning/unsupported record
 
 Canvas formula API stub strategy:
@@ -230,6 +238,7 @@ Security/no-secrets assumptions:
 
 - No runtime secrets are generated.
 - `local.settings.example.json` contains placeholders only.
+- Adapter files do not contain live API calls or credentials.
 - Generated code is migration scaffolding, not production-ready business logic.
 
 ## Azure SQL DDL generation (first generator)
