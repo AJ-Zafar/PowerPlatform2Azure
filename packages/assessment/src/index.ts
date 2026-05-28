@@ -24,3 +24,21 @@ export {
   type MigrationWaveRecommendation
 } from "./models";
 export { generateAssessmentReportMarkdown } from "./report";
+export {
+  defaultReadinessGateThresholds,
+  evaluateReadinessGate,
+  readinessGateGeneratorReadinessSchema,
+  readinessGateManualReviewItemSchema,
+  readinessGateSchema,
+  readinessGateStatusSchema,
+  readinessGateThresholdsSchema,
+  readinessGateUnresolvedDependencySchema,
+  renderReadinessGateMarkdown,
+  serializeReadinessGate,
+  type ReadinessGate,
+  type ReadinessGateGeneratorReadiness,
+  type ReadinessGateManualReviewItem,
+  type ReadinessGateStatus,
+  type ReadinessGateThresholds,
+  type ReadinessGateUnresolvedDependency
+} from "./readiness-gate";

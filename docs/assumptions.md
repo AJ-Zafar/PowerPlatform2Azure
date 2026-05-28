@@ -28,6 +28,10 @@
 24. `power-exit migrate` orchestrates analyse, assessment report, and all generators from one validated IR in a single deterministic pipeline.
 25. Master migrate output includes `migration-plan.md` and combined `generation-plan.json`/`generation-plan.md` for human-in-the-loop review.
 26. `migrate --dry-run` is report/plan-focused and does not emit non-report scaffold code artifacts.
+27. Readiness gating is deterministic and explainable (`pass` | `warn` | `fail`) and emits both machine-readable JSON and markdown rationale.
+28. Readiness gate defaults are conservative (`maxRiskScore=70`, `maxComplexityScore=70`, `minConfidence=0.60`, `allowCriticalUnsupported=false`, `maxUnresolvedDependencies=6`, `maxHighSeverityFindings=8`, `requireNoBlockers=true`).
+29. Gate output is advisory unless `power-exit gate --ci` is used; CI mode enforces pass/fail policy by exit code.
+30. `--strict` only affects CI exit behavior for warn states (warn becomes non-zero in CI strict mode).
 
 ## Repository assumptions
 

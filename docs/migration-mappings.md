@@ -408,3 +408,52 @@ Determinism validation harness:
   - file content hashes
   - report/plan content equivalence
 - Any ordering drift/hash drift fails tests.
+
+## Implemented governance mapping: migration package -> readiness gate
+
+CLI:
+
+```bash
+power-exit gate <output-folder> [--ci] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]
+power-exit migrate <solution-folder> --out <output-folder> --gate
+```
+
+Readiness gate inputs:
+
+1. `ir.json` (required)
+2. deterministic assessment recomputed from IR
+3. `generation-plan.json` (optional, with fallback behavior when absent)
+
+Readiness gate outputs:
+
+- `readiness-gate.json` (machine-readable)
+- `readiness-gate.md` (human-readable rationale)
+
+Deterministic gate model fields:
+
+- `status` (`pass` | `warn` | `fail`)
+- `overallReadiness`, `riskScore`, `complexityScore`, `confidence`
+- `blockers`, `warnings`, `unresolvedDependencies`, `highSeverityFindings`
+- `unsupportedFeatures`, `manualReviewItems`
+- `thresholds`, `statusReasons`, `recommendations`
+
+Default threshold mapping:
+
+- `maxRiskScore=70`
+- `maxComplexityScore=70`
+- `minConfidence=0.60`
+- `allowCriticalUnsupported=false`
+- `maxUnresolvedDependencies=6`
+- `maxHighSeverityFindings=8`
+- `requireNoBlockers=true`
+
+CI policy mapping:
+
+- `pass` -> exit `0`
+- `fail` -> exit `1`
+- `warn` -> exit `0` (default), exit `1` with `--strict`
+
+Advisory behavior:
+
+- In non-CI mode, gate output is advisory and always returns exit `0`.
+- Teams can enforce policy by running `power-exit gate --ci` in pipeline stages.

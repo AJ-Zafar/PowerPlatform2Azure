@@ -5,10 +5,18 @@ import path from "node:path";
 import { serializeDeterministicIR, validatePowerPlatformIR } from "@power-exit/ir";
 import {
   assessPowerPlatformIR,
+  defaultReadinessGateThresholds,
+  evaluateReadinessGate,
   generateAssessmentReportMarkdown,
+  renderReadinessGateMarkdown,
+  serializeReadinessGate,
+  type ReadinessGateManualReviewItem,
+  type ReadinessGateThresholds,
+  type ReadinessGateUnresolvedDependency,
   type MigrationAssessment
 } from "@power-exit/assessment";
 import {
+  generationPlanSchema,
   generateAzureInfraFromPowerPlatformIR,
   generateAzureFunctionsFromPowerPlatformIR,
   generateCanvasReactFromPowerPlatformIR,
@@ -23,7 +31,8 @@ import {
   type GenerationWarning,
   type InfraGenerationPlanDetails,
   type ExistingFileState,
-  type GenerationManualReviewItem
+  type GenerationManualReviewItem,
+  type GenerationPlan
 } from "@power-exit/generators";
 import { analyseSolutionFolder } from "@power-exit/parsers";
 
@@ -94,6 +103,21 @@ interface MigrateArgs {
   dryRun: boolean;
   force: boolean;
   clean: boolean;
+  gate: GateModeArgs;
+}
+
+interface GateModeArgs {
+  enabled: boolean;
+  ci: boolean;
+  strict: boolean;
+  thresholds: Partial<ReadinessGateThresholds>;
+}
+
+interface GateArgs {
+  outputFolder: string;
+  ci: boolean;
+  strict: boolean;
+  thresholds: Partial<ReadinessGateThresholds>;
 }
 
 const parseAnalyseArgs = (args: string[]): AnalyseArgs => {
@@ -403,11 +427,145 @@ const parseGenerateInfraArgs = (args: string[]): GenerateInfraArgs => {
   };
 };
 
+const parseNumericFlag = (input: {
+  flags: string[];
+  index: number;
+  flagName: string;
+  min: number;
+  max: number;
+  integer?: boolean;
+}): { value: number; nextIndex: number } => {
+  const rawValue = input.flags[input.index + 1];
+  if (rawValue === undefined) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      `Missing value for ${input.flagName}.`
+    );
+  }
+
+  const parsedValue = Number(rawValue);
+  const isValidNumber =
+    Number.isFinite(parsedValue) &&
+    (!input.integer || Number.isInteger(parsedValue)) &&
+    parsedValue >= input.min &&
+    parsedValue <= input.max;
+  if (!isValidNumber) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      `Invalid value for ${input.flagName}. Expected ${
+        input.integer ? "an integer" : "a number"
+      } between ${input.min} and ${input.max}.`
+    );
+  }
+
+  return {
+    value: parsedValue,
+    nextIndex: input.index + 1
+  };
+};
+
+const parseGateArgs = (args: string[]): GateArgs => {
+  if (args.length < 1) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit gate <output-folder> [--ci] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]"
+    );
+  }
+
+  const [outputFolder, ...flags] = args;
+  let ci = false;
+  let strict = false;
+  const thresholds: Partial<ReadinessGateThresholds> = {};
+
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+
+    if (flag === "--ci") {
+      ci = true;
+      continue;
+    }
+
+    if (flag === "--strict") {
+      strict = true;
+      continue;
+    }
+
+    if (flag === "--allow-critical-unsupported") {
+      thresholds.allowCriticalUnsupported = true;
+      continue;
+    }
+
+    if (flag === "--max-risk") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--max-risk",
+        min: 0,
+        max: 100,
+        integer: true
+      });
+      thresholds.maxRiskScore = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (flag === "--max-complexity") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--max-complexity",
+        min: 0,
+        max: 100,
+        integer: true
+      });
+      thresholds.maxComplexityScore = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (flag === "--min-confidence") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--min-confidence",
+        min: 0,
+        max: 1
+      });
+      thresholds.minConfidence = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (flag === "--max-unresolved") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--max-unresolved",
+        min: 0,
+        max: 5000,
+        integer: true
+      });
+      thresholds.maxUnresolvedDependencies = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  return {
+    outputFolder: path.resolve(outputFolder),
+    ci,
+    strict,
+    thresholds
+  };
+};
+
 const parseMigrateArgs = (args: string[]): MigrateArgs => {
   if (args.length < 3) {
     throw new CliError(
       "INVALID_ARGUMENTS",
-      "Usage: power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean]"
+      "Usage: power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean] [--gate] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]"
     );
   }
 
@@ -416,6 +574,9 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
   let dryRun = false;
   let force = false;
   let clean = false;
+  let gateEnabled = false;
+  let gateStrict = false;
+  const gateThresholds: Partial<ReadinessGateThresholds> = {};
 
   for (let index = 0; index < flags.length; index += 1) {
     const flag = flags[index];
@@ -441,6 +602,82 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
       continue;
     }
 
+    if (flag === "--gate") {
+      gateEnabled = true;
+      continue;
+    }
+
+    if (flag === "--strict") {
+      gateEnabled = true;
+      gateStrict = true;
+      continue;
+    }
+
+    if (flag === "--allow-critical-unsupported") {
+      gateEnabled = true;
+      gateThresholds.allowCriticalUnsupported = true;
+      continue;
+    }
+
+    if (flag === "--max-risk") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--max-risk",
+        min: 0,
+        max: 100,
+        integer: true
+      });
+      gateEnabled = true;
+      gateThresholds.maxRiskScore = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (flag === "--max-complexity") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--max-complexity",
+        min: 0,
+        max: 100,
+        integer: true
+      });
+      gateEnabled = true;
+      gateThresholds.maxComplexityScore = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (flag === "--min-confidence") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--min-confidence",
+        min: 0,
+        max: 1
+      });
+      gateEnabled = true;
+      gateThresholds.minConfidence = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
+    if (flag === "--max-unresolved") {
+      const parsed = parseNumericFlag({
+        flags,
+        index,
+        flagName: "--max-unresolved",
+        min: 0,
+        max: 5000,
+        integer: true
+      });
+      gateEnabled = true;
+      gateThresholds.maxUnresolvedDependencies = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+
     throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
   }
 
@@ -456,7 +693,13 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
     outputFolder: path.resolve(outputFolder),
     dryRun,
     force,
-    clean
+    clean,
+    gate: {
+      enabled: gateEnabled,
+      ci: false,
+      strict: gateStrict,
+      thresholds: gateThresholds
+    }
   };
 };
 
@@ -824,7 +1067,9 @@ const withPrefixedInfraPlan = (
 });
 
 const isReportLikeArtifactType = (artifactType: string): boolean =>
-  ["ir-json", "markdown-report", "markdown-readme", "markdown-notes"].includes(artifactType);
+  ["ir-json", "json-report", "markdown-report", "markdown-readme", "markdown-notes"].includes(
+    artifactType
+  );
 
 const renderMasterMigrationPlanMarkdown = (input: {
   solutionFolder: string;
@@ -920,6 +1165,150 @@ const renderMasterMigrationPlanMarkdown = (input: {
   lines.push("- Re-run deterministic validation harness after each major migration conversion pass.");
 
   return `${lines.join("\n")}\n`;
+};
+
+const loadJsonFileIfPresent = async (filePath: string): Promise<unknown | undefined> => {
+  try {
+    const metadata = await stat(filePath);
+    if (!metadata.isFile()) {
+      return undefined;
+    }
+
+    return JSON.parse(await readFile(filePath, "utf-8")) as unknown;
+  } catch {
+    return undefined;
+  }
+};
+
+const toReadinessGateManualReviewItems = (
+  generationPlan: GenerationPlan | null
+): ReadinessGateManualReviewItem[] =>
+  generationPlan
+    ? generationPlan.manualReviewItems.map((item) => ({
+        id: item.id,
+        category: item.category,
+        severity: item.severity,
+        message: item.message,
+        relatedPaths: item.relatedPaths
+      }))
+    : [];
+
+const toReadinessGateUnresolvedDependencies = (input: {
+  generationPlan: GenerationPlan | null;
+  ir: ReturnType<typeof validatePowerPlatformIR>;
+}): ReadinessGateUnresolvedDependency[] => {
+  const unresolved: ReadinessGateUnresolvedDependency[] = [];
+  if (input.ir.analysisSummary.unresolvedDependencies > 0) {
+    unresolved.push({
+      id: "ir:analysis-summary:unresolved-dependencies",
+      referenceType: "analysis-summary",
+      referenceName: "unresolvedDependencies",
+      message: `IR analysis summary reports ${input.ir.analysisSummary.unresolvedDependencies} unresolved dependencies.`,
+      severity: input.ir.analysisSummary.unresolvedDependencies > 5 ? "high" : "medium"
+    });
+  }
+
+  if (!input.generationPlan?.functionsPlan) {
+    return unresolved;
+  }
+
+  input.generationPlan.functionsPlan.unresolvedDependencies.forEach((dependency, index) => {
+    unresolved.push({
+      id: `functions:unresolved:${index}:${dependency.referenceType}:${dependency.referenceName}`,
+      referenceType: dependency.referenceType,
+      referenceName: dependency.referenceName,
+      message: `Functions unresolved dependency ${dependency.referenceType}:${dependency.referenceName}.`,
+      severity: "high"
+    });
+  });
+  input.generationPlan.functionsPlan.unresolvedAdapterRequirements.forEach((requirement, index) => {
+    unresolved.push({
+      id: `functions:adapter-requirement:${index}:${requirement.connectorKey}`,
+      referenceType: "adapter-requirement",
+      referenceName: requirement.connectorKey,
+      message: requirement.requirement,
+      severity: "high"
+    });
+  });
+
+  return unresolved;
+};
+
+const toReadinessGateGeneratorReadiness = (
+  generationPlan: GenerationPlan | null
+): {
+  functionsBlocked: boolean;
+  infraBlocked: boolean;
+  functionsNeedsConfig: boolean;
+  infraNeedsConfig: boolean;
+  functionsNeedsManualLogic: boolean;
+  infraNeedsSecurityReview: boolean;
+} => ({
+  functionsBlocked: generationPlan?.functionsPlan?.deploymentReadiness.blocked ?? false,
+  infraBlocked: generationPlan?.infraPlan?.deploymentReadiness.blocked ?? false,
+  functionsNeedsConfig: generationPlan?.functionsPlan?.deploymentReadiness.needsConfig ?? false,
+  infraNeedsConfig: generationPlan?.infraPlan?.deploymentReadiness.needsConfig ?? false,
+  functionsNeedsManualLogic:
+    generationPlan?.functionsPlan?.deploymentReadiness.needsManualLogic ?? false,
+  infraNeedsSecurityReview:
+    generationPlan?.infraPlan?.deploymentReadiness.needsSecurityReview ?? false
+});
+
+const resolveGateCiExitCode = (input: {
+  status: "pass" | "warn" | "fail";
+  strict: boolean;
+}): number => {
+  if (input.status === "fail") {
+    return 1;
+  }
+
+  if (input.status === "warn" && input.strict) {
+    return 1;
+  }
+
+  return 0;
+};
+
+const buildReadinessGateEvaluation = (input: {
+  ir: ReturnType<typeof validatePowerPlatformIR>;
+  assessment: MigrationAssessment;
+  generationPlan: GenerationPlan | null;
+  thresholds: Partial<ReadinessGateThresholds>;
+}): {
+  gate: ReturnType<typeof evaluateReadinessGate>;
+  markdown: string;
+  json: string;
+  generationPlanAvailable: boolean;
+} => {
+  const manualReviewItems = toReadinessGateManualReviewItems(input.generationPlan);
+  if (!input.generationPlan) {
+    manualReviewItems.push({
+      id: "gate:generation-plan-missing",
+      category: "generation-plan",
+      severity: "high",
+      message:
+        "generation-plan.json was not found; gate evaluated with partial inputs (IR + assessment only).",
+      relatedPaths: ["generation-plan.json"]
+    });
+  }
+  const gate = evaluateReadinessGate({
+    ir: input.ir,
+    assessment: input.assessment,
+    thresholds: input.thresholds,
+    manualReviewItems,
+    unresolvedDependencies: toReadinessGateUnresolvedDependencies({
+      generationPlan: input.generationPlan,
+      ir: input.ir
+    }),
+    generatorReadiness: toReadinessGateGeneratorReadiness(input.generationPlan)
+  });
+
+  return {
+    gate,
+    markdown: renderReadinessGateMarkdown(gate),
+    json: serializeReadinessGate(gate),
+    generationPlanAvailable: input.generationPlan !== null
+  };
 };
 
 const executeAnalyse = async (
@@ -1430,6 +1819,86 @@ const executeGenerate = async (args: string[], stdout: WriteFn): Promise<void> =
   );
 };
 
+const executeGate = async (args: string[], stdout: WriteFn): Promise<number> => {
+  const parsedArgs = parseGateArgs(args);
+  await ensureInputFolder(parsedArgs.outputFolder);
+  const irPath = path.join(parsedArgs.outputFolder, "ir.json");
+  await ensureInputFile(irPath);
+
+  let irPayload: unknown;
+  try {
+    irPayload = JSON.parse(await readFile(irPath, "utf-8")) as unknown;
+  } catch {
+    throw new CliError("INVALID_IR_JSON", "IR input is not valid JSON.", {
+      irFilePath: irPath
+    });
+  }
+
+  const validatedIr = validatePowerPlatformIR(irPayload);
+  const assessment = assessPowerPlatformIR(validatedIr);
+  const assessmentReportAvailable = await stat(
+    path.join(parsedArgs.outputFolder, "assessment-report.md")
+  )
+    .then((metadata) => metadata.isFile())
+    .catch(() => false);
+  const generationPlanPath = path.join(parsedArgs.outputFolder, "generation-plan.json");
+  const generationPlanPayload = await loadJsonFileIfPresent(generationPlanPath);
+  let generationPlan: GenerationPlan | null = null;
+  if (generationPlanPayload !== undefined) {
+    try {
+      generationPlan = generationPlanSchema.parse(generationPlanPayload);
+    } catch {
+      throw new CliError(
+        "GENERATION_PLAN_VALIDATION_FAILURE",
+        "generation-plan.json failed schema validation.",
+        { generationPlanPath }
+      );
+    }
+  }
+
+  const gateEvaluation = buildReadinessGateEvaluation({
+    ir: validatedIr,
+    assessment,
+    generationPlan,
+    thresholds: parsedArgs.thresholds
+  });
+  await writeFile(
+    path.join(parsedArgs.outputFolder, "readiness-gate.json"),
+    gateEvaluation.json,
+    "utf-8"
+  );
+  await writeFile(
+    path.join(parsedArgs.outputFolder, "readiness-gate.md"),
+    gateEvaluation.markdown,
+    "utf-8"
+  );
+
+  const ciExitCode = resolveGateCiExitCode({
+    status: gateEvaluation.gate.status,
+    strict: parsedArgs.strict
+  });
+  stdout(
+    JSON.stringify({
+      command: "gate",
+      status: "success",
+      outputFolder: parsedArgs.outputFolder,
+      gateStatus: gateEvaluation.gate.status,
+      ci: parsedArgs.ci,
+      strict: parsedArgs.strict,
+      ciExitCode,
+      assessmentReportAvailable,
+      generationPlanAvailable: gateEvaluation.generationPlanAvailable,
+      thresholds: {
+        ...defaultReadinessGateThresholds,
+        ...parsedArgs.thresholds
+      },
+      statusReasons: gateEvaluation.gate.statusReasons
+    })
+  );
+
+  return parsedArgs.ci ? ciExitCode : 0;
+};
+
 const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> => {
   const parsedArgs = parseMigrateArgs(args);
 
@@ -1584,7 +2053,7 @@ const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> =>
     }
   }
 
-  const planned = planGeneration({
+  let planned = planGeneration({
     artifacts: allArtifacts,
     existingFiles,
     force: parsedArgs.force,
@@ -1596,6 +2065,66 @@ const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> =>
     functionsPlan: combinedFunctionsPlan,
     infraPlan: combinedInfraPlan
   });
+  let gateStatus: "pass" | "warn" | "fail" | null = null;
+
+  if (parsedArgs.gate.enabled) {
+    const gateEvaluation = buildReadinessGateEvaluation({
+      ir: validatedIr,
+      assessment,
+      generationPlan: planned.plan,
+      thresholds: parsedArgs.gate.thresholds
+    });
+    const gateArtifacts: GeneratedArtifact[] = [
+      {
+        artifactId: "generated:migrate:readiness-gate-json",
+        artifactType: "json-report",
+        filePath: "readiness-gate.json",
+        content: gateEvaluation.json,
+        sourceArtifactIds: [validatedIr.solution.artifactId],
+        warnings: [],
+        provenance: generatorContext.invocationProvenance,
+        confidence: assessment.overallConfidence
+      },
+      {
+        artifactId: "generated:migrate:readiness-gate-markdown",
+        artifactType: "markdown-report",
+        filePath: "readiness-gate.md",
+        content: gateEvaluation.markdown,
+        sourceArtifactIds: [validatedIr.solution.artifactId],
+        warnings: [],
+        provenance: generatorContext.invocationProvenance,
+        confidence: assessment.overallConfidence
+      }
+    ];
+    const gateExistingFiles = await loadExistingFiles(
+      parsedArgs.outputFolder,
+      gateArtifacts.map((artifact) => artifact.filePath)
+    );
+    const allExistingFiles = [
+      ...existingFiles,
+      ...gateExistingFiles.filter(
+        (gateFile) => !existingFiles.some((existing) => existing.path === gateFile.path)
+      )
+    ];
+    const filteredExistingFiles =
+      parsedArgs.clean && parsedArgs.dryRun
+        ? allExistingFiles.filter((entry) => !hasGeneratedFileMarker(entry.content))
+        : allExistingFiles;
+
+    planned = planGeneration({
+      artifacts: [...allArtifacts, ...gateArtifacts],
+      existingFiles: filteredExistingFiles,
+      force: parsedArgs.force,
+      warnings: combinedWarnings,
+      unsupportedFeatures: combinedUnsupported,
+      formulaHotspots: reactGeneration.output.formulaHotspots,
+      manualReviewItems,
+      sqlPlan: sqlGeneration.output.sqlPlan,
+      functionsPlan: combinedFunctionsPlan,
+      infraPlan: combinedInfraPlan
+    });
+    gateStatus = gateEvaluation.gate.status;
+  }
 
   await writeGenerationPlanFiles(
     parsedArgs.outputFolder,
@@ -1629,6 +2158,9 @@ const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> =>
       dryRun: parsedArgs.dryRun,
       force: parsedArgs.force,
       clean: parsedArgs.clean,
+      gate: parsedArgs.gate.enabled,
+      gateStrict: parsedArgs.gate.strict,
+      gateStatus,
       skippedFiles: planned.plan.skippedFiles.length,
       overwrittenFiles: planned.plan.overwrittenFiles.length,
       planSummary: planned.plan.summary
@@ -1680,6 +2212,10 @@ export const runCli = async (
       return 0;
     }
 
+    if (command === "gate") {
+      return await executeGate(commandArgs, stdout);
+    }
+
     if (!command) {
       throw new CliError(
         "INVALID_COMMAND",
@@ -1689,7 +2225,7 @@ export const runCli = async (
 
     throw new CliError(
       "INVALID_COMMAND",
-      "Supported commands are: analyse, report, generate, migrate."
+      "Supported commands are: analyse, report, generate, migrate, gate."
     );
   } catch (error) {
     stderr(formatError(error));

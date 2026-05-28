@@ -69,7 +69,8 @@ power-exit generate sql <ir-json> --out <output-folder> [--dry-run] [--force] [-
 power-exit generate react <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 power-exit generate functions <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 power-exit generate infra <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
-power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean]
+power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean] [--gate]
+power-exit gate <output-folder> [--ci] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]
 ```
 
 Current behavior in this sprint:
@@ -143,7 +144,40 @@ Current behavior in this sprint:
 4. Compose a master `generation-plan.json` + `generation-plan.md` spanning all generated outputs.
 5. Write a master `migration-plan.md` with executive summary, readiness/risk/complexity, hotspots, unsupported features, security notes, migration waves, and next tasks.
 6. Apply safe-write semantics across all generated artifacts (`--dry-run`, `--force`, `--clean`).
+7. Optional `--gate` writes `readiness-gate.json` + `readiness-gate.md` from IR + assessment + generation plan signals.
 7. Emit structured migrate summary metrics in CLI output.
+
+`gate` command behavior:
+
+1. Read `ir.json` and deterministically recompute assessment scores.
+2. Read `generation-plan.json` when present (fallback to IR+assessment-only mode when missing).
+3. Evaluate deterministic readiness thresholds and write:
+   - `readiness-gate.json`
+   - `readiness-gate.md`
+4. Emit explainable status reasons (`pass` | `warn` | `fail`) with blockers, unresolved dependencies, high-severity findings, unsupported features, manual review items, and recommendations.
+5. In `--ci` mode, exit codes are:
+   - `0` for `pass`
+   - `1` for `fail`
+   - `0` for `warn` unless `--strict` is set
+   - `1` for `warn` when `--strict` is set
+
+Default readiness thresholds:
+
+- `maxRiskScore=70`
+- `maxComplexityScore=70`
+- `minConfidence=0.60`
+- `allowCriticalUnsupported=false`
+- `maxUnresolvedDependencies=6`
+- `maxHighSeverityFindings=8`
+- `requireNoBlockers=true`
+
+Readiness gate interpretation:
+
+- `pass`: package is within configured thresholds and has no enforced blockers.
+- `warn`: package is viable but requires explicit manual review/sign-off before proceeding.
+- `fail`: package should be blocked until fail reasons are remediated.
+
+The gate is advisory by default (non-CI mode always exits `0`); use `--ci` to enforce pipeline outcomes.
 
 `--clean` behavior:
 
@@ -309,13 +343,15 @@ Use this deterministic sequence for a full migration packaging run:
 4. `power-exit generate react <output-folder>/ir.json --out <output-folder>`
 5. `power-exit generate functions <output-folder>/ir.json --out <output-folder>`
 6. `power-exit generate infra <output-folder>/ir.json --out <output-folder>`
-7. `power-exit migrate <solution-folder> --out <output-folder>`
+7. `power-exit migrate <solution-folder> --out <output-folder> --gate`
+8. `power-exit gate <output-folder> --ci`
 
 Sample command block:
 
 ```bash
 power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/migrate-e2e
 power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/migrate-e2e-dry --dry-run
+power-exit gate ./out/migrate-e2e --ci --strict
 ```
 
 ## Azure SQL DDL generation (first generator)

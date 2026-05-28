@@ -150,6 +150,22 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: combined generation plan includes skipped files, unresolved dependencies, unsupported features, or high-severity review items.
     - Handling: migrate emits master `generation-plan.*` and `migration-plan.md` to drive manual approval/remediation workflow.
 
+35. `gate.input.generation-plan-missing`
+    - Trigger: `power-exit gate` runs without `generation-plan.json` in the output folder.
+    - Handling: gate evaluation falls back to IR + assessment signals and emits a high-severity manual review item so status is warn/fail explainably.
+
+36. `gate.threshold.unresolved-dependencies`
+    - Trigger: unresolved dependency count exceeds `maxUnresolvedDependencies`.
+    - Handling: gate emits explicit warn/fail reason with threshold overage and includes unresolved dependency details in JSON/markdown outputs.
+
+37. `gate.threshold.critical-unsupported-disallowed`
+    - Trigger: critical unsupported features are present while `allowCriticalUnsupported=false`.
+    - Handling: gate status becomes `fail` with explicit blocking rationale.
+
+38. `gate.ci.strict-warn-failure`
+    - Trigger: `power-exit gate --ci --strict` returns status `warn`.
+    - Handling: command exits non-zero to enforce warn-as-fail CI policy.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.
@@ -166,6 +182,7 @@ Detailed entries are added as parser milestones are implemented.
 - Dry-run mode is planning-only and intentionally does not emit generated infra/Bicep scaffold artifacts.
 - Migrate dry-run intentionally emits only report/plan artifacts and never claims deployment-ready outputs.
 - Safe-write mode can leave skipped files that require manual conflict resolution or explicit `--force`.
+- Readiness gate output is advisory unless CI mode (`--ci`) is explicitly used.
 - Azure Functions output is scaffold-only: trigger/action handlers, service adapters, and auth/validation flows are placeholders.
 - Azure infra output is scaffold-only: resources are placeholders with no deployment execution, no live credentials, and explicit manual hardening TODOs.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
