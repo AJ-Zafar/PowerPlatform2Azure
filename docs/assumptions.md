@@ -36,6 +36,8 @@
 32. Policy profiles are environment-oriented (`dev`, `test`, `prod`, `strict`) and should be treated as governance posture, not deployment automation.
 33. Waivers are audit metadata (`allowedWaivers[]`) and never remove gate evidence; waived items remain visible in JSON/markdown with waiver references.
 34. Critical waiver targets require `riskAccepted=true`; expired or invalid waivers are ignored and surfaced as warnings in gate audit output.
+35. Client-pack output is deterministic and generated from existing analyse/migrate artifacts, never from raw source files.
+36. Client pack intentionally separates audience layers: executive summary is non-technical, while technical findings and source reports remain engineering evidence.
 
 ## Repository assumptions
 

@@ -511,3 +511,64 @@ Advisory behavior:
   - `power-exit init-policy --out <workspace>`
   - customize `power-exit.policy.json`
   - enforce `power-exit gate <workspace> --ci --policy <workspace>/power-exit.policy.json --profile prod`
+
+## Implemented packaging mapping: migration output -> client pack
+
+CLI:
+
+```bash
+power-exit pack <output-folder> --out <pack-folder>
+```
+
+Required input:
+
+- `ir.json`
+
+Optional inputs (used when available):
+
+- `assessment-report.md`
+- `migration-plan.md`
+- `generation-plan.json` / `generation-plan.md`
+- `readiness-gate.json` / `readiness-gate.md`
+- generator report assets under `sql/`, `react/`, `functions/`, `infra/`
+
+Client-pack outputs (deterministic):
+
+- `executive-summary.md`
+- `technical-findings.md`
+- `migration-roadmap.md`
+- `risk-register.md`
+- `quick-wins.md`
+- `unsupported-features.md`
+- `manual-review-log.md`
+- `generated-assets-index.md`
+- `client-pack.json`
+
+Audience mapping:
+
+- Client-facing/demo/consultancy:
+  - `executive-summary.md`
+  - `migration-roadmap.md`
+  - `risk-register.md`
+  - `quick-wins.md`
+- Technical evidence:
+  - `technical-findings.md`
+  - `unsupported-features.md`
+  - `manual-review-log.md`
+  - `generated-assets-index.md`
+  - source reports/plans referenced by index
+
+`client-pack.json` model mapping:
+
+- solution metadata and summary metrics
+- readiness headline (`overallReadiness`, optional `gateStatus`)
+- deterministic source asset inventory with category + purpose
+- generated section file map
+- optional input availability flags
+
+Consultancy/demo workflow:
+
+1. Run `migrate` (optionally with `--gate` + policy profile).
+2. Run `pack` to produce client-facing materials.
+3. Present client-pack markdown outputs first.
+4. Use indexed technical artifacts for drill-down during discovery/sales/engineering handoff.

@@ -12,10 +12,12 @@ import {
   assessPowerPlatformIR,
   evaluateReadinessGate,
   generateAssessmentReportMarkdown,
+  readinessGateSchema,
   readinessGatePolicyFileSchema,
   renderReadinessGatePolicyMarkdown,
   renderReadinessGateMarkdown,
   serializeReadinessGate,
+  type ReadinessGate,
   type ReadinessGatePolicyProfile,
   type ReadinessGateManualReviewItem,
   type ReadinessGateThresholds,
@@ -42,6 +44,8 @@ import {
   type GenerationPlan
 } from "@power-exit/generators";
 import { analyseSolutionFolder } from "@power-exit/parsers";
+
+import { buildClientPack } from "./client-pack";
 
 type WriteFn = (line: string) => void;
 
@@ -133,6 +137,11 @@ interface GateArgs {
 
 interface InitPolicyArgs {
   outputFolder: string;
+}
+
+interface PackArgs {
+  outputFolder: string;
+  packFolder: string;
 }
 
 const parseAnalyseArgs = (args: string[]): AnalyseArgs => {
@@ -811,6 +820,40 @@ const parseInitPolicyArgs = (args: string[]): InitPolicyArgs => {
 
   return {
     outputFolder: path.resolve(outputFolder)
+  };
+};
+
+const parsePackArgs = (args: string[]): PackArgs => {
+  if (args.length < 3) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit pack <output-folder> --out <pack-folder>"
+    );
+  }
+
+  const [outputFolder, ...flags] = args;
+  let packFolder: string | undefined;
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+    if (flag === "--out") {
+      packFolder = flags[index + 1];
+      index += 1;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  if (!packFolder) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Missing required --out <pack-folder> argument."
+    );
+  }
+
+  return {
+    outputFolder: path.resolve(outputFolder),
+    packFolder: path.resolve(packFolder)
   };
 };
 
@@ -2104,6 +2147,82 @@ const executeInitPolicy = async (args: string[], stdout: WriteFn): Promise<void>
   );
 };
 
+const executePack = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const parsedArgs = parsePackArgs(args);
+  await ensureInputFolder(parsedArgs.outputFolder);
+  await ensureOutputFolder(parsedArgs.packFolder);
+
+  const irPath = path.join(parsedArgs.outputFolder, "ir.json");
+  await ensureInputFile(irPath);
+
+  let irPayload: unknown;
+  try {
+    irPayload = JSON.parse(await readFile(irPath, "utf-8")) as unknown;
+  } catch {
+    throw new CliError("INVALID_IR_JSON", "IR input is not valid JSON.", {
+      irFilePath: irPath
+    });
+  }
+
+  const ir = validatePowerPlatformIR(irPayload);
+  const assessment = assessPowerPlatformIR(ir);
+
+  const generationPlanPayload = await loadJsonFileIfPresent(
+    path.join(parsedArgs.outputFolder, "generation-plan.json")
+  );
+  let generationPlan: GenerationPlan | null = null;
+  if (generationPlanPayload !== undefined) {
+    try {
+      generationPlan = generationPlanSchema.parse(generationPlanPayload);
+    } catch {
+      throw new CliError(
+        "GENERATION_PLAN_VALIDATION_FAILURE",
+        "generation-plan.json failed schema validation.",
+        { generationPlanPath: path.join(parsedArgs.outputFolder, "generation-plan.json") }
+      );
+    }
+  }
+
+  const readinessGatePayload = await loadJsonFileIfPresent(
+    path.join(parsedArgs.outputFolder, "readiness-gate.json")
+  );
+  let readinessGate: ReadinessGate | null = null;
+  if (readinessGatePayload !== undefined) {
+    try {
+      readinessGate = readinessGateSchema.parse(readinessGatePayload);
+    } catch {
+      throw new CliError(
+        "READINESS_GATE_VALIDATION_FAILURE",
+        "readiness-gate.json failed schema validation.",
+        { readinessGatePath: path.join(parsedArgs.outputFolder, "readiness-gate.json") }
+      );
+    }
+  }
+
+  const pack = await buildClientPack({
+    sourceOutputFolder: parsedArgs.outputFolder,
+    ir,
+    assessment,
+    generationPlan,
+    readinessGate
+  });
+
+  await writePlannedArtifacts(parsedArgs.packFolder, pack.files);
+
+  stdout(
+    JSON.stringify({
+      command: "pack",
+      status: "success",
+      outputFolder: parsedArgs.outputFolder,
+      packFolder: parsedArgs.packFolder,
+      overallReadiness: pack.pack.overallReadiness,
+      gateStatus: pack.pack.gateStatus,
+      filesGenerated: pack.files.length,
+      optionalInputs: pack.pack.optionalInputs
+    })
+  );
+};
+
 const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> => {
   const parsedArgs = parseMigrateArgs(args);
 
@@ -2434,6 +2553,11 @@ export const runCli = async (
       return 0;
     }
 
+    if (command === "pack") {
+      await executePack(commandArgs, stdout);
+      return 0;
+    }
+
     if (!command) {
       throw new CliError(
         "INVALID_COMMAND",
@@ -2443,7 +2567,7 @@ export const runCli = async (
 
     throw new CliError(
       "INVALID_COMMAND",
-      "Supported commands are: analyse, report, generate, migrate, gate, init-policy."
+      "Supported commands are: analyse, report, generate, migrate, gate, init-policy, pack."
     );
   } catch (error) {
     stderr(formatError(error));

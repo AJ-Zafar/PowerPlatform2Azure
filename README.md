@@ -72,6 +72,7 @@ power-exit generate infra <ir-json> --out <output-folder> [--dry-run] [--force] 
 power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean] [--gate] [--policy <policy-file>] [--profile <profile-name>]
 power-exit gate <output-folder> [--ci] [--strict] [--policy <policy-file>] [--profile <profile-name>] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]
 power-exit init-policy --out <output-folder>
+power-exit pack <output-folder> --out <pack-folder>
 ```
 
 Current behavior in this sprint:
@@ -170,6 +171,26 @@ Current behavior in this sprint:
 2. Seeds four profile templates (`dev`, `test`, `prod`, `strict`) with conservative governance defaults.
 3. Adds no organization-specific assumptions or environment secrets.
 
+`pack` command behavior:
+
+1. Consumes an existing analyse/migrate output folder (requires `ir.json`).
+2. Recomputes deterministic assessment signals from IR and uses optional existing inputs when present:
+   - `assessment-report.md`
+   - `migration-plan.md`
+   - `generation-plan.json` / `generation-plan.md`
+   - `readiness-gate.json` / `readiness-gate.md`
+   - generator report assets under `sql/`, `react/`, `functions/`, `infra/`
+3. Produces a deterministic client-facing pack in `--out <pack-folder>`:
+   - `executive-summary.md`
+   - `technical-findings.md`
+   - `migration-roadmap.md`
+   - `risk-register.md`
+   - `quick-wins.md`
+   - `unsupported-features.md`
+   - `manual-review-log.md`
+   - `generated-assets-index.md`
+   - `client-pack.json`
+
 Default readiness thresholds:
 
 - `maxRiskScore=70`
@@ -201,6 +222,12 @@ Waiver governance expectations:
 - Waivers typically reduce fail -> warn when policy allows, but still require explicit sign-off.
 
 The gate is advisory by default (non-CI mode always exits `0`); use `--ci` (typically with `--policy` + `--profile prod`) to enforce pipeline outcomes.
+
+Client pack purpose:
+
+- `executive-summary.md` is board/demo friendly and minimizes technical jargon.
+- `technical-findings.md`, plans, and generation artifacts remain engineering-facing evidence.
+- Consultancy/discovery workflows should present client-pack files first, with technical reports as drill-down artifacts.
 
 `--clean` behavior:
 
@@ -369,6 +396,7 @@ Use this deterministic sequence for a full migration packaging run:
 7. `power-exit init-policy --out <output-folder>`
 8. `power-exit migrate <solution-folder> --out <output-folder> --gate --policy <output-folder>/power-exit.policy.json --profile prod`
 9. `power-exit gate <output-folder> --ci --policy <output-folder>/power-exit.policy.json --profile prod`
+10. `power-exit pack <output-folder> --out <output-folder>/client-pack`
 
 Sample command block:
 
@@ -377,6 +405,7 @@ power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/m
 power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/migrate-e2e-dry --dry-run
 power-exit init-policy --out ./out/migrate-e2e
 power-exit gate ./out/migrate-e2e --ci --policy ./out/migrate-e2e/power-exit.policy.json --profile prod --strict
+power-exit pack ./out/migrate-e2e --out ./out/migrate-e2e/client-pack
 ```
 
 ## Azure SQL DDL generation (first generator)
