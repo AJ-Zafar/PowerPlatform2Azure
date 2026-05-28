@@ -56,6 +56,8 @@ Detailed entries are added as parser milestones are implemented.
 - Flow parser does not execute expressions and does not evaluate runtime conditions/scopes.
 - Flow connector premium/custom classification is pattern-based and may require manual confirmation.
 - Flow readiness metadata is preparatory and not a full migration assessment score.
+- Assessment scores are deterministic heuristics and should be treated as migration planning guidance, not guaranteed conversion success.
+- Assessment recommendations/waves do not execute remediation; they identify prioritized next actions with current evidence.
 - Canvas parsing does not execute or semantically evaluate Power Fx; it preserves raw formulas and extracts best-effort references only.
 - Canvas layout normalization and role classification are heuristic and may require manual review for complex apps.
 - Canvas readiness scoring is preparatory metadata and not a full migration assessment score.

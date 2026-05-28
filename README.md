@@ -55,6 +55,7 @@ docs/
 - IR now includes a dependency graph edge model with unresolved-reference metadata.
 - IR now includes a lightweight parser summary layer (counts only), not full assessment scoring.
 - Canvas controls now include normalized layout metadata, control role classification, and heuristic migration-readiness metadata for UI migration planning.
+- `@power-exit/assessment` now provides deterministic migration assessment outputs (risk, complexity, readiness, confidence, findings, recommendations, blockers, quick wins, migration waves).
 
 ## CLI skeleton (current pass)
 
@@ -62,6 +63,8 @@ The CLI now supports a foundational command:
 
 ```bash
 power-exit analyse <solution-folder> --out <output-folder>
+power-exit analyse <solution-folder> --out <output-folder> --report
+power-exit report <ir-json> --out <output-folder>
 ```
 
 Current behavior in this sprint:
@@ -77,7 +80,43 @@ Current behavior in this sprint:
 9. Serialize deterministic JSON and write `ir.json`.
 10. Build deterministic dependency edges and unresolved dependency warnings.
 11. Attach lightweight analysis summary counts to `ir.json`.
-12. Print structured counts in CLI output, including Canvas and Flow readiness breakdowns.
+12. Optionally generate `assessment-report.md` using `--report`.
+13. Print structured counts in CLI output, including Canvas and Flow readiness breakdowns.
+
+`report` command behavior:
+
+1. Read and validate an existing `ir.json`.
+2. Run deterministic assessment heuristics across Dataverse, Canvas, Cloud Flows, Security, Connections, and Dependencies.
+3. Generate `assessment-report.md` with executive summary, risk/complexity/confidence, blockers, quick wins, domain sections, unsupported/warnings, migration waves, and next steps.
+
+## Assessment model (Milestone 7)
+
+Assessment outputs are deterministic and explainable:
+
+- Overall outputs:
+  - readiness (`high` | `medium` | `low` | `blocked`)
+  - risk score (`0..100`)
+  - complexity score (`0..100`)
+  - confidence (`0..1`)
+- Domain outputs:
+  - Dataverse
+  - Canvas
+  - Cloud Flows
+  - Security
+  - Connections
+  - Dependencies
+- Structured evidence outputs:
+  - findings
+  - recommendations
+  - blockers
+  - quick wins
+  - migration waves (Wave 0..4)
+
+Heuristics currently use IR signals including unsupported counts/severity, warnings, unresolved dependencies, unknown files, Dataverse schema volume, Canvas/Flow readiness, premium/custom connectors, malformed/conflicting metadata warnings, and domain confidences.
+
+Important limitation:
+
+- The assessment output is a migration planning aid, not a guarantee of automatic conversion success.
 
 ## Dependency graph model
 

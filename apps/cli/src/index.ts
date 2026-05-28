@@ -1,8 +1,12 @@
 #!/usr/bin/env node
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { serializeDeterministicIR, validatePowerPlatformIR } from "@power-exit/ir";
+import {
+  assessPowerPlatformIR,
+  generateAssessmentReportMarkdown
+} from "@power-exit/assessment";
 import { analyseSolutionFolder } from "@power-exit/parsers";
 
 type WriteFn = (line: string) => void;
@@ -26,6 +30,12 @@ class CliError extends Error {
 interface AnalyseArgs {
   solutionFolder: string;
   outputFolder: string;
+  includeReport: boolean;
+}
+
+interface ReportArgs {
+  irFilePath: string;
+  outputFolder: string;
 }
 
 const parseAnalyseArgs = (args: string[]): AnalyseArgs => {
@@ -37,26 +47,72 @@ const parseAnalyseArgs = (args: string[]): AnalyseArgs => {
   }
 
   const [solutionFolder, ...flags] = args;
-  const outIndex = flags.indexOf("--out");
+  let outputFolder: string | undefined;
+  let includeReport = false;
 
-  if (outIndex === -1 || outIndex === flags.length - 1) {
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+
+    if (flag === "--report") {
+      includeReport = true;
+      continue;
+    }
+
+    if (flag === "--out") {
+      outputFolder = flags[index + 1];
+      index += 1;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  if (!outputFolder) {
     throw new CliError(
       "INVALID_ARGUMENTS",
       "Missing required --out <output-folder> argument."
     );
   }
 
-  const outputFolder = flags[outIndex + 1];
+  return {
+    solutionFolder: path.resolve(solutionFolder),
+    outputFolder: path.resolve(outputFolder),
+    includeReport
+  };
+};
+
+const parseReportArgs = (args: string[]): ReportArgs => {
+  if (args.length < 3) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit report <ir-json> --out <output-folder>"
+    );
+  }
+
+  const [irFilePath, ...flags] = args;
+  let outputFolder: string | undefined;
+
+  for (let index = 0; index < flags.length; index += 1) {
+    const flag = flags[index];
+
+    if (flag === "--out") {
+      outputFolder = flags[index + 1];
+      index += 1;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
 
   if (!outputFolder) {
     throw new CliError(
       "INVALID_ARGUMENTS",
-      "Output folder argument cannot be empty."
+      "Missing required --out <output-folder> argument."
     );
   }
 
   return {
-    solutionFolder: path.resolve(solutionFolder),
+    irFilePath: path.resolve(irFilePath),
     outputFolder: path.resolve(outputFolder)
   };
 };
@@ -75,6 +131,24 @@ const ensureInputFolder = async (solutionFolder: string): Promise<void> => {
   if (!metadata.isDirectory()) {
     throw new CliError("INPUT_FOLDER_NOT_FOUND", "Solution path is not a folder.", {
       solutionFolder
+    });
+  }
+};
+
+const ensureInputFile = async (inputFilePath: string): Promise<void> => {
+  let metadata;
+
+  try {
+    metadata = await stat(inputFilePath);
+  } catch {
+    throw new CliError("INPUT_FILE_NOT_FOUND", "Input file does not exist.", {
+      inputFilePath
+    });
+  }
+
+  if (!metadata.isFile()) {
+    throw new CliError("INPUT_FILE_NOT_FOUND", "Input path is not a file.", {
+      inputFilePath
     });
   }
 };
@@ -126,8 +200,15 @@ const executeAnalyse = async (
 
   const serializedIr = `${serializeDeterministicIR(validatedIr)}\n`;
   const outputFile = path.join(parsedArgs.outputFolder, "ir.json");
+  const reportFile = path.join(parsedArgs.outputFolder, "assessment-report.md");
 
   await writeFile(outputFile, serializedIr, "utf-8");
+
+  if (parsedArgs.includeReport) {
+    const assessment = assessPowerPlatformIR(validatedIr);
+    const report = generateAssessmentReportMarkdown(validatedIr, assessment);
+    await writeFile(reportFile, `${report}\n`, "utf-8");
+  }
 
   stdout(
     JSON.stringify({
@@ -168,7 +249,52 @@ const executeAnalyse = async (
       unsupportedFeatures: validatedIr.unsupportedFeatures.length,
       unsupported: validatedIr.unsupportedFeatures.length,
       unresolvedDependencies: analysis.summary.unresolvedDependencies,
-      confidence: validatedIr.confidence
+      confidence: validatedIr.confidence,
+      reportGenerated: parsedArgs.includeReport,
+      reportFile: parsedArgs.includeReport ? reportFile : undefined
+    })
+  );
+};
+
+const executeReport = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const parsedArgs = parseReportArgs(args);
+
+  await ensureInputFile(parsedArgs.irFilePath);
+  await ensureOutputFolder(parsedArgs.outputFolder);
+  let irPayload: unknown;
+
+  try {
+    irPayload = JSON.parse(await readFile(parsedArgs.irFilePath, "utf-8")) as unknown;
+  } catch {
+    throw new CliError("INVALID_IR_JSON", "IR input is not valid JSON.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  let validatedIr;
+  try {
+    validatedIr = validatePowerPlatformIR(irPayload);
+  } catch {
+    throw new CliError("IR_VALIDATION_FAILURE", "Input IR failed schema validation.", {
+      irFilePath: parsedArgs.irFilePath
+    });
+  }
+
+  const assessment = assessPowerPlatformIR(validatedIr);
+  const report = generateAssessmentReportMarkdown(validatedIr, assessment);
+  const reportFile = path.join(parsedArgs.outputFolder, "assessment-report.md");
+  await writeFile(reportFile, `${report}\n`, "utf-8");
+
+  stdout(
+    JSON.stringify({
+      command: "report",
+      status: "success",
+      irFilePath: parsedArgs.irFilePath,
+      outputFile: reportFile,
+      overallReadiness: assessment.overallReadiness,
+      overallRiskScore: assessment.overallRiskScore,
+      overallComplexityScore: assessment.overallComplexityScore,
+      overallConfidence: assessment.overallConfidence
     })
   );
 };
@@ -197,15 +323,27 @@ export const runCli = async (
   try {
     const [command, ...commandArgs] = args;
 
-    if (command !== "analyse") {
+    if (command === "analyse") {
+      await executeAnalyse(commandArgs, stdout);
+      return 0;
+    }
+
+    if (command === "report") {
+      await executeReport(commandArgs, stdout);
+      return 0;
+    }
+
+    if (!command) {
       throw new CliError(
         "INVALID_COMMAND",
-        "Only the analyse command is supported in this pass."
+        "No command provided."
       );
     }
 
-    await executeAnalyse(commandArgs, stdout);
-    return 0;
+    throw new CliError(
+      "INVALID_COMMAND",
+      "Supported commands are: analyse, report."
+    );
   } catch (error) {
     stderr(formatError(error));
     return 1;

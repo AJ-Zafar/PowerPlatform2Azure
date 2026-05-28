@@ -187,4 +187,65 @@ describe("power-exit analyse command", () => {
 
     await rm(tempRoot, { recursive: true, force: true });
   });
+
+  it("writes assessment-report.md when analyse is called with --report", async () => {
+    const tempRoot = await createTempDirectory();
+    const output = path.join(tempRoot, "out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/flow-heavy"
+    );
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    const exitCode = await runCli(
+      ["analyse", inputFolder, "--out", output, "--report"],
+      stdOut.push.bind(stdOut),
+      stdErr.push.bind(stdErr)
+    );
+
+    expect(exitCode).toBe(0);
+    const report = await readFile(path.join(output, "assessment-report.md"), "utf-8");
+    expect(report).toContain("# Power Exit Migration Assessment Report");
+    expect(report).toContain("## Recommended migration waves");
+    expect(stdErr).toEqual([]);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("generates report from an existing ir.json via report command", async () => {
+    const tempRoot = await createTempDirectory();
+    const output = path.join(tempRoot, "out");
+    const inputFolder = path.resolve(
+      process.cwd(),
+      "packages/fixtures/samples/solutions/mixed-partial"
+    );
+    const stdOut: string[] = [];
+    const stdErr: string[] = [];
+
+    const analyseExitCode = await runCli(
+      ["analyse", inputFolder, "--out", output],
+      stdOut.push.bind(stdOut),
+      stdErr.push.bind(stdErr)
+    );
+    expect(analyseExitCode).toBe(0);
+
+    const reportOutput = path.join(tempRoot, "report-out");
+    const reportStdOut: string[] = [];
+    const reportStdErr: string[] = [];
+    const reportExitCode = await runCli(
+      ["report", path.join(output, "ir.json"), "--out", reportOutput],
+      reportStdOut.push.bind(reportStdOut),
+      reportStdErr.push.bind(reportStdErr)
+    );
+
+    expect(reportExitCode).toBe(0);
+    const report = await readFile(path.join(reportOutput, "assessment-report.md"), "utf-8");
+    expect(report).toContain("## Executive summary");
+    expect(report).toContain("## Overall readiness");
+    expect(reportStdOut[0]).toContain('"command":"report"');
+    expect(reportStdErr).toEqual([]);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
 });

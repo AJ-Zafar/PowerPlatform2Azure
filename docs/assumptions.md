@@ -7,9 +7,10 @@
 3. Deterministic output means stable ordering of entities, attributes, controls, flows, and generated file sections.
 4. Unsupported source constructs must be emitted as structured records and included in reports.
 5. Current implementation scope includes solution discovery, manifest parsing, Dataverse metadata extraction, structured Canvas extraction, structured Cloud Flow extraction, and infrastructure metadata extraction.
-6. Full Power Fx semantic translation, SQL/React generation, and full assessment scoring engines remain out of scope for this sprint.
-7. Lightweight summary counts in IR are parser telemetry only; they are not migration risk/complexity scoring.
-8. Canvas migration-readiness in this pass is heuristic metadata for UI migration preparation, not final assessment engine output.
+6. This sprint includes first-pass deterministic assessment heuristics and report generation from validated IR.
+7. Full Power Fx semantic translation, SQL/React/Azure generation, and non-heuristic assessment scoring remain out of scope.
+8. Lightweight summary counts in IR remain parser telemetry; assessment outputs consume these signals but remain heuristic.
+9. Canvas migration-readiness in this pass is heuristic metadata for UI migration preparation, not final conversion logic.
 
 ## Repository assumptions
 
@@ -52,6 +53,8 @@ Where:
 - Canvas layout normalization preserves raw layout properties and derives best-effort normalized layout mode/responsive hints.
 - Flow malformed JSON/XML files produce warnings and parsing continues for remaining flows.
 - Flow trigger/action parsing is best-effort and preserves raw inputs/expressions without execution.
+- Assessment scoring is deterministic and explainable, using explicit weighted heuristics over current IR signals.
+- Unknown layouts, unresolved dependencies, and malformed artifacts reduce confidence and increase risk by design.
 - Duplicate/conflicting metadata is surfaced as parser warnings and does not crash the run.
 - Unresolved references are represented both as warnings and as unresolved dependency edges.
 
@@ -66,3 +69,4 @@ Where:
 7. Canvas IR preserves raw Power Fx expressions and extracted references (functions, data sources, variables, collections, navigation targets) without semantic execution.
 8. Control roles and readiness states are confidence-scored heuristics intended to prioritize future React migration work, not to auto-generate UI code yet.
 9. Cloud Flow IR preserves trigger/action graphs, connector and expression references, and readiness heuristics without executing expressions.
+10. Assessment outputs are planning guidance (findings, blockers, quick wins, migration waves), not a guarantee of zero-effort migration.

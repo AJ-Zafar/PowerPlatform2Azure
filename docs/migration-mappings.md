@@ -24,7 +24,7 @@ This document tracks deterministic mappings between Power Platform constructs an
 - `connectionReferences`
 - `security.roles`
 
-These sections are now parse-populated and validated, but no generator logic is implemented in this sprint.
+These sections are now parse-populated and validated, and are consumed by the first deterministic assessment engine for readiness/risk planning.
 
 ## Dependency graph and summary prerequisites
 
@@ -46,6 +46,22 @@ What this summary does not do:
 - produce recommendations
 
 Those remain assessment-engine responsibilities in later milestones.
+
+## Assessment interpretation notes (Milestone 7)
+
+The assessment engine now consumes validated IR and produces:
+
+- overall readiness/risk/complexity/confidence
+- domain assessments (Dataverse/Canvas/Cloud Flows/Security/Connections/Dependencies)
+- findings, recommendations, blockers, quick wins
+- migration wave recommendations (Wave 0..4)
+
+Interpretation guidance:
+
+- Scores are deterministic heuristics, not machine-learned predictions.
+- Findings are evidence-linked planning signals, not automatic conversion actions.
+- Readiness indicates migration effort/risk posture, not guaranteed runtime parity.
+- High confidence means parsing/assessment signal quality is stronger, not that migration is complete.
 
 Canvas IR notes for future React generation:
 
