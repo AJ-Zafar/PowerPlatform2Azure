@@ -32,6 +32,10 @@
 28. Readiness gate defaults are conservative (`maxRiskScore=70`, `maxComplexityScore=70`, `minConfidence=0.60`, `allowCriticalUnsupported=false`, `maxUnresolvedDependencies=6`, `maxHighSeverityFindings=8`, `requireNoBlockers=true`).
 29. Gate output is advisory unless `power-exit gate --ci` is used; CI mode enforces pass/fail policy by exit code.
 30. `--strict` only affects CI exit behavior for warn states (warn becomes non-zero in CI strict mode).
+31. Policy-driven gate profiles are versioned (`schemaVersion=1.0`) and resolved by deterministic precedence: built-in defaults -> policy profile -> CLI threshold flags.
+32. Policy profiles are environment-oriented (`dev`, `test`, `prod`, `strict`) and should be treated as governance posture, not deployment automation.
+33. Waivers are audit metadata (`allowedWaivers[]`) and never remove gate evidence; waived items remain visible in JSON/markdown with waiver references.
+34. Critical waiver targets require `riskAccepted=true`; expired or invalid waivers are ignored and surfaced as warnings in gate audit output.
 
 ## Repository assumptions
 

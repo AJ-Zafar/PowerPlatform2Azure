@@ -69,8 +69,9 @@ power-exit generate sql <ir-json> --out <output-folder> [--dry-run] [--force] [-
 power-exit generate react <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 power-exit generate functions <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
 power-exit generate infra <ir-json> --out <output-folder> [--dry-run] [--force] [--clean]
-power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean] [--gate]
-power-exit gate <output-folder> [--ci] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]
+power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean] [--gate] [--policy <policy-file>] [--profile <profile-name>]
+power-exit gate <output-folder> [--ci] [--strict] [--policy <policy-file>] [--profile <profile-name>] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]
+power-exit init-policy --out <output-folder>
 ```
 
 Current behavior in this sprint:
@@ -150,16 +151,24 @@ Current behavior in this sprint:
 `gate` command behavior:
 
 1. Read `ir.json` and deterministically recompute assessment scores.
-2. Read `generation-plan.json` when present (fallback to IR+assessment-only mode when missing).
-3. Evaluate deterministic readiness thresholds and write:
+2. Read optional policy (`--policy`) and profile (`--profile`, defaults to `dev` when policy is provided).
+3. Read `generation-plan.json` when present (fallback to IR+assessment-only mode when missing).
+4. Apply deterministic readiness thresholds and waiver governance (`allowedWaivers[]`) and write:
    - `readiness-gate.json`
    - `readiness-gate.md`
-4. Emit explainable status reasons (`pass` | `warn` | `fail`) with blockers, unresolved dependencies, high-severity findings, unsupported features, manual review items, and recommendations.
-5. In `--ci` mode, exit codes are:
+5. Emit explainable status reasons (`pass` | `warn` | `fail`) with original/effective status, policy context, waiver audit (applied/expired/invalid), blockers, unresolved dependencies, high-severity findings, unsupported features, manual review items, and recommendations.
+6. Threshold precedence is deterministic: built-in defaults -> selected policy profile -> explicit CLI flags.
+7. In `--ci` mode, exit codes are:
    - `0` for `pass`
    - `1` for `fail`
    - `0` for `warn` unless `--strict` is set
    - `1` for `warn` when `--strict` is set
+
+`init-policy` command behavior:
+
+1. Writes deterministic `power-exit.policy.json` and `power-exit.policy.md`.
+2. Seeds four profile templates (`dev`, `test`, `prod`, `strict`) with conservative governance defaults.
+3. Adds no organization-specific assumptions or environment secrets.
 
 Default readiness thresholds:
 
@@ -177,7 +186,21 @@ Readiness gate interpretation:
 - `warn`: package is viable but requires explicit manual review/sign-off before proceeding.
 - `fail`: package should be blocked until fail reasons are remediated.
 
-The gate is advisory by default (non-CI mode always exits `0`); use `--ci` to enforce pipeline outcomes.
+Profile strategy:
+
+- `dev`: relaxed thresholds for early iteration and migration discovery.
+- `test`: stronger defaults for integration environments.
+- `prod`: conservative thresholds and evidence-oriented waiver governance.
+- `strict`: highest governance posture with minimal unresolved risk tolerance.
+
+Waiver governance expectations:
+
+- Waivers are audit records; they never remove evidence from gate outputs.
+- Expired or invalid waivers are ignored and surfaced as warnings.
+- Critical waived items require `riskAccepted=true`.
+- Waivers typically reduce fail -> warn when policy allows, but still require explicit sign-off.
+
+The gate is advisory by default (non-CI mode always exits `0`); use `--ci` (typically with `--policy` + `--profile prod`) to enforce pipeline outcomes.
 
 `--clean` behavior:
 
@@ -343,15 +366,17 @@ Use this deterministic sequence for a full migration packaging run:
 4. `power-exit generate react <output-folder>/ir.json --out <output-folder>`
 5. `power-exit generate functions <output-folder>/ir.json --out <output-folder>`
 6. `power-exit generate infra <output-folder>/ir.json --out <output-folder>`
-7. `power-exit migrate <solution-folder> --out <output-folder> --gate`
-8. `power-exit gate <output-folder> --ci`
+7. `power-exit init-policy --out <output-folder>`
+8. `power-exit migrate <solution-folder> --out <output-folder> --gate --policy <output-folder>/power-exit.policy.json --profile prod`
+9. `power-exit gate <output-folder> --ci --policy <output-folder>/power-exit.policy.json --profile prod`
 
 Sample command block:
 
 ```bash
 power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/migrate-e2e
 power-exit migrate packages/fixtures/samples/solutions/migrate-e2e --out ./out/migrate-e2e-dry --dry-run
-power-exit gate ./out/migrate-e2e --ci --strict
+power-exit init-policy --out ./out/migrate-e2e
+power-exit gate ./out/migrate-e2e --ci --policy ./out/migrate-e2e/power-exit.policy.json --profile prod --strict
 ```
 
 ## Azure SQL DDL generation (first generator)

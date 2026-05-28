@@ -166,6 +166,26 @@ Detailed entries are added as parser milestones are implemented.
     - Trigger: `power-exit gate --ci --strict` returns status `warn`.
     - Handling: command exits non-zero to enforce warn-as-fail CI policy.
 
+39. `gate.policy.invalid-schema`
+    - Trigger: `power-exit gate --policy <file>` receives a policy that fails schema validation.
+    - Handling: command fails clearly with structured validation error (`GATE_POLICY_VALIDATION_FAILURE`).
+
+40. `gate.policy.profile-not-found`
+    - Trigger: a requested policy profile (`--profile`) is not present in the loaded policy file.
+    - Handling: command fails clearly with structured profile error (`GATE_POLICY_PROFILE_NOT_FOUND`).
+
+41. `gate.waiver.expired`
+    - Trigger: waiver record `expiresOn` is before gate evaluation date.
+    - Handling: waiver is ignored and listed in `waiverAudit.expiredWaivers`.
+
+42. `gate.waiver.invalid`
+    - Trigger: waiver record does not match evidence, lacks required evidence metadata, targets non-waivable policy domains, or otherwise fails validation.
+    - Handling: waiver is ignored, counted in `waiverAudit.invalidWaivers`, and surfaced as warning rationale.
+
+43. `gate.waiver.critical-risk-acceptance-required`
+    - Trigger: waiver targets a critical finding/unsupported/dependency but `riskAccepted=false`.
+    - Handling: waiver is marked invalid and gate remains fail/warn based on unwaived evidence.
+
 ## Current parser limitations
 
 - Flow parsing is heuristic and best-effort for common unpacked JSON + XML metadata shapes.

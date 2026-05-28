@@ -13,6 +13,8 @@ const createTempDirectory = async (): Promise<string> =>
 
 interface GatePayload {
   status: "pass" | "warn" | "fail";
+  originalStatus: "pass" | "warn" | "fail";
+  effectiveStatus: "pass" | "warn" | "fail";
   thresholds: {
     maxRiskScore: number;
     maxComplexityScore: number;
@@ -22,7 +24,17 @@ interface GatePayload {
     maxHighSeverityFindings: number;
     requireNoBlockers: boolean;
   };
+  waiverAudit: {
+    waivedCount: number;
+    expiredCount: number;
+    invalidCount: number;
+  };
+  policy: {
+    profileName: "dev" | "test" | "prod" | "strict";
+    sourcePolicyFile?: string;
+  } | null;
   statusReasons: string[];
+  originalStatusReasons: string[];
 }
 
 interface GateCommandPayload {
@@ -32,6 +44,8 @@ interface GateCommandPayload {
   strict: boolean;
   ciExitCode: number;
   generationPlanAvailable: boolean;
+  policyUsed: string | null;
+  profileUsed: string | null;
   statusReasons: string[];
 }
 
@@ -75,6 +89,70 @@ const writeMinimalGenerationPlan = async (outputFolder: string): Promise<void> =
     `${JSON.stringify(generationPlan, null, 2)}\n`,
     "utf-8"
   );
+};
+
+const makePolicyProfile = (
+  profileName: "dev" | "test" | "prod" | "strict",
+  thresholds: GatePayload["thresholds"],
+  extra?: {
+    allowedWaivers?: unknown[];
+    requiredEvidence?: string[];
+  }
+): Record<string, unknown> => ({
+  profileName,
+  description: `${profileName} profile`,
+  thresholds,
+  severityOverrides: {},
+  categoryOverrides: {},
+  allowedWaivers: extra?.allowedWaivers ?? [],
+  requiredEvidence: extra?.requiredEvidence ?? [],
+  metadata: {
+    owner: "test"
+  }
+});
+
+const writePolicyFile = async (input: {
+  rootFolder: string;
+  profiles: Record<string, unknown>[];
+}): Promise<string> => {
+  const policyPath = path.join(input.rootFolder, "power-exit.policy.json");
+  await writeFile(
+    policyPath,
+    `${JSON.stringify(
+      {
+        schemaVersion: "1.0",
+        description: "Test policy file",
+        profiles: input.profiles
+      },
+      null,
+      2
+    )}\n`,
+    "utf-8"
+  );
+  return policyPath;
+};
+
+const appendCriticalUnsupportedFeature = async (outputFolder: string): Promise<void> => {
+  const irPath = path.join(outputFolder, "ir.json");
+  const ir = JSON.parse(await readFile(irPath, "utf-8")) as {
+    unsupportedFeatures: unknown[];
+  };
+  ir.unsupportedFeatures = [
+    ...ir.unsupportedFeatures,
+    createUnsupportedFeature({
+      featureType: "critical.synthetic.feature",
+      sourceLocation: "synthetic/source",
+      reason: "Critical unsupported synthetic feature.",
+      suggestedRemediation: "Manual redesign required.",
+      severity: "critical",
+      confidence: 0.9,
+      provenance: {
+        sourcePath: "synthetic/source",
+        sourceType: "unknown"
+      }
+    })
+  ];
+  await writeFile(irPath, `${JSON.stringify(ir, null, 2)}\n`, "utf-8");
 };
 
 describe("power-exit gate command", () => {
@@ -436,6 +514,291 @@ describe("power-exit gate command", () => {
     await rm(tempRoot, { recursive: true, force: true });
   });
 
+  it("loads policy profile thresholds and applies CLI threshold overrides", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "gate-policy-overrides");
+    const stdOut: string[] = [];
+
+    expect(
+      await runCli(
+        ["analyse", fixturePath("minimal-valid"), "--out", outputFolder],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    await writeMinimalGenerationPlan(outputFolder);
+    const policyPath = await writePolicyFile({
+      rootFolder: tempRoot,
+      profiles: [
+        makePolicyProfile("dev", {
+          maxRiskScore: 81,
+          maxComplexityScore: 82,
+          minConfidence: 0.51,
+          allowCriticalUnsupported: false,
+          maxUnresolvedDependencies: 9,
+          maxHighSeverityFindings: 9,
+          requireNoBlockers: true
+        }),
+        makePolicyProfile("strict", {
+          maxRiskScore: 61,
+          maxComplexityScore: 62,
+          minConfidence: 0.75,
+          allowCriticalUnsupported: false,
+          maxUnresolvedDependencies: 1,
+          maxHighSeverityFindings: 2,
+          requireNoBlockers: true
+        })
+      ]
+    });
+
+    expect(
+      await runCli(
+        [
+          "gate",
+          outputFolder,
+          "--policy",
+          policyPath,
+          "--profile",
+          "strict",
+          "--max-risk",
+          "99",
+          "--max-complexity",
+          "98"
+        ],
+        stdOut.push.bind(stdOut),
+        () => undefined
+      )
+    ).toBe(0);
+
+    const gate = await parseReadinessGate(outputFolder);
+    const commandPayload = parseGateCommandPayload(stdOut[0]);
+    expect(gate.thresholds.maxRiskScore).toBe(99);
+    expect(gate.thresholds.maxComplexityScore).toBe(98);
+    expect(gate.thresholds.minConfidence).toBe(0.75);
+    expect(gate.thresholds.maxUnresolvedDependencies).toBe(1);
+    expect(commandPayload.policyUsed).toBe(policyPath);
+    expect(commandPayload.profileUsed).toBe("strict");
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("fails clearly when policy schema is invalid", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "gate-invalid-policy");
+    const stdErr: string[] = [];
+
+    expect(
+      await runCli(
+        ["analyse", fixturePath("minimal-valid"), "--out", outputFolder],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    await writeMinimalGenerationPlan(outputFolder);
+    const invalidPolicyPath = path.join(tempRoot, "invalid.policy.json");
+    await writeFile(
+      invalidPolicyPath,
+      `${JSON.stringify({ schemaVersion: "1.0", profiles: [] }, null, 2)}\n`,
+      "utf-8"
+    );
+
+    expect(
+      await runCli(
+        ["gate", outputFolder, "--policy", invalidPolicyPath],
+        () => undefined,
+        stdErr.push.bind(stdErr)
+      )
+    ).toBe(1);
+    expect(stdErr[0]).toContain('"code":"GATE_POLICY_VALIDATION_FAILURE"');
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("fails clearly when requested policy profile is missing", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "gate-missing-profile");
+    const stdErr: string[] = [];
+
+    expect(
+      await runCli(
+        ["analyse", fixturePath("minimal-valid"), "--out", outputFolder],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    await writeMinimalGenerationPlan(outputFolder);
+    const policyPath = await writePolicyFile({
+      rootFolder: tempRoot,
+      profiles: [
+        makePolicyProfile("dev", {
+          maxRiskScore: 80,
+          maxComplexityScore: 80,
+          minConfidence: 0.5,
+          allowCriticalUnsupported: true,
+          maxUnresolvedDependencies: 20,
+          maxHighSeverityFindings: 20,
+          requireNoBlockers: false
+        })
+      ]
+    });
+
+    expect(
+      await runCli(
+        ["gate", outputFolder, "--policy", policyPath, "--profile", "prod"],
+        () => undefined,
+        stdErr.push.bind(stdErr)
+      )
+    ).toBe(1);
+    expect(stdErr[0]).toContain('"code":"GATE_POLICY_PROFILE_NOT_FOUND"');
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("applies valid waivers and keeps waived evidence visible in markdown", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "gate-waiver-valid");
+
+    expect(
+      await runCli(
+        ["analyse", fixturePath("minimal-valid"), "--out", outputFolder],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    await writeMinimalGenerationPlan(outputFolder);
+    await appendCriticalUnsupportedFeature(outputFolder);
+    const policyPath = await writePolicyFile({
+      rootFolder: tempRoot,
+      profiles: [
+        makePolicyProfile(
+          "prod",
+          {
+            maxRiskScore: 100,
+            maxComplexityScore: 100,
+            minConfidence: 0,
+            allowCriticalUnsupported: false,
+            maxUnresolvedDependencies: 99,
+            maxHighSeverityFindings: 99,
+            requireNoBlockers: false
+          },
+          {
+            allowedWaivers: [
+              {
+                waiverId: "WVR-001",
+                appliesTo: {
+                  unsupportedFeatureId: "critical.synthetic.feature:synthetic/source"
+                },
+                reason: "Approved migration exception for first release cut.",
+                owner: "migration-team",
+                expiresOn: "2099-12-31",
+                approvedBy: "risk-board",
+                evidenceLink: "https://contoso.example/risk/WVR-001",
+                riskAccepted: true,
+                createdOn: "2026-05-28"
+              }
+            ]
+          }
+        )
+      ]
+    });
+
+    expect(
+      await runCli(
+        ["gate", outputFolder, "--policy", policyPath, "--profile", "prod"],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+
+    const gate = await parseReadinessGate(outputFolder);
+    const markdown = await readFile(path.join(outputFolder, "readiness-gate.md"), "utf-8");
+    expect(gate.originalStatus).toBe("fail");
+    expect(gate.effectiveStatus).toBe("warn");
+    expect(gate.status).toBe("warn");
+    expect(gate.waiverAudit.waivedCount).toBeGreaterThan(0);
+    expect(markdown).toContain("critical.synthetic.feature at synthetic/source");
+    expect(markdown).toContain("waived by: WVR-001");
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it("ignores expired waivers and reports invalid critical waivers without risk acceptance", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputFolder = path.join(tempRoot, "gate-waiver-expired-invalid");
+
+    expect(
+      await runCli(
+        ["analyse", fixturePath("minimal-valid"), "--out", outputFolder],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    await writeMinimalGenerationPlan(outputFolder);
+    await appendCriticalUnsupportedFeature(outputFolder);
+    const policyPath = await writePolicyFile({
+      rootFolder: tempRoot,
+      profiles: [
+        makePolicyProfile(
+          "prod",
+          {
+            maxRiskScore: 100,
+            maxComplexityScore: 100,
+            minConfidence: 0,
+            allowCriticalUnsupported: false,
+            maxUnresolvedDependencies: 99,
+            maxHighSeverityFindings: 99,
+            requireNoBlockers: false
+          },
+          {
+            allowedWaivers: [
+              {
+                waiverId: "WVR-EXPIRED",
+                appliesTo: {
+                  unsupportedFeatureId: "critical.synthetic.feature:synthetic/source"
+                },
+                reason: "Expired exception",
+                owner: "migration-team",
+                expiresOn: "2020-01-01",
+                approvedBy: "risk-board",
+                evidenceLink: "https://contoso.example/risk/WVR-EXPIRED",
+                riskAccepted: true,
+                createdOn: "2020-01-01"
+              },
+              {
+                waiverId: "WVR-NO-RISK-ACCEPT",
+                appliesTo: {
+                  unsupportedFeatureId: "critical.synthetic.feature:synthetic/source"
+                },
+                reason: "Missing risk acceptance",
+                owner: "migration-team",
+                expiresOn: "2099-12-31",
+                approvedBy: "risk-board",
+                evidenceLink: "https://contoso.example/risk/WVR-NO-RISK-ACCEPT",
+                riskAccepted: false,
+                createdOn: "2026-05-28"
+              }
+            ]
+          }
+        )
+      ]
+    });
+
+    expect(
+      await runCli(
+        ["gate", outputFolder, "--policy", policyPath, "--profile", "prod"],
+        () => undefined,
+        () => undefined
+      )
+    ).toBe(0);
+    const gate = await parseReadinessGate(outputFolder);
+    expect(gate.status).toBe("fail");
+    expect(gate.waiverAudit.waivedCount).toBe(0);
+    expect(gate.waiverAudit.expiredCount).toBe(1);
+    expect(gate.waiverAudit.invalidCount).toBe(1);
+
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
   it("returns structured error for missing output folder input", async () => {
     const stdOut: string[] = [];
     const stdErr: string[] = [];
@@ -448,6 +811,43 @@ describe("power-exit gate command", () => {
     ).toBe(1);
     expect(stdOut).toEqual([]);
     expect(stdErr[0]).toContain('"code":"INPUT_FOLDER_NOT_FOUND"');
+  });
+});
+
+describe("power-exit init-policy command", () => {
+  it("writes default policy json and markdown deterministically", async () => {
+    const tempRoot = await createTempDirectory();
+    const outputA = path.join(tempRoot, "policy-a");
+    const outputB = path.join(tempRoot, "policy-b");
+
+    expect(await runCli(["init-policy", "--out", outputA], () => undefined, () => undefined)).toBe(
+      0
+    );
+    expect(await runCli(["init-policy", "--out", outputB], () => undefined, () => undefined)).toBe(
+      0
+    );
+
+    const policyJsonA = await readFile(path.join(outputA, "power-exit.policy.json"), "utf-8");
+    const policyJsonB = await readFile(path.join(outputB, "power-exit.policy.json"), "utf-8");
+    const policyMdA = await readFile(path.join(outputA, "power-exit.policy.md"), "utf-8");
+    const policyMdB = await readFile(path.join(outputB, "power-exit.policy.md"), "utf-8");
+    const parsedPolicy = JSON.parse(policyJsonA) as {
+      schemaVersion: string;
+      profiles: Array<{ profileName: string }>;
+    };
+
+    expect(policyJsonA).toBe(policyJsonB);
+    expect(policyMdA).toBe(policyMdB);
+    expect(parsedPolicy.schemaVersion).toBe("1.0");
+    expect(parsedPolicy.profiles.map((profile) => profile.profileName)).toEqual([
+      "dev",
+      "test",
+      "prod",
+      "strict"
+    ]);
+    expect(policyMdA).toContain("## Profiles");
+
+    await rm(tempRoot, { recursive: true, force: true });
   });
 });
 

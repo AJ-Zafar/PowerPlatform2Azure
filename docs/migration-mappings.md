@@ -414,8 +414,9 @@ Determinism validation harness:
 CLI:
 
 ```bash
-power-exit gate <output-folder> [--ci] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]
-power-exit migrate <solution-folder> --out <output-folder> --gate
+power-exit gate <output-folder> [--ci] [--strict] [--policy <policy-file>] [--profile <profile-name>] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]
+power-exit migrate <solution-folder> --out <output-folder> --gate [--policy <policy-file>] [--profile <profile-name>]
+power-exit init-policy --out <output-folder>
 ```
 
 Readiness gate inputs:
@@ -423,6 +424,7 @@ Readiness gate inputs:
 1. `ir.json` (required)
 2. deterministic assessment recomputed from IR
 3. `generation-plan.json` (optional, with fallback behavior when absent)
+4. `power-exit.policy.json` + selected profile (optional; defaults remain active when omitted)
 
 Readiness gate outputs:
 
@@ -431,11 +433,45 @@ Readiness gate outputs:
 
 Deterministic gate model fields:
 
-- `status` (`pass` | `warn` | `fail`)
+- `status` / `effectiveStatus` (`pass` | `warn` | `fail`)
+- `originalStatus` (unwaived status baseline)
 - `overallReadiness`, `riskScore`, `complexityScore`, `confidence`
 - `blockers`, `warnings`, `unresolvedDependencies`, `highSeverityFindings`
 - `unsupportedFeatures`, `manualReviewItems`
-- `thresholds`, `statusReasons`, `recommendations`
+- `thresholds` (resolved after policy + CLI override)
+- `policy` (schemaVersion/profile/source file context when policy is used)
+- `waiverAudit`:
+  - `appliedWaivers`
+  - `expiredWaivers`
+  - `invalidWaivers`
+  - `nonWaivableBlockers`
+  - aggregate counts
+- `statusReasons`, `originalStatusReasons`, `recommendations`
+
+Policy profile model:
+
+- `schemaVersion`
+- `profiles[]` containing:
+  - `profileName` (`dev` | `test` | `prod` | `strict`)
+  - `description`
+  - `thresholds`
+  - `severityOverrides`
+  - `categoryOverrides`
+  - `allowedWaivers[]`
+  - `requiredEvidence[]`
+  - `metadata`
+
+Waiver model (`allowedWaivers[]`):
+
+- `waiverId`
+- `appliesTo` (`findingId`, `unsupportedFeatureId`, `dependencyId`, `artifactId`, `category`)
+- `reason`
+- `owner`
+- `expiresOn`
+- `approvedBy`
+- `evidenceLink`
+- `riskAccepted`
+- `createdOn`
 
 Default threshold mapping:
 
@@ -447,6 +483,20 @@ Default threshold mapping:
 - `maxHighSeverityFindings=8`
 - `requireNoBlockers=true`
 
+Threshold resolution mapping:
+
+1. Built-in defaults
+2. Selected policy profile thresholds (if policy is provided)
+3. CLI overrides (`--max-risk`, `--max-complexity`, `--min-confidence`, `--max-unresolved`, `--allow-critical-unsupported`)
+
+Waiver governance mapping:
+
+- Expired waivers do not apply.
+- Invalid waivers do not apply and are emitted in `waiverAudit.invalidWaivers`.
+- Critical waiver targets require `riskAccepted=true`.
+- Waived items remain in evidence sections with waiver references in markdown/json.
+- Valid waivers can reduce an otherwise failing outcome to `warn`, but do not hide risk evidence.
+
 CI policy mapping:
 
 - `pass` -> exit `0`
@@ -457,3 +507,7 @@ Advisory behavior:
 
 - In non-CI mode, gate output is advisory and always returns exit `0`.
 - Teams can enforce policy by running `power-exit gate --ci` in pipeline stages.
+- Recommended enterprise CI pattern:
+  - `power-exit init-policy --out <workspace>`
+  - customize `power-exit.policy.json`
+  - enforce `power-exit gate <workspace> --ci --policy <workspace>/power-exit.policy.json --profile prod`

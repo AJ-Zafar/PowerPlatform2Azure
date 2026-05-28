@@ -144,6 +144,149 @@ describe("evaluateReadinessGate", () => {
     ).toBe(true);
   });
 
+  it("tracks original vs effective status when valid waiver applies", async () => {
+    const baseIr = (await analyseSolutionFolder(solutionFixturePath("minimal-valid"))).ir;
+    const ir = {
+      ...baseIr,
+      unsupportedFeatures: [
+        ...baseIr.unsupportedFeatures,
+        createUnsupportedFeature({
+          featureType: "critical.synthetic.feature",
+          sourceLocation: "synthetic/source",
+          reason: "Critical unsupported synthetic feature.",
+          suggestedRemediation: "Manual redesign required.",
+          severity: "critical",
+          confidence: 0.9,
+          provenance: {
+            sourcePath: "synthetic/source",
+            sourceType: "unknown"
+          }
+        })
+      ]
+    };
+    const assessment = assessPowerPlatformIR(ir);
+
+    const gate = evaluateReadinessGate({
+      ir,
+      assessment,
+      policy: {
+        profileName: "prod",
+        description: "prod",
+        thresholds: {
+          maxRiskScore: 100,
+          maxComplexityScore: 100,
+          minConfidence: 0,
+          allowCriticalUnsupported: false,
+          maxUnresolvedDependencies: 99,
+          maxHighSeverityFindings: 99,
+          requireNoBlockers: false
+        },
+        severityOverrides: {},
+        categoryOverrides: {},
+        requiredEvidence: [],
+        metadata: {},
+        allowedWaivers: [
+          {
+            waiverId: "WVR-001",
+            appliesTo: {
+              unsupportedFeatureId: "critical.synthetic.feature:synthetic/source"
+            },
+            reason: "Approved",
+            owner: "owner",
+            expiresOn: "2099-12-31",
+            approvedBy: "approver",
+            evidenceLink: "https://example.test/WVR-001",
+            riskAccepted: true,
+            createdOn: "2026-05-28"
+          }
+        ]
+      }
+    });
+
+    expect(gate.originalStatus).toBe("fail");
+    expect(gate.effectiveStatus).toBe("warn");
+    expect(gate.waiverAudit.waivedCount).toBe(1);
+    expect(gate.statusReasons.some((reason) => reason.includes("Applied 1 waiver"))).toBe(true);
+  });
+
+  it("ignores expired waivers and marks critical waivers without risk acceptance invalid", async () => {
+    const baseIr = (await analyseSolutionFolder(solutionFixturePath("minimal-valid"))).ir;
+    const ir = {
+      ...baseIr,
+      unsupportedFeatures: [
+        ...baseIr.unsupportedFeatures,
+        createUnsupportedFeature({
+          featureType: "critical.synthetic.feature",
+          sourceLocation: "synthetic/source",
+          reason: "Critical unsupported synthetic feature.",
+          suggestedRemediation: "Manual redesign required.",
+          severity: "critical",
+          confidence: 0.9,
+          provenance: {
+            sourcePath: "synthetic/source",
+            sourceType: "unknown"
+          }
+        })
+      ]
+    };
+    const assessment = assessPowerPlatformIR(ir);
+
+    const gate = evaluateReadinessGate({
+      ir,
+      assessment,
+      policy: {
+        profileName: "prod",
+        description: "prod",
+        thresholds: {
+          maxRiskScore: 100,
+          maxComplexityScore: 100,
+          minConfidence: 0,
+          allowCriticalUnsupported: false,
+          maxUnresolvedDependencies: 99,
+          maxHighSeverityFindings: 99,
+          requireNoBlockers: false
+        },
+        severityOverrides: {},
+        categoryOverrides: {},
+        requiredEvidence: [],
+        metadata: {},
+        allowedWaivers: [
+          {
+            waiverId: "WVR-EXPIRED",
+            appliesTo: {
+              unsupportedFeatureId: "critical.synthetic.feature:synthetic/source"
+            },
+            reason: "Expired",
+            owner: "owner",
+            expiresOn: "2020-01-01",
+            approvedBy: "approver",
+            evidenceLink: "https://example.test/WVR-EXPIRED",
+            riskAccepted: true,
+            createdOn: "2020-01-01"
+          },
+          {
+            waiverId: "WVR-NO-RISK",
+            appliesTo: {
+              unsupportedFeatureId: "critical.synthetic.feature:synthetic/source"
+            },
+            reason: "No risk acceptance",
+            owner: "owner",
+            expiresOn: "2099-12-31",
+            approvedBy: "approver",
+            evidenceLink: "https://example.test/WVR-NO-RISK",
+            riskAccepted: false,
+            createdOn: "2026-05-28"
+          }
+        ]
+      }
+    });
+
+    expect(gate.status).toBe("fail");
+    expect(gate.waiverAudit.waivedCount).toBe(0);
+    expect(gate.waiverAudit.expiredCount).toBe(1);
+    expect(gate.waiverAudit.invalidCount).toBe(1);
+  });
+
   it("renders deterministic markdown with required sections", async () => {
     const ir = (await analyseSolutionFolder(solutionFixturePath("minimal-valid"))).ir;
     const assessment = assessPowerPlatformIR(ir);
@@ -166,6 +309,8 @@ describe("evaluateReadinessGate", () => {
     expect(markdown).toContain("## Gate status");
     expect(markdown).toContain("## Threshold summary");
     expect(markdown).toContain("## Pass/fail reasons");
+    expect(markdown).toContain("## Original unwaived reasons");
+    expect(markdown).toContain("## Waiver audit");
     expect(markdown).toContain("## Blockers");
     expect(markdown).toContain("## Unresolved dependencies");
     expect(markdown).toContain("## High severity findings");

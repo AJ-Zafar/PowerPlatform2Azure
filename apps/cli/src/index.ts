@@ -2,14 +2,21 @@
 import { mkdir, readFile, readdir, rmdir, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { serializeDeterministicIR, validatePowerPlatformIR } from "@power-exit/ir";
 import {
+  serializeDeterministicIR,
+  stableStringify,
+  validatePowerPlatformIR
+} from "@power-exit/ir";
+import {
+  createDefaultReadinessGatePolicyFile,
   assessPowerPlatformIR,
-  defaultReadinessGateThresholds,
   evaluateReadinessGate,
   generateAssessmentReportMarkdown,
+  readinessGatePolicyFileSchema,
+  renderReadinessGatePolicyMarkdown,
   renderReadinessGateMarkdown,
   serializeReadinessGate,
+  type ReadinessGatePolicyProfile,
   type ReadinessGateManualReviewItem,
   type ReadinessGateThresholds,
   type ReadinessGateUnresolvedDependency,
@@ -110,6 +117,8 @@ interface GateModeArgs {
   enabled: boolean;
   ci: boolean;
   strict: boolean;
+  policyFilePath?: string;
+  profileName?: string;
   thresholds: Partial<ReadinessGateThresholds>;
 }
 
@@ -117,7 +126,13 @@ interface GateArgs {
   outputFolder: string;
   ci: boolean;
   strict: boolean;
+  policyFilePath?: string;
+  profileName?: string;
   thresholds: Partial<ReadinessGateThresholds>;
+}
+
+interface InitPolicyArgs {
+  outputFolder: string;
 }
 
 const parseAnalyseArgs = (args: string[]): AnalyseArgs => {
@@ -468,13 +483,15 @@ const parseGateArgs = (args: string[]): GateArgs => {
   if (args.length < 1) {
     throw new CliError(
       "INVALID_ARGUMENTS",
-      "Usage: power-exit gate <output-folder> [--ci] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]"
+      "Usage: power-exit gate <output-folder> [--ci] [--strict] [--policy <policy-file>] [--profile <profile-name>] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]"
     );
   }
 
   const [outputFolder, ...flags] = args;
   let ci = false;
   let strict = false;
+  let policyFilePath: string | undefined;
+  let profileName: string | undefined;
   const thresholds: Partial<ReadinessGateThresholds> = {};
 
   for (let index = 0; index < flags.length; index += 1) {
@@ -492,6 +509,26 @@ const parseGateArgs = (args: string[]): GateArgs => {
 
     if (flag === "--allow-critical-unsupported") {
       thresholds.allowCriticalUnsupported = true;
+      continue;
+    }
+
+    if (flag === "--policy") {
+      const candidate = flags[index + 1];
+      if (candidate === undefined) {
+        throw new CliError("INVALID_ARGUMENTS", "Missing value for --policy.");
+      }
+      policyFilePath = path.resolve(candidate);
+      index += 1;
+      continue;
+    }
+
+    if (flag === "--profile") {
+      const candidate = flags[index + 1];
+      if (candidate === undefined) {
+        throw new CliError("INVALID_ARGUMENTS", "Missing value for --profile.");
+      }
+      profileName = candidate;
+      index += 1;
       continue;
     }
 
@@ -553,10 +590,19 @@ const parseGateArgs = (args: string[]): GateArgs => {
     throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
   }
 
+  if (profileName !== undefined && policyFilePath === undefined) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "--profile requires --policy <policy-file>."
+    );
+  }
+
   return {
     outputFolder: path.resolve(outputFolder),
     ci,
     strict,
+    policyFilePath,
+    profileName,
     thresholds
   };
 };
@@ -565,7 +611,7 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
   if (args.length < 3) {
     throw new CliError(
       "INVALID_ARGUMENTS",
-      "Usage: power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean] [--gate] [--strict] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]"
+      "Usage: power-exit migrate <solution-folder> --out <output-folder> [--dry-run] [--force] [--clean] [--gate] [--strict] [--policy <policy-file>] [--profile <profile-name>] [--max-risk <number>] [--max-complexity <number>] [--min-confidence <number>] [--max-unresolved <number>] [--allow-critical-unsupported]"
     );
   }
 
@@ -576,6 +622,8 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
   let clean = false;
   let gateEnabled = false;
   let gateStrict = false;
+  let gatePolicyFilePath: string | undefined;
+  let gateProfileName: string | undefined;
   const gateThresholds: Partial<ReadinessGateThresholds> = {};
 
   for (let index = 0; index < flags.length; index += 1) {
@@ -616,6 +664,28 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
     if (flag === "--allow-critical-unsupported") {
       gateEnabled = true;
       gateThresholds.allowCriticalUnsupported = true;
+      continue;
+    }
+
+    if (flag === "--policy") {
+      const candidate = flags[index + 1];
+      if (candidate === undefined) {
+        throw new CliError("INVALID_ARGUMENTS", "Missing value for --policy.");
+      }
+      gateEnabled = true;
+      gatePolicyFilePath = path.resolve(candidate);
+      index += 1;
+      continue;
+    }
+
+    if (flag === "--profile") {
+      const candidate = flags[index + 1];
+      if (candidate === undefined) {
+        throw new CliError("INVALID_ARGUMENTS", "Missing value for --profile.");
+      }
+      gateEnabled = true;
+      gateProfileName = candidate;
+      index += 1;
       continue;
     }
 
@@ -681,6 +751,13 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
     throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
   }
 
+  if (gateProfileName !== undefined && gatePolicyFilePath === undefined) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "--profile requires --policy <policy-file>."
+    );
+  }
+
   if (!outputFolder) {
     throw new CliError(
       "INVALID_ARGUMENTS",
@@ -698,8 +775,42 @@ const parseMigrateArgs = (args: string[]): MigrateArgs => {
       enabled: gateEnabled,
       ci: false,
       strict: gateStrict,
+      policyFilePath: gatePolicyFilePath,
+      profileName: gateProfileName,
       thresholds: gateThresholds
     }
+  };
+};
+
+const parseInitPolicyArgs = (args: string[]): InitPolicyArgs => {
+  if (args.length < 2) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Usage: power-exit init-policy --out <output-folder>"
+    );
+  }
+
+  let outputFolder: string | undefined;
+  for (let index = 0; index < args.length; index += 1) {
+    const flag = args[index];
+    if (flag === "--out") {
+      outputFolder = args[index + 1];
+      index += 1;
+      continue;
+    }
+
+    throw new CliError("INVALID_ARGUMENTS", `Unknown argument "${flag ?? ""}".`);
+  }
+
+  if (!outputFolder) {
+    throw new CliError(
+      "INVALID_ARGUMENTS",
+      "Missing required --out <output-folder> argument."
+    );
+  }
+
+  return {
+    outputFolder: path.resolve(outputFolder)
   };
 };
 
@@ -1180,6 +1291,63 @@ const loadJsonFileIfPresent = async (filePath: string): Promise<unknown | undefi
   }
 };
 
+const resolveGatePolicyProfile = async (input: {
+  policyFilePath?: string;
+  profileName?: string;
+}): Promise<{
+  policyProfile: ReadinessGatePolicyProfile | null;
+  sourcePolicyFile?: string;
+}> => {
+  if (input.policyFilePath === undefined) {
+    return {
+      policyProfile: null
+    };
+  }
+
+  await ensureInputFile(input.policyFilePath);
+  let payload: unknown;
+  try {
+    payload = JSON.parse(await readFile(input.policyFilePath, "utf-8")) as unknown;
+  } catch {
+    throw new CliError("GATE_POLICY_INVALID_JSON", "Gate policy is not valid JSON.", {
+      policyFilePath: input.policyFilePath
+    });
+  }
+
+  let policyFile;
+  try {
+    policyFile = readinessGatePolicyFileSchema.parse(payload);
+  } catch {
+    throw new CliError(
+      "GATE_POLICY_VALIDATION_FAILURE",
+      "Gate policy file failed schema validation.",
+      {
+        policyFilePath: input.policyFilePath
+      }
+    );
+  }
+
+  const selectedProfileName = input.profileName ?? "dev";
+  const selectedProfile = policyFile.profiles.find(
+    (profile) => profile.profileName === selectedProfileName
+  );
+  if (selectedProfile === undefined) {
+    throw new CliError(
+      "GATE_POLICY_PROFILE_NOT_FOUND",
+      `Gate policy profile "${selectedProfileName}" was not found.`,
+      {
+        policyFilePath: input.policyFilePath,
+        profileName: selectedProfileName
+      }
+    );
+  }
+
+  return {
+    policyProfile: selectedProfile,
+    sourcePolicyFile: input.policyFilePath
+  };
+};
+
 const toReadinessGateManualReviewItems = (
   generationPlan: GenerationPlan | null
 ): ReadinessGateManualReviewItem[] =>
@@ -1273,6 +1441,8 @@ const buildReadinessGateEvaluation = (input: {
   ir: ReturnType<typeof validatePowerPlatformIR>;
   assessment: MigrationAssessment;
   generationPlan: GenerationPlan | null;
+  policyProfile: ReadinessGatePolicyProfile | null;
+  sourcePolicyFile?: string;
   thresholds: Partial<ReadinessGateThresholds>;
 }): {
   gate: ReturnType<typeof evaluateReadinessGate>;
@@ -1294,6 +1464,8 @@ const buildReadinessGateEvaluation = (input: {
   const gate = evaluateReadinessGate({
     ir: input.ir,
     assessment: input.assessment,
+    policy: input.policyProfile,
+    sourcePolicyFile: input.sourcePolicyFile,
     thresholds: input.thresholds,
     manualReviewItems,
     unresolvedDependencies: toReadinessGateUnresolvedDependencies({
@@ -1856,10 +2028,17 @@ const executeGate = async (args: string[], stdout: WriteFn): Promise<number> => 
     }
   }
 
+  const resolvedPolicy = await resolveGatePolicyProfile({
+    policyFilePath: parsedArgs.policyFilePath,
+    profileName: parsedArgs.profileName
+  });
+
   const gateEvaluation = buildReadinessGateEvaluation({
     ir: validatedIr,
     assessment,
     generationPlan,
+    policyProfile: resolvedPolicy.policyProfile,
+    sourcePolicyFile: resolvedPolicy.sourcePolicyFile,
     thresholds: parsedArgs.thresholds
   });
   await writeFile(
@@ -1888,15 +2067,41 @@ const executeGate = async (args: string[], stdout: WriteFn): Promise<number> => 
       ciExitCode,
       assessmentReportAvailable,
       generationPlanAvailable: gateEvaluation.generationPlanAvailable,
-      thresholds: {
-        ...defaultReadinessGateThresholds,
-        ...parsedArgs.thresholds
-      },
+      policyUsed: gateEvaluation.gate.policy?.sourcePolicyFile ?? null,
+      profileUsed: gateEvaluation.gate.policy?.profileName ?? null,
+      thresholds: gateEvaluation.gate.thresholds,
       statusReasons: gateEvaluation.gate.statusReasons
     })
   );
 
   return parsedArgs.ci ? ciExitCode : 0;
+};
+
+const executeInitPolicy = async (args: string[], stdout: WriteFn): Promise<void> => {
+  const parsedArgs = parseInitPolicyArgs(args);
+  await ensureOutputFolder(parsedArgs.outputFolder);
+
+  const policyFile = createDefaultReadinessGatePolicyFile();
+  const policyJsonPath = path.join(parsedArgs.outputFolder, "power-exit.policy.json");
+  const policyMarkdownPath = path.join(parsedArgs.outputFolder, "power-exit.policy.md");
+  await writeFile(policyJsonPath, `${stableStringify(policyFile)}\n`, "utf-8");
+  await writeFile(
+    policyMarkdownPath,
+    renderReadinessGatePolicyMarkdown(policyFile),
+    "utf-8"
+  );
+
+  stdout(
+    JSON.stringify({
+      command: "init-policy",
+      status: "success",
+      outputFolder: parsedArgs.outputFolder,
+      policyFile: policyJsonPath,
+      policyMarkdown: policyMarkdownPath,
+      schemaVersion: policyFile.schemaVersion,
+      profiles: policyFile.profiles.map((profile) => profile.profileName)
+    })
+  );
 };
 
 const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> => {
@@ -2068,10 +2273,16 @@ const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> =>
   let gateStatus: "pass" | "warn" | "fail" | null = null;
 
   if (parsedArgs.gate.enabled) {
+    const resolvedPolicy = await resolveGatePolicyProfile({
+      policyFilePath: parsedArgs.gate.policyFilePath,
+      profileName: parsedArgs.gate.profileName
+    });
     const gateEvaluation = buildReadinessGateEvaluation({
       ir: validatedIr,
       assessment,
       generationPlan: planned.plan,
+      policyProfile: resolvedPolicy.policyProfile,
+      sourcePolicyFile: resolvedPolicy.sourcePolicyFile,
       thresholds: parsedArgs.gate.thresholds
     });
     const gateArtifacts: GeneratedArtifact[] = [
@@ -2160,6 +2371,8 @@ const executeMigrate = async (args: string[], stdout: WriteFn): Promise<void> =>
       clean: parsedArgs.clean,
       gate: parsedArgs.gate.enabled,
       gateStrict: parsedArgs.gate.strict,
+      gatePolicy: parsedArgs.gate.policyFilePath ?? null,
+      gateProfile: parsedArgs.gate.profileName ?? null,
       gateStatus,
       skippedFiles: planned.plan.skippedFiles.length,
       overwrittenFiles: planned.plan.overwrittenFiles.length,
@@ -2216,6 +2429,11 @@ export const runCli = async (
       return await executeGate(commandArgs, stdout);
     }
 
+    if (command === "init-policy") {
+      await executeInitPolicy(commandArgs, stdout);
+      return 0;
+    }
+
     if (!command) {
       throw new CliError(
         "INVALID_COMMAND",
@@ -2225,7 +2443,7 @@ export const runCli = async (
 
     throw new CliError(
       "INVALID_COMMAND",
-      "Supported commands are: analyse, report, generate, migrate, gate."
+      "Supported commands are: analyse, report, generate, migrate, gate, init-policy."
     );
   } catch (error) {
     stderr(formatError(error));
